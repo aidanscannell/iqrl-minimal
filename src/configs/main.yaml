@@ -1,0 +1,56 @@
+defaults:
+  - world_model: base
+  - agent: mppi # mppi or ddpg
+  - replay_buffer: base
+  # - env: cartpole_swingup
+  - env: cheetah_run
+  # Use slurm on cluster or local?
+  # - override hydra/launcher: submitit_local
+  # - override hydra/launcher: local
+  - override hydra/launcher: slurm
+  # - override hydra/launcher: slurm_cpu
+  # Disable logging by Hydra
+  # - override hydra/job_logging: none # stop hydra creating .log file
+  # - override hydra/hydra_logging: none # saves .hydra/*.yaml files
+  - _self_
+
+obs_shape: ???
+action_shape: ???
+action_dim: ???
+
+latent_dim: 5
+
+device: "cuda"
+init_random_episodes: 1
+eval_episode_freq: 10
+seed: 42
+
+num_train_episodes: 2000
+# episode_length: 1000
+episode_length: 500
+update_every_steps: 2
+
+save_video: false
+
+wandb:
+  group: ${env.env_name}-${env.task_name}
+  # group: ${env.env_name}
+  project: "world-models"
+  use_wandb: True
+  run_name: "insert-name"
+  # run_name: ${dataset.name}-seed=${seed}-${now:%Y-%m-%d_%H-%M-%S}
+  tags:
+    - "seed=${seed}"
+    - "env=${env.name}"
+
+hydra:
+  run:
+    dir: output/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
+  job:
+    chdir: true
+  sweep:
+    dir: ${hydra.run.dir}
+    subdir: ${hydra.job.num}
+  job_logging:
+    root:
+      level: INFO # DEBUG

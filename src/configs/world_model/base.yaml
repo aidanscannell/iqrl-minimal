@@ -1,0 +1,10 @@
+defaults:
+  - encoder: mlp
+  - reward_model: mlp
+  - transition_model: mlp
+
+_targets_: src.world_model.WorldModel
+# encoder: encoder
+# transition_model: transition_model
+# reward_model: reward_model
+device: ${device}
