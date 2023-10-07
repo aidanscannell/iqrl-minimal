@@ -1,0 +1,32 @@
+_target_: src.agents.TD3
+# _convert_: all
+# observation_space_shape: ${observation_space_shape}
+# action_space_shape: ${action_space_shape}
+# action_space_low: ${action_space_low}
+# action_space_high: ${action_space_high}
+
+exploration_noise: 0.2
+policy_noise: 0.2
+noise_clip: 0.5
+learning_rate: 3e-4
+batch_size: 512
+# max_iterations: 100
+max_iterations: 500
+# nstep: 3
+gamma: 0.99
+tau: 0.005
+# use_wandb: ${use_wandb}
+device: ${device}
+
+
+# # mlp_dims: [512, 512]
+# learning_rate: 3e-4
+# batch_size: 512
+# max_ddpg_iterations: 500
+# # std_schedule: "linear(1.0, 0.1, 50)"
+# std: 0.1
+# std_clip: 0.3
+# nstep: 1 # TODO always 1 to make it work with SVGP training?
+# gamma: 0.99
+# tau: 0.005
+# device: ${device}

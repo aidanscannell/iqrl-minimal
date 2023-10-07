@@ -1,248 +1,266 @@
-#!/usr/bin/env python3
 import logging
 import os
+import pprint
 import random
 import shutil
 import time
+from dataclasses import dataclass
+from enum import Enum
+from typing import List, Optional, Tuple
 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+import gymnasium as gym
 import hydra
-import matplotlib.pyplot as plt
 import numpy as np
 import omegaconf
-import src
 import torch
-import wandb
-from dm_env import StepType
+from hydra.core.config_store import ConfigStore
 from hydra.utils import get_original_cwd
-from omegaconf import DictConfig
-from src.utils import ReplayBuffer, set_seed_everywhere
+from stable_baselines3.common.buffers import ReplayBuffer
 
 
-# torch.set_default_dtype(torch.float64)
+def make_env(env_id, seed, idx, capture_video, run_name):
+    def thunk():
+        if capture_video:
+            env = gym.make(env_id, render_mode="rgb_array")
+        else:
+            env = gym.make(env_id)
+        env = gym.wrappers.RecordEpisodeStatistics(env)
+        if capture_video:
+            if idx == 0:
+                env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
+        env.action_space.seed(seed)
+        env.observation_space.seed(seed)
+        return env
+
+    return thunk
 
 
-@hydra.main(version_base="1.3", config_path="./configs", config_name="main")
-def train(cfg: DictConfig):
-    try:  # Make experiment reproducible
-        set_seed_everywhere(cfg.random_seed)
-    except:
-        random_seed = random.randint(0, 10000)
-        set_seed_everywhere(random_seed)
+@dataclass
+class TrainConfig:
+    observation_space_shape: Tuple
+    action_space_shape: Tuple
+    action_space_low: int
+    action_space_high: int
 
-    cfg.device = "cuda" if torch.cuda.is_available() else "cpu"
+    run_name: str
+    env_id: str = "CartPole"
+    learning_starts: int = int(25e3)
+    total_timesteps: int = int(1e6)
 
-    # Ensure that all operations are deterministic on GPU (if used) for reproducibility
-    torch.backends.cudnn.determinstic = True
-    torch.backends.cudnn.benchmark = False
+    # Agent stuff
+    exploration_noise: float = 0.1
+    policy_noise: float = 0.2
+    policy_frequency: int = 2
+    noise_clip: float = 0.5
+    tau: float = 0.005  # target smoothing coefficient
+    gamma: float = 0.99  # discount factor
+    # Training config
+    batch_size: int = 64
+    learning_rate: float = 3e-4
+    buffer_size: int = int(1e6)
 
-    cfg.device = "cuda" if torch.cuda.is_available() else "cpu"
-    cfg.device = "cpu"
-    print("Using device: {}".format(cfg.device))
-    cfg.episode_length = cfg.episode_length // cfg.env.action_repeat
-    num_train_steps = cfg.num_train_episodes * cfg.episode_length
+    # Experiment config
+    exp_name: str = "base"
+    logging_epoch_freq: int = 100
+    seed: int = 42
+    device: str = "cpu"  # "cpu" or "gpu" etc
+    # cuda: bool = True  # if gpu available put on gpu
+    capture_train_video: bool = True
+    capture_eval_video: bool = True
+    debug: bool = False
+    torch_deterministic: bool = True
 
-    env = hydra.utils.instantiate(cfg.env)
-    print("ENV {}".format(env.observation_spec()))
-    ts = env.reset()
-    print(ts["observation"])
-    eval_env = hydra.utils.instantiate(cfg.env, seed=cfg.env.seed + 42)
+    # W&B config
+    wandb_project_name: str = ""
+    wandb_group: Optional[str] = None
+    wandb_tags: Optional[List[str]] = None
+    use_wandb: bool = False
+    monitor_gym: bool = True
 
-    cfg.obs_shape = tuple(int(x) for x in env.observation_spec().shape)
-    # cfg.state_dim = cfg.state_dim[0]
-    cfg.action_shape = tuple(int(x) for x in env.action_spec().shape)
-    cfg.action_dim = cfg.action_shape[0]
 
-    ###### Set up workspace ######
-    # work_dir = (
-    #     Path().cwd()
-    #     / "logs"
-    #     / cfg.alg_name
-    #     # / cfg.name
-    #     / cfg.env.env_name
-    #     / cfg.env.task_name
-    #     / str(cfg.random_seed)
-    # )
-    if cfg.wandb.use_wandb:  # Initialise WandB
+cs = ConfigStore.instance()
+cs.store(name="train_config", node=TrainConfig)
+
+
+@hydra.main(version_base="1.3", config_path="./configs", config_name="train")
+def train(cfg: TrainConfig):
+    # Seeding
+    random.seed(cfg.seed)
+    np.random.seed(cfg.seed)
+    torch.manual_seed(cfg.seed)
+    torch.backends.cudnn.deterministic = cfg.torch_deterministic
+
+    # device = torch.device("cuda" if torch.cuda.is_available() and cfg.device else "cpu")
+    # device = torch.device("cuda" if torch.cuda.is_available() and cfg.device else "cpu")
+    device = torch.device(
+        "cuda" if torch.cuda.is_available() and cfg.device is "gpu" else "cpu"
+    )
+    # cfg.device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    # Setup vectorized environment for training/evaluation
+    envs = gym.vector.SyncVectorEnv(
+        [
+            make_env(cfg.env_id, cfg.seed, 0, cfg.capture_train_video, cfg.run_name),
+            # make_env(
+            #     cfg.env_id, cfg.seed + 1, 1, cfg.capture_train_video, cfg.run_name
+            # ),
+        ]
+    )
+    eval_envs = gym.vector.SyncVectorEnv(
+        # [make_env(cfg.env_id, cfg.seed + 1, 0, cfg.capture_eval_video, cfg.run_name)]
+        [
+            make_env(cfg.env_id, cfg.seed + 2, 0, cfg.capture_eval_video, cfg.run_name),
+            # make_env(cfg.env_id, cfg.seed + 3, 1, cfg.capture_eval_video, cfg.run_name),
+        ]
+    )
+    assert isinstance(
+        envs.single_action_space, gym.spaces.Box
+    ), "only continuous action space is supported"
+
+    # Initialise WandB
+    if cfg.use_wandb:
+        import wandb
+
         run = wandb.init(
-            project=cfg.wandb.project,
-            name=cfg.wandb.run_name,
-            group=cfg.wandb.group,
-            tags=cfg.wandb.tags,
+            project=cfg.wandb_project_name,
+            # entity=cfg.wandb_entity,
+            group=cfg.wandb_group,
+            tags=cfg.wandb_tags,
+            # sync_tensorboard=True,
             config=omegaconf.OmegaConf.to_container(
                 cfg, resolve=True, throw_on_missing=True
             ),
-            # monitor_gym=True,
+            name=cfg.run_name,
+            monitor_gym=cfg.monitor_gym,
+            save_code=True,
             dir=get_original_cwd(),  # don't nest wandb inside hydra dir
         )
+        # Save hydra configs with wandb (handles hydra's multirun dir)
         try:
             shutil.copytree(
                 os.path.abspath(".hydra"),
-                os.path.join(os.path.join(get_original_cwd(), wandb.run.dir), "hydra"),
+                os.path.join(os.path.join(get_original_cwd(), run.dir), "hydra"),
             )
             wandb.save("hydra")
         except FileExistsError:
             pass
 
-    print("Making recorder")
-    video_recorder = src.utils.VideoRecorder(run.dir) if cfg.save_video else None
-    print("Made recorder")
+    cfg_dict = (
+        omegaconf.OmegaConf.to_container(cfg, resolve=True, throw_on_missing=True),
+    )
+    pprint.pprint(cfg_dict)
+    # logger.info(f"Config: {cfg}")
+    # cfg.run_name = f"{cfg.env_id}__{cfg.exp_name}__{cfg.seed}__{int(time.time())}"  # TODO move to cfg
 
-    # Create replay buffer
-    print("Making replay buffer")
-    print("num_train_steps {}".format(num_train_steps))
-    # replay_memory = ReplayBuffer(
-    #     capacity=num_train_steps, batch_size=cfg.batch_size, device=cfg.device
-    # )
-    replay_memory = hydra.utils.instantiate(cfg.replay_buffer)
-    print("Made replay buffer")
+    envs.single_observation_space.dtype = np.float32
+    rb = ReplayBuffer(
+        cfg.buffer_size,
+        envs.single_observation_space,
+        envs.single_action_space,
+        device,
+        handle_timeout_termination=False,
+    )
 
-    agent = hydra.utils.instantiate(cfg.agent)
-    print("Made agent")
+    agent = hydra.utils.instantiate(
+        cfg.agent,
+        observation_space_shape=envs.single_observation_space.shape,
+        action_space_shape=envs.single_action_space.shape,
+        action_space_low=envs.single_action_space.low,
+        action_space_high=envs.single_action_space.high,
+    )
 
+    class EvalAgentWrapper:
+        def predict(
+            self, observation, state=None, episode_start=None, deterministic=False
+        ):
+            action = agent.select_action(observation=observation, eval_mode=True)
+            recurrent_state = None
+            return action, recurrent_state
+
+    from stable_baselines3.common.evaluation import evaluate_policy
+
+    eval_agent = EvalAgentWrapper()
+    mean_reward, _ = evaluate_policy(eval_agent, eval_envs, n_eval_episodes=10)
+    print(f"MEAN_REWARD {mean_reward}")
+
+    # TRY NOT TO MODIFY: start the game
     start_time = time.time()
-    last_time = start_time
-    global_step = 0
-    for episode_idx in range(cfg.num_train_episodes):
-        logger.info("Episode {} | Collecting data".format(episode_idx))
-
-        # Collect trajectory
-        time_step = env.reset()
-
-        if cfg.save_video:
-            video_recorder.init(env, enabled=True)
-
-        episode_return = 0
-        t = 0
-        while not time_step.last():
-            # logger.info("Timestep: {}".format(t))
-            if episode_idx <= cfg.init_random_episodes:
-                action = np.random.uniform(-1, 1, env.action_spec().shape).astype(
-                    dtype=np.float64
-                    # dtype=env.action_spec().dtype
-                )
-            else:
-                action_select_time = time.time()
-                action = agent.select_action(
-                    time_step.observation,
-                    eval_mode=False,
-                    t0=time_step.step_type == StepType.FIRST,
-                )
-
-                action_select_end_time = time.time()
-                if t % 100 == 0:
-                    logger.info(
-                        "timestep={} took {}s to select action".format(
-                            t, action_select_end_time - action_select_time
-                        )
-                    )
-                action = action.cpu().numpy()
-
-            ##### Step the environment #####
-            time_step = env.step(action)
-
-            replay_memory.push(
-                state=torch.Tensor(time_step["observation"]).to(cfg.device),
-                action=torch.Tensor(time_step["action"]).to(cfg.device),
-                next_state=torch.Tensor(time_step["observation"]).to(cfg.device),
-                reward=torch.Tensor([time_step["reward"]]).to(cfg.device),
+    obs, _ = envs.reset(seed=cfg.seed)
+    for global_step in range(cfg.total_timesteps):
+        # ALGO LOGIC: put action logic here
+        if global_step < cfg.learning_starts:
+            actions = np.array(
+                [envs.single_action_space.sample() for _ in range(envs.num_envs)]
             )
+        else:
+            # TODO set t0 properly
+            actions = agent.select_action(observation=obs, eval_mode=False, t0=False)
 
-            global_step += 1
-            episode_return += time_step["reward"]
-            t += 1
-            if cfg.save_video:
-                video_recorder.record(env)
+        # Execute action in environments
+        next_obs, rewards, terminateds, truncateds, infos = envs.step(actions)
 
-        logger.info("Finished collecting {} time steps".format(t))
+        # Record training metrics
+        if "final_info" in infos:
+            for info in infos["final_info"]:
+                print(
+                    f"global_step={global_step}, episodic_return={info['episode']['r']}"
+                )
+                if cfg.use_wandb:
+                    wandb.log(
+                        {
+                            "episodic_return": info["episode"]["r"],
+                            "episodic_length": info["episode"]["l"],
+                            "global_step": global_step,
+                        }
+                    )
+                break
 
-        # Log training metrics
-        env_step = global_step * cfg.env.action_repeat
-        elapsed_time = time.time() - last_time
-        total_time = time.time() - start_time
-        last_time = time.time()
-        train_metrics = {
-            "episode": episode_idx,
-            "step": global_step,
-            "env_step": env_step,
-            "episode_time": elapsed_time,
-            "total_time": total_time,
-            "episode_return": episode_return,
-        }
-        logger.info(
-            "TRAINING | Episode: {} | Reward: {}".format(episode_idx, episode_return)
-        )
-        if cfg.wandb.use_wandb:
-            wandb.log({"train/": train_metrics})
+        # TRY NOT TO MODIFY: save data to reply buffer; handle `terminal_observation`
+        real_next_obs = next_obs.copy()
+        for idx, d in enumerate(truncateds):
+            if d:
+                real_next_obs[idx] = infos["final_observation"][idx]
+                t = 0
+        rb.add(obs, real_next_obs, actions, rewards, terminateds, infos)
 
-        ##### Train agent #####
-        # for _ in range(cfg.episode_length // cfg.update_every_steps):
-        if episode_idx >= cfg.init_random_episodes:
-            logger.info("Training agent...")
-            agent.train(replay_memory)
-            logger.info("Finished agent")
+        # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
+        obs = next_obs
 
-            if cfg.save_video:
-                # G = src.utils.evaluate(
-                #     eval_env,
-                #     agent,
-                #     episode_idx=episode_idx,
-                #     num_episodes=1,
-                #     online_updates=False,
-                #     online_update_freq=cfg.online_update_freq,
-                #     video=video_recorder,
-                #     device=cfg.device,
-                # )
-                print("saving video episode: {}".format(episode_idx))
-                video_recorder.save(episode_idx)
+        # ALGO LOGIC: training.
+        if global_step > cfg.learning_starts:
+            # if "final_info" in infos:
+            if global_step % 1000 == 0:
+                logger.info(f"Training agent step {global_step}...")
+                train_metrics = agent.train(replay_buffer=rb, global_step=global_step)
+                logger.info("Finished training agent.")
 
-            # # Log rewards/videos in eval env
-            # if episode_idx % cfg.eval_episode_freq == 0:
-            #     # print("Evaluating {}".format(episode_idx))
-            #     logger.info("Starting eval episodes")
-            #     G_no_online_updates = src.utils.evaluate(
-            #         eval_env,
-            #         agent,
-            #         episode_idx=episode_idx,
-            #         num_episodes=1,
-            #         online_updates=False,
-            #         online_update_freq=cfg.online_update_freq,
-            #         video=video_recorder,
-            #         device=cfg.device,
-            #     )
+                # Log training metrics
+                if cfg.use_wandb:
+                    train_metrics.update(
+                        {
+                            "global_step": global_step,
+                            "SPS": int(global_step / (time.time() - start_time)),
+                        }
+                    )
+                    wandb.log({"train/": train_metrics})
+            if global_step % 5000 == 0:
+                mean_reward, std_reward = evaluate_policy(
+                    eval_agent, eval_envs, n_eval_episodes=10
+                )
+                logger.info(f"Reward {mean_reward} +/- {std_reward}")
+                eval_metrics = {
+                    "mean_reward": mean_reward,
+                    "std_reward": std_reward,
+                    "global_step": global_step,
+                }
+                if cfg.use_wandb:
+                    wandb.log({"eval/": eval_metrics})
 
-            #     # Gs = utils.evaluate(
-            #     #     eval_env,
-            #     #     agent,
-            #     #     episode_idx=episode_idx,
-            #     #     # num_episode=cfg.eval_episode_freq,
-            #     #     num_episodes=1,
-            #     #     # num_episodes=10,
-            #     #     # video=video_recorder,
-            #     # )
-            #     # print("DONE EVALUATING")
-            #     # eval_episode_reward = np.mean(Gs)
-            #     env_step = global_step * cfg.env.action_repeat
-            #     eval_metrics = {
-            #         "episode": episode_idx,
-            #         "step": global_step,
-            #         "env_step": env_step,
-            #         "episode_time": elapsed_time,
-            #         "total_time": total_time,
-            #         # "episode_reward": eval_episode_reward,
-            #         "episode_return/no_online_updates": G_no_online_updates,
-            #     }
-            #     logger.info(
-            #         "EVAL (no updates) | Episode: {} | Retrun: {}".format(
-            #             episode_idx, G_no_online_updates
-            #         )
-            #     )
-
-            #     if cfg.wandb.use_wandb:
-            #         wandb.log({"eval/": eval_metrics})
+    envs.close()
 
 
 if __name__ == "__main__":

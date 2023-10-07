@@ -3,7 +3,8 @@
 from .utils import *
 
 # from .mppi import *
-from .objectives import *
-from .mppi import MPPIAgent
-from .ddpg import DDPGAgent
+# from .objectives import *
+# from .mppi import MPPIAgent
+from .ddpg import DDPG
+from .td3 import TD3
 from .agent import Agent

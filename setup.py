@@ -8,9 +8,7 @@ print(_here)
 name = "src"
 author = ""
 author_email = ""
-description = (
-    "Sparse function-space representation (SFR) of neural networks in PyTorch."
-)
+description = "World models for RL in PyTorch."
 
 with open(_here / "README.md", "r") as f:
     readme = f.read()
@@ -34,13 +32,7 @@ classifiers = [
 keywords = [
     "deep-learning",
     "machine-learning",
-    "probabilistic-modelling",
-    "bayesian-inference",
-    "approximate-inference",
-    "variational-inference",
-    "bayesian-deep-learning",
-    "bayesian-neural-networks",
-    "gaussian-processes",
+    "reinforcement-learning",
     "model-based-reinforcement-learning",
     "planning",
 ]
@@ -48,12 +40,14 @@ keywords = [
 python_requires = ">=3.8"
 
 install_requires = [
-    "torch==2.0.0",
-    "torchvision==0.15.1",
-    "torchtyping==0.1.4",
-    "matplotlib==3.5.1",
-    "numpy==1.24.2",
-    # "laplace-torch",
+    "torch",
+    "torchvision",
+    "torchtyping",
+    "matplotlib",
+    "numpy",
+    "stable_baselines3",
+    "gymnasium",
+    "umap",
 ]
 extras_require = {
     "dev": [
@@ -66,21 +60,20 @@ extras_require = {
     ],
     "experiments": [
         "wandb",
-        "hydra-core==1.3.2",
-        "hydra-submitit-launcher==1.2.0",
-        "jupyter==1.0.0",
-        "netcal==1.3.5",  # needed for computing ECE
+        "hydra-core",
+        "hydra-submitit-launcher",
+        "jupyter",
         "mujoco==2.3.3",
         "dm_control==1.0.11",  # deepmind control suite
-        "opencv-python==4.7.0.72",
-        "moviepy==1.0.3",  # rendering
-        "tikzplotlib",
+        # "opencv-python==4.7.0.72",
+        # "moviepy==1.0.3",  # rendering
+        # "tikzplotlib",
         # "tikzplotlib==0.10.1",
-        "gpytorch==1.9.1",  # for RL SVGP experiments
-        "gym[classic_control]==0.26.2",
-        "pandas",  # for making UCI table
-        "seaborn",
-        "plotly==5.1.0",
+        # "gpytorch==1.9.1",  # for RL SVGP experiments
+        # "gym[classic_control]==0.26.2",
+        # "pandas",  # for making UCI table
+        # "seaborn",
+        # "plotly==5.1.0",
     ],
 }
 
