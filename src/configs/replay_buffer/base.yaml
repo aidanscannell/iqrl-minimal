@@ -1,4 +1,0 @@
-_target_: src.utils.ReplayBuffer
-capacity: 100000
-batch_size: 512
-device: ${device}
