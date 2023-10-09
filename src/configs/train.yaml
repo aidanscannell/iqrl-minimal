@@ -1,43 +1,26 @@
 defaults:
+  - base_train
 #   - world_model: base
   - agent: td3 # mppi or ddpg
-#   - env: inverted_pendulum
-  # Use slurm on cluster or local?
-  # - override hydra/launcher: submitit_local
-  # - override hydra/launcher: local
-  - override hydra/launcher: slurm
-  # - override hydra/launcher: slurm_cpu
-  - _self_
-
-
-# observation_space_shape: ???
-# action_space_shape: ???
-# action_space_low: ???
-# action_space_high: ???
+  - override hydra/launcher: slurm # Use slurm (on cluster) for multirun
+  # - _self_
 
 env_id: "HalfCheetah-v4"
-learning_starts: 25000
-total_timesteps: 1000000
-
-# Agent stuff
-exploration_noise: 0.1
-policy_noise: 0.2
-policy_frequency: 2
-noise_clip: 0.5
-tau: 0.005  # target smoothing coefficient
-gamma: 0.99  # discount factor
-# Training config
-batch_size: 64
-learning_rate: 3e-4
-buffer_size: 1000000
+max_episode_steps: 1000
+frame_skip: 1
+# frame_skip: 5
+capture_train_video: False
+capture_eval_video: True
 
 # Experiment config
 exp_name: "base"
+buffer_size: 1000000
+learning_starts: 25000
+total_timesteps: 1000000
 logging_epoch_freq: 100
+eval_every_steps: 5000
 seed: 42
 device: "cpu"  # "cpu" or "gpu" etc
-capture_train_video: False
-capture_eval_video: True
 debug: False
 torch_deterministic: True
 

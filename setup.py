@@ -96,5 +96,6 @@ setuptools.setup(
     install_requires=install_requires,
     extras_require=extras_require,
     # packages=setuptools.find_namespace_packages(),
-    packages=setuptools.find_packages(),  # packages=setuptools.find_packages(exclude=["notebooks", "paper"]),
+    # packages=setuptools.find_packages(),  # packages=setuptools.find_packages(exclude=["notebooks", "paper"]),
+    packages=setuptools.find_packages(exclude=["notebooks"]),
 )

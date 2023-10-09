@@ -3,7 +3,7 @@ import abc
 from typing import Any, Optional
 
 from src.custom_types import Action, EvalMode, Observation, T0
-from src.utils.buffer import ReplayBuffer
+from stable_baselines3.common.buffers import ReplayBuffer
 
 
 Data = Any
@@ -11,7 +11,9 @@ Data = Any
 
 class Agent:
     @abc.abstractmethod
-    def select_action(self, obs: Observation, eval_mode: EvalMode, t0: T0) -> Action:
+    def select_action(
+        self, observation, eval_mode: EvalMode = False, t0: T0 = None
+    ) -> Action:
         raise NotImplementedError
 
     @abc.abstractmethod
@@ -20,3 +22,12 @@ class Agent:
 
     def update(self, data_new: Data):
         pass
+
+    def predict(
+        self, observation, state=None, episode_start=None, deterministic: bool = False
+    ):
+        """Allows agent to work with Stablebaselines evaluate_policy"""
+        action = self.select_action(observation=observation, eval_mode=True)
+        # action = self.select_action(observation=observation, eval_mode=True, t0=t0)
+        recurrent_state = None
+        return action, recurrent_state

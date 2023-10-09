@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 import logging
-import time
 from typing import List, Tuple
 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 import numpy as np
-import src.agents.utils as util
+
+# from src.agents import util
+import src
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import wandb
+from gymnasium.spaces import Box, Space
 from src.custom_types import Action, EvalMode, State, T0
 from stable_baselines3.common.buffers import ReplayBuffer
 
@@ -44,122 +44,141 @@ from .agent import Agent
 #         return self._critic1(state_action_input), self._critic2(state_action_input)
 
 
-class QNetwork(nn.Module):
-    def __init__(self, observation_space_shape, action_space_shape):
+class Critic(nn.Module):
+    def __init__(
+        self,
+        observation_space: Space,
+        action_space: Box,
+        mlp_dims: List[int],
+        act_fn=nn.ELU,
+    ):
         super().__init__()
-        self.fc1 = nn.Linear(
-            np.array(observation_space_shape).prod() + np.prod(action_space_shape), 256
+        input_dim = np.array(observation_space.shape).prod() + np.prod(
+            action_space.shape
         )
-        self.fc2 = nn.Linear(256, 256)
-        self.fc3 = nn.Linear(256, 1)
+        self._critic = src.agents.utils.mlp(
+            in_dim=input_dim, mlp_dims=mlp_dims, out_dim=1, act_fn=act_fn
+        )
+        self.apply(src.agents.utils.orthogonal_init)
+        # self.fc1 = nn.Linear(input_dim, 256)
+        # self.fc2 = nn.Linear(256, 256)
+        # self.fc3 = nn.Linear(256, 1)
 
     def forward(self, x, a):
         x = torch.cat([x, a], 1)
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
+        q = self._critic(x)
+        # x = F.relu(self.fc1(x))
+        # x = F.relu(self.fc2(x))
+        # x = self.fc3(x)
+        return q
 
 
 class Actor(nn.Module):
     def __init__(
         self,
-        observation_space_shape,
-        action_space_shape,
-        action_space_low: float,
-        action_space_high: float,
+        observation_space: Space,
+        action_space: Box,
+        mlp_dims: List[int],
+        act_fn=nn.ELU,
     ):
         super().__init__()
-        self.fc1 = nn.Linear(np.array(observation_space_shape).prod(), 256)
-        self.fc2 = nn.Linear(256, 256)
-        self.fc_mu = nn.Linear(256, np.prod(action_space_shape))
+        self._actor = src.agents.utils.mlp(
+            in_dim=np.array(observation_space.shape).prod(),
+            mlp_dims=mlp_dims,
+            out_dim=np.prod(action_space.shape),
+            act_fn=act_fn,
+        )
+        self.apply(src.agents.utils.orthogonal_init)
+        # self.fc1 = nn.Linear(np.array(observation_space).prod(), 256)
+        # self.fc2 = nn.Linear(256, 256)
+        # self.fc_mu = nn.Linear(256, np.prod(action_space_shape))
 
         # Action rescaling
         self.register_buffer(
             "action_scale",
             torch.tensor(
-                (action_space_high - action_space_low) / 2.0,
+                (action_space.high - action_space.low) / 2.0,
                 dtype=torch.float32,
             ),
         )
         self.register_buffer(
             "action_bias",
             torch.tensor(
-                (action_space_high + action_space_low) / 2.0,
+                (action_space.high + action_space.low) / 2.0,
                 dtype=torch.float32,
             ),
         )
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = torch.tanh(self.fc_mu(x))
+        x = self._actor(x)
+        x = torch.tanh(x)
         return x * self.action_scale + self.action_bias
+        # x = F.relu(self.fc1(x))
+        # x = F.relu(self.fc2(x))
+        # x = torch.tanh(self.fc_mu(x))
+        # return x * self.action_scale + self.action_bias
 
 
 class TD3(Agent):
     def __init__(
         self,
-        observation_space_shape: Tuple,
-        action_space_shape: Tuple,
-        action_space_low: np.ndarray,
-        action_space_high: np.ndarray,
+        observation_space: Space,
+        action_space: Box,
         mlp_dims: List[int] = [512, 512],
+        act_fn=nn.ELU,
         exploration_noise: float = 0.2,
         policy_noise: float = 0.2,
         noise_clip: float = 0.5,
         learning_rate: float = 3e-4,
         batch_size: int = 128,
-        max_iterations: int = 100,
-        # std: float = 0.1,  # TODO make this schedule
-        # std_clip: float = 0.3,
+        num_updates: int = 100,
+        actor_update_freq: int = 2,  # update actor less frequently than critic
         # nstep: int = 3,
         gamma: float = 0.99,
         tau: float = 0.005,
-        # use_wandb: bool = True,
         device: str = "cuda",
     ):
-        self.observation_space_shape = observation_space_shape
-        self.action_space_shape = action_space_shape
-        self.action_space_low = action_space_low
-        self.action_space_high = action_space_high
+        self.observation_space = observation_space
+        self.action_space = action_space
         self.batch_size = batch_size
-        self.max_iterations = max_iterations
+        self.num_updates = num_updates
+        self.actor_update_freq = actor_update_freq
         self.exploration_noise = exploration_noise
         self.policy_noise = policy_noise
         self.noise_clip = noise_clip
-        # self.std = std
-        # self.std_clip = std_clip
         # self.nstep = nstep
         self.gamma = gamma
         self.tau = tau
-        # self.use_wandb = use_wandb
         self.device = device
 
         # Init actor and it's target
         self.actor = Actor(
-            observation_space_shape=observation_space_shape,
-            action_space_shape=action_space_shape,
-            action_space_low=action_space_low,
-            action_space_high=action_space_high,
+            observation_space=observation_space,
+            action_space=action_space,
+            mlp_dims=mlp_dims,
+            act_fn=act_fn,
         ).to(device)
         self.target_actor = Actor(
-            observation_space_shape=observation_space_shape,
-            action_space_shape=action_space_shape,
-            action_space_low=action_space_low,
-            action_space_high=action_space_high,
+            observation_space=observation_space,
+            action_space=action_space,
+            mlp_dims=mlp_dims,
+            act_fn=act_fn,
         ).to(device)
         self.target_actor.load_state_dict(self.actor.state_dict())
 
         # Init two (twin) critics and their targets
-        self.critic_1 = QNetwork(observation_space_shape, action_space_shape).to(device)
-        self.critic_2 = QNetwork(observation_space_shape, action_space_shape).to(device)
-        self.critic_1_target = QNetwork(observation_space_shape, action_space_shape).to(
-            device
-        )
-        self.critic_2_target = QNetwork(observation_space_shape, action_space_shape).to(
-            device
-        )
+        self.critic_1 = Critic(
+            observation_space, action_space, mlp_dims=mlp_dims, act_fn=act_fn
+        ).to(device)
+        self.critic_2 = Critic(
+            observation_space, action_space, mlp_dims=mlp_dims, act_fn=act_fn
+        ).to(device)
+        self.critic_1_target = Critic(
+            observation_space, action_space, mlp_dims=mlp_dims, act_fn=act_fn
+        ).to(device)
+        self.critic_2_target = Critic(
+            observation_space, action_space, mlp_dims=mlp_dims, act_fn=act_fn
+        ).to(device)
         self.critic_1_target.load_state_dict(self.critic_1.state_dict())
         self.critic_2_target.load_state_dict(self.critic_2.state_dict())
 
@@ -174,12 +193,13 @@ class TD3(Agent):
 
     def train(self, replay_buffer: ReplayBuffer, global_step: int) -> dict:
         info = {"global_step": global_step}
-        for i in range(self.max_iterations):
+        for i in range(self.num_updates):
             batch = replay_buffer.sample(self.batch_size)
             # TODO make info not overwritten at each iteration
             info.update(self.critic_update(data=batch))
-            # if global_step % self.policy_frequency == 0:
-            info.update(self.actor_update(data=batch))
+
+            if i % self.actor_update_freq == 0:
+                info.update(self.actor_update(data=batch))
         return info
 
     def critic_update(self, data) -> dict:
@@ -190,7 +210,7 @@ class TD3(Agent):
 
             next_state_actions = (
                 self.target_actor(data.next_observations) + clipped_noise
-            ).clamp(self.action_space_low[0], self.action_space_high[0])
+            ).clamp(self.action_space.low[0], self.action_space.high[0])
             critic_1_next_target = self.critic_1_target(
                 data.next_observations, next_state_actions
             )
@@ -229,23 +249,6 @@ class TD3(Agent):
                 self.tau * param.data + (1 - self.tau) * target_param.data
             )
 
-        # if global_step % self.logging_epoch_freq == 0:
-        #     # if self.writer is not None:
-        #     self.writer.add_scalar(
-        #         "losses/critic_1_values", critic_1_a_values.mean().item(), global_step
-        #     )
-        #     self.writer.add_scalar(
-        #         "losses/critic_2_values", critic_2_a_values.mean().item(), global_step
-        #     )
-        #     self.writer.add_scalar(
-        #         "losses/critic_1_loss", critic_1_loss.item(), global_step
-        #     )
-        #     self.writer.add_scalar(
-        #         "losses/critic_2_loss", critic_2_loss.item(), global_step
-        #     )
-        #     self.writer.add_scalar(
-        #         "losses/critic_loss", critic_loss.item() / 2.0, global_step
-        #     )
         info = {
             "critic_1_values": critic_1_a_values.mean().item(),
             "critic_2_values": critic_2_a_values.mean().item(),
@@ -253,10 +256,6 @@ class TD3(Agent):
             "critic_2_loss": critic_2_loss.item(),
             "critic_loss": critic_loss.item() / 2.0,
         }
-        # print("SPS:", int(global_step / (time.time() - start_time)))
-        # self.writer.add_scalar(
-        #     "charts/SPS", int(global_step / (time.time() - start_time)), global_step
-        # )
         return info
 
     def actor_update(self, data) -> dict:
@@ -278,93 +277,11 @@ class TD3(Agent):
         info = {"actor_loss": actor_loss.item()}
         return info
 
-    # def update(self, states, actions, rewards, next_states) -> dict:
-    #     info = self._update_q_fn(
-    #         state=states,
-    #         action=actions,
-    #         reward=rewards,
-    #         discount=1,  # TODO should discount be 1?
-    #         next_state=next_states,
-    #         std=self.std,
-    #     )
-    #     info.update(self._update_actor_fn(state=states, std=self.std))
-
-    #     # Update target network
-    #     util.soft_update_params(self.critic, self.critic_target, tau=self.tau)
-    #     wandb.log(info)
-    #     return info
-
     @torch.no_grad()
     def select_action(self, observation, eval_mode: EvalMode = False, t0: T0 = None):
         actions = self.actor(torch.Tensor(observation).to(self.device))
         if not eval_mode:
             actions += torch.normal(0, self.actor.action_scale * self.exploration_noise)
-        actions = (
-            actions.cpu().numpy().clip(self.action_space_low, self.action_space_high)
-        )
+        actions = actions.cpu().numpy()
+        actions = actions.clip(self.action_space.low, self.action_space.high)
         return actions
-        # if isinstance(state, np.ndarray):
-        #     state = torch.from_numpy(state).to(self.device).float()
-        # if state.ndim == 2:
-        #     # TODO added this but not checked its right
-        #     # TODO previously had torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
-        #     assert state.shape[0] == 1
-        #     state = state[0, ...]
-        #     # print("state {}".format(state.shape))
-        # dist = self.actor.forward(state, std=self.std)
-        # if eval_mode:
-        #     action = dist.mean
-        # else:
-        #     action = dist.sample(clip=None)
-        # return action
-
-
-# def update_q(
-#     optim: torch.optim.Optimizer,
-#     actor: Actor,
-#     critic: Critic,
-#     critic_target: Critic,
-#     std_clip: float = 0.3,
-# ):
-#     def update_q_fn(
-#         state: State,
-#         action: Action,
-#         reward: float,
-#         discount: float,
-#         next_state: State,
-#         std: float,
-#     ):
-#         with torch.no_grad():
-#             next_action = actor(next_state, std=std).sample(clip=std_clip)
-
-#             td_target = reward + discount * torch.min(
-#                 *critic_target(next_state, next_action)
-#             )
-
-#         q1, q2 = critic(state, action)
-#         q_loss = torch.mean(util.mse(q1, td_target) + util.mse(q2, td_target))
-
-#         optim.zero_grad(set_to_none=True)
-#         q_loss.backward()
-#         optim.step()
-
-#         return {"q": q1.mean().item(), "q_loss": q_loss.item()}
-
-#     return update_q_fn
-
-
-# def update_actor(
-#     optim: torch.optim.Optimizer, actor: Actor, critic: Critic, std_clip: float = 0.3
-# ):
-#     def update_actor_fn(state: State, std: float):
-#         action = actor(state, std=std).sample(clip=std_clip)
-#         Q = torch.min(*critic(state, action))
-#         actor_loss = -Q.mean()
-
-#         optim.zero_grad(set_to_none=True)
-#         actor_loss.backward()
-#         optim.step()
-
-#         return {"actor_loss": actor_loss.item()}
-
-#     return update_actor_fn

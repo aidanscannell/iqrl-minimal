@@ -1,17 +1,21 @@
+defaults:
+  - base_td3
 _target_: src.agents.TD3
 # _convert_: all
-# observation_space_shape: ${observation_space_shape}
-# action_space_shape: ${action_space_shape}
-# action_space_low: ${action_space_low}
-# action_space_high: ${action_space_high}
 
+# mlp_dims: [512, 512]
+mlp_dims: [256, 256]
+# mlp_dims: [128, 128]
+# act_fn:
+#   _target_: torch.nn.ELU
+#   _partial_: True
 exploration_noise: 0.2
 policy_noise: 0.2
 noise_clip: 0.5
 learning_rate: 3e-4
 batch_size: 512
 # max_iterations: 100
-max_iterations: 500
+num_updates: 1000 # 1000 is 1 update per new data
 # nstep: 3
 gamma: 0.99
 tau: 0.005
