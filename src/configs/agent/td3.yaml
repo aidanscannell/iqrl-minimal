@@ -16,6 +16,7 @@ learning_rate: 3e-4
 batch_size: 512
 # max_iterations: 100
 num_updates: 1000 # 1000 is 1 update per new data
+actor_update_freq: 2  # update actor less frequently than critic
 # nstep: 3
 gamma: 0.99
 tau: 0.005

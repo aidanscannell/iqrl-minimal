@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 import logging
-from typing import List, Tuple
+from typing import Any, List, Optional, Tuple
 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-import numpy as np
 
-# from src.agents import util
+import numpy as np
 import src
 import torch
 import torch.nn as nn
@@ -131,7 +130,7 @@ class TD3(Agent):
         noise_clip: float = 0.5,
         learning_rate: float = 3e-4,
         batch_size: int = 128,
-        num_updates: int = 100,
+        num_updates: int = 1000,
         actor_update_freq: int = 2,  # update actor less frequently than critic
         # nstep: int = 3,
         gamma: float = 0.99,
@@ -142,6 +141,7 @@ class TD3(Agent):
         self.action_space = action_space
         self.batch_size = batch_size
         self.num_updates = num_updates
+        # self.utd_ratio = utd_ratio
         self.actor_update_freq = actor_update_freq
         self.exploration_noise = exploration_noise
         self.policy_noise = policy_noise
@@ -191,9 +191,13 @@ class TD3(Agent):
             list(self.actor.parameters()), lr=learning_rate
         )
 
-    def train(self, replay_buffer: ReplayBuffer, global_step: int) -> dict:
-        info = {"global_step": global_step}
-        for i in range(self.num_updates):
+    def train(
+        self, replay_buffer: ReplayBuffer, num_updates: Optional[int] = None
+    ) -> dict:
+        if num_updates is None:
+            num_updates = self.num_updates
+        info = {}
+        for i in range(num_updates):
             batch = replay_buffer.sample(self.batch_size)
             # TODO make info not overwritten at each iteration
             info.update(self.critic_update(data=batch))

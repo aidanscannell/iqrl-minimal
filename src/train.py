@@ -98,6 +98,7 @@ class TD3Config(AgentConfig):
     learning_rate: float = 3e-4
     batch_size: int = 512
     num_updates: int = 1000  # 1000 is 1 update per new data
+    actor_update_freq: int = 2
     # nstep: 3
     gamma: float = 0.99
     tau: float = 0.005
@@ -110,11 +111,12 @@ class TrainConfig:
 
     # Agent
     agent: AgentConfig = field(default_factory=TD3Config)
+    utd_ratio: int = 1
 
     # Env config
     env_id: str = "CartPole"
     max_episode_steps: int = 1000
-    frame_skip: int = 1
+    # frame_skip: int = 1
     capture_train_video: bool = False
     capture_eval_video: bool = True
 
@@ -251,6 +253,7 @@ def train(cfg: TrainConfig):
                 logger.info(
                     f"global_step={global_step}, episodic_return={info['episode']['r']}"
                 )
+                episode_length = info["episode"]["l"]
                 if cfg.use_wandb:
                     wandb.log(
                         {
@@ -274,8 +277,11 @@ def train(cfg: TrainConfig):
         # ALGO LOGIC: training.
         if global_step > cfg.learning_starts:
             if "final_info" in infos:  # Update after every episode
-                logger.info(f"Training agent step {global_step}...")
-                train_metrics = agent.train(replay_buffer=rb, global_step=global_step)
+                num_updates = cfg.utd_ratio * episode_length[0]  # TODO inc. frame skip
+                logger.info(
+                    f"Training agent w. {num_updates} updates @ step {global_step}..."
+                )
+                train_metrics = agent.train(replay_buffer=rb, num_updates=num_updates)
                 logger.info("Finished training agent.")
 
                 # Log training metrics
@@ -284,6 +290,7 @@ def train(cfg: TrainConfig):
                         {
                             "global_step": global_step,
                             "SPS": int(global_step / (time.time() - start_time)),
+                            "num_updates": num_updates,
                         }
                     )
                     wandb.log({"train/": train_metrics})

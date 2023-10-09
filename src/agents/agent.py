@@ -17,7 +17,9 @@ class Agent:
         raise NotImplementedError
 
     @abc.abstractmethod
-    def train(self, replay_buffer: ReplayBuffer) -> Optional[dict]:
+    def train(
+        self, replay_buffer: ReplayBuffer, num_updates: Optional[int] = None
+    ) -> Optional[dict]:
         raise NotImplementedError
 
     def update(self, data_new: Data):
