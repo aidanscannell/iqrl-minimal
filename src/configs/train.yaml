@@ -22,7 +22,7 @@ total_timesteps: 1000000
 logging_epoch_freq: 100
 eval_every_steps: 5000
 seed: 42
-device: "cpu"  # "cpu" or "gpu" etc
+device: "gpu"  # "cpu" or "gpu" etc
 debug: False
 torch_deterministic: True
 
