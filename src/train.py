@@ -15,13 +15,8 @@ logger = logging.getLogger(__name__)
 
 import gymnasium as gym
 import hydra
-import numpy as np
 import omegaconf
-import torch
 from hydra.core.config_store import ConfigStore
-from stable_baselines3.common.buffers import ReplayBuffer
-from stable_baselines3.common.evaluation import evaluate_policy
-from stable_baselines3.common.vec_env import SubprocVecEnv
 
 
 def make_env(
@@ -145,8 +140,12 @@ cs.store(group="agent", name="base_td3", node=TD3Config)
 
 @hydra.main(version_base="1.3", config_path="./configs", config_name="train")
 def train(cfg: TrainConfig):
+    import numpy as np
+    import torch
     from hydra.utils import get_original_cwd
-
+    from stable_baselines3.common.buffers import ReplayBuffer
+    from stable_baselines3.common.evaluation import evaluate_policy
+    from stable_baselines3.common.vec_env import SubprocVecEnv
 
     # Seeding
     random.seed(cfg.seed)
