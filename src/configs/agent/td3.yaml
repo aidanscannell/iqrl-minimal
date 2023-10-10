@@ -22,6 +22,7 @@ gamma: 0.99
 tau: 0.005
 # use_wandb: ${use_wandb}
 device: ${device}
+name: "TD3"
 
 
 # # mlp_dims: [512, 512]

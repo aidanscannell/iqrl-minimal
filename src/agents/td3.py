@@ -43,7 +43,7 @@ from .agent import Agent
 #         return self._critic1(state_action_input), self._critic2(state_action_input)
 
 
-class Critic(nn.Module):
+class QNetwork(nn.Module):
     def __init__(
         self,
         observation_space: Space,
@@ -136,9 +136,11 @@ class TD3(Agent):
         gamma: float = 0.99,
         tau: float = 0.005,
         device: str = "cuda",
+        name: str = "TD3",
     ):
-        self.observation_space = observation_space
-        self.action_space = action_space
+        super().__init__(
+            observation_space=observation_space, action_space=action_space, name=name
+        )
         self.batch_size = batch_size
         self.num_updates = num_updates
         # self.utd_ratio = utd_ratio
@@ -167,16 +169,16 @@ class TD3(Agent):
         self.target_actor.load_state_dict(self.actor.state_dict())
 
         # Init two (twin) critics and their targets
-        self.critic_1 = Critic(
+        self.critic_1 = QNetwork(
             observation_space, action_space, mlp_dims=mlp_dims, act_fn=act_fn
         ).to(device)
-        self.critic_2 = Critic(
+        self.critic_2 = QNetwork(
             observation_space, action_space, mlp_dims=mlp_dims, act_fn=act_fn
         ).to(device)
-        self.critic_1_target = Critic(
+        self.critic_1_target = QNetwork(
             observation_space, action_space, mlp_dims=mlp_dims, act_fn=act_fn
         ).to(device)
-        self.critic_2_target = Critic(
+        self.critic_2_target = QNetwork(
             observation_space, action_space, mlp_dims=mlp_dims, act_fn=act_fn
         ).to(device)
         self.critic_1_target.load_state_dict(self.critic_1.state_dict())
