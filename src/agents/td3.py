@@ -186,11 +186,11 @@ class TD3(Agent):
         self.critic_2_target.load_state_dict(self.critic_2.state_dict())
 
         # Optimizers
-        self.q_optimizer = torch.optim.Adam(
+        self.q_optimizer = torch.optim.AdamW(
             list(self.critic_1.parameters()) + list(self.critic_2.parameters()),
             lr=learning_rate,
         )
-        self.actor_optimizer = torch.optim.Adam(
+        self.actor_optimizer = torch.optim.AdamW(
             list(self.actor.parameters()), lr=learning_rate
         )
 
@@ -206,11 +206,11 @@ class TD3(Agent):
 
         # Reinitialize the optimizers
         if reinit_opts:
-            self.q_optimizer = torch.optim.Adam(
+            self.q_optimizer = torch.optim.AdamW(
                 list(self.critic_1.parameters()) + list(self.critic_2.parameters()),
                 lr=self.learning_rate,
             )
-            self.actor_optimizer = torch.optim.Adam(
+            self.actor_optimizer = torch.optim.AdamW(
                 list(self.actor.parameters()), lr=self.learning_rate
             )
         for i in range(num_updates):
