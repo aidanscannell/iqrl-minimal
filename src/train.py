@@ -175,6 +175,7 @@ class TrainConfig:
     agent: AgentConfig = field(default_factory=AgentConfig)
     # agent: AgentConfig = field(default_factory=TD3Config)
     utd_ratio: int = 1  # Update to data ratio
+    reinit_opts: bool = True
 
     # Env config
     env_id: str = "CartPole"
@@ -378,7 +379,11 @@ def train(cfg: TrainConfig):
                 logger.info(
                     f"Training agent w. {num_updates} updates @ step {global_step}..."
                 )
-                train_metrics = agent.train(replay_buffer=rb, num_updates=num_updates)
+                train_metrics = agent.train(
+                    replay_buffer=rb,
+                    num_updates=num_updates,
+                    reinit_opts=cfg.reinit_opts,
+                )
                 logger.info("Finished training agent.")
 
                 # Log training metrics
