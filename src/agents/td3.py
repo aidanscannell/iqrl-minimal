@@ -148,6 +148,7 @@ class TD3(Agent):
         self.exploration_noise = exploration_noise
         self.policy_noise = policy_noise
         self.noise_clip = noise_clip
+        self.learning_rate = learning_rate
         # self.nstep = nstep
         self.gamma = gamma
         self.tau = tau
@@ -194,11 +195,24 @@ class TD3(Agent):
         )
 
     def train(
-        self, replay_buffer: ReplayBuffer, num_updates: Optional[int] = None
+        self,
+        replay_buffer: ReplayBuffer,
+        num_updates: Optional[int] = None,
+        reinit_opts: bool = False,
     ) -> dict:
         if num_updates is None:
             num_updates = self.num_updates
         info = {}
+
+        # Reinitialize the optimizers
+        if reinit_opts:
+            self.q_optimizer = torch.optim.Adam(
+                list(self.critic_1.parameters()) + list(self.critic_2.parameters()),
+                lr=self.learning_rate,
+            )
+            self.actor_optimizer = torch.optim.Adam(
+                list(self.actor.parameters()), lr=self.learning_rate
+            )
         for i in range(num_updates):
             batch = replay_buffer.sample(self.batch_size)
             # TODO make info not overwritten at each iteration
