@@ -6,13 +6,16 @@ defaults:
   - _self_
 
 utd_ratio: 1 # update to data ratio
-reinit_opts: True
+reinit_opts: False
 
-env_id: "HalfCheetah-v4"
+# env_id: "HalfCheetah-v4"
+env_id: "cartpole"
 max_episode_steps: 1000
 capture_train_video: False
 capture_eval_video: True
 action_repeat: 2
+dmc_task: "swingup"
+# dmc_task: null
 
 # Experiment config
 # exp_name: "base"

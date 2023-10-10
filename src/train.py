@@ -46,14 +46,15 @@ def make_env(
     run_name: str,
     max_episode_steps: int,
     action_repeat: int = 2,
+    dmc_task: Optional[str] = None,
 ):
-    dmc = True
-    dmc = False
+    # dmc = True
+    # dmc = False
 
     def thunk():
         if capture_video:
-            if dmc:
-                env = DMCGym(domain="cartpole", task="swingup")
+            if dmc_task is not None:
+                env = DMCGym(domain=env_id, task=dmc_task)
                 # env = PixelObservationWrapper(
                 #     env,
                 #     pixels_only=False,
@@ -67,8 +68,8 @@ def make_env(
                     # **{"frame_skip": frame_skip},
                 )
         else:
-            if dmc:
-                env = DMCGym(domain="cartpole", task="swingup")
+            if dmc_task is not None:
+                env = DMCGym(domain=env_id, task=dmc_task)
                 # env = PixelObservationWrapper(
                 #     env,
                 #     pixels_only=False,
@@ -82,15 +83,15 @@ def make_env(
                     # **{"frame_skip": frame_skip},
                 )
 
-        env = Monitor(
-            env,
-            # filename=None,
-            # allow_early_resets=True,
-            # reset_keywords=(),
-            # info_keywords=(),
-            # override_existing=True,
-        )
-        # env = gym.wrappers.RecordEpisodeStatistics(env)
+        # env = Monitor(
+        #     env,
+        #     # filename=None,
+        #     # allow_early_resets=True,
+        #     # reset_keywords=(),
+        #     # info_keywords=(),
+        #     # override_existing=True,
+        # )
+        env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
             if idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
@@ -175,15 +176,16 @@ class TrainConfig:
     agent: AgentConfig = field(default_factory=AgentConfig)
     # agent: AgentConfig = field(default_factory=TD3Config)
     utd_ratio: int = 1  # Update to data ratio
-    reinit_opts: bool = True
+    reinit_opts: bool = False
 
     # Env config
-    env_id: str = "CartPole"
+    env_id: str = "cartpole"
     max_episode_steps: int = 1000
     # frame_skip: int = 1
     capture_train_video: bool = False
     capture_eval_video: bool = True
     action_repeat: int = 2
+    dmc_task: Optional[str] = "swingup"
 
     # Experiment config
     exp_name: str = "base"
@@ -246,6 +248,7 @@ def train(cfg: TrainConfig):
                 run_name=cfg.run_name,
                 max_episode_steps=cfg.max_episode_steps,
                 action_repeat=cfg.action_repeat,
+                dmc_task=cfg.dmc_task,
             )
         ]
     )
@@ -273,6 +276,7 @@ def train(cfg: TrainConfig):
                 run_name=cfg.run_name,
                 max_episode_steps=cfg.max_episode_steps,
                 action_repeat=cfg.action_repeat,
+                dmc_task=cfg.dmc_task,
             )
         ]
     )
