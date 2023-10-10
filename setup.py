@@ -47,6 +47,7 @@ install_requires = [
     "numpy",
     "stable_baselines3",
     "gymnasium",
+    "imageio",
     "umap",
 ]
 extras_require = {
@@ -65,6 +66,8 @@ extras_require = {
         "jupyter",
         "mujoco==2.3.3",
         "dm_control==1.0.11",  # deepmind control suite
+        "urllib3>=1.26.11",  # TODO check this works
+        "moviepy",
         # "opencv-python==4.7.0.72",
         # "moviepy==1.0.3",  # rendering
         # "tikzplotlib",
@@ -97,5 +100,6 @@ setuptools.setup(
     extras_require=extras_require,
     # packages=setuptools.find_namespace_packages(),
     # packages=setuptools.find_packages(),  # packages=setuptools.find_packages(exclude=["notebooks", "paper"]),
+    # package_dir = {"": "src"},
     packages=setuptools.find_packages(exclude=["notebooks"]),
 )
