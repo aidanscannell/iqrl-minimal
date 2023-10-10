@@ -176,16 +176,30 @@ def train(cfg: TrainConfig):
         ]
     )
     envs.single_observation_space.dtype = np.float32
-    eval_envs = SubprocVecEnv(
-        make_env_list(
-            env_id=cfg.env_id,
-            num_envs=5,
-            seed=cfg.seed + 1,
-            capture_video=cfg.capture_eval_video,
-            run_name=cfg.run_name,
-            max_episode_steps=cfg.max_episode_steps,
+    if cfg.device is "cpu":
+        eval_envs = SubprocVecEnv(
+            make_env_list(
+                env_id=cfg.env_id,
+                num_envs=5,
+                seed=cfg.seed + 100,
+                capture_video=cfg.capture_eval_video,
+                run_name=cfg.run_name,
+                max_episode_steps=cfg.max_episode_steps,
+            )
         )
-    )
+    else:
+        eval_envs = gym.vector.SyncVectorEnv(
+            [
+                make_env(
+                    env_id=cfg.env_id,
+                    seed=cfg.seed + 100,
+                    idx=0,
+                    capture_video=cfg.capture_train_video,
+                    run_name=cfg.run_name,
+                    max_episode_steps=cfg.max_episode_steps,
+                )
+            ]
+        )
     assert isinstance(
         envs.single_action_space, gym.spaces.Box
     ), "only continuous action space is supported"
