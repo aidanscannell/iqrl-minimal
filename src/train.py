@@ -203,6 +203,7 @@ def train(cfg: TrainConfig):
                 capture_video=cfg.capture_train_video,
                 run_name=cfg.run_name,
                 max_episode_steps=cfg.max_episode_steps,
+                action_repeat=cfg.action_repeat,
             )
         ]
     )
@@ -216,6 +217,7 @@ def train(cfg: TrainConfig):
                 capture_video=cfg.capture_eval_video,
                 run_name=cfg.run_name,
                 max_episode_steps=cfg.max_episode_steps,
+                action_repeat=cfg.action_repeat,
             )
         )
     else:
@@ -228,6 +230,7 @@ def train(cfg: TrainConfig):
                     capture_video=cfg.capture_train_video,
                     run_name=cfg.run_name,
                     max_episode_steps=cfg.max_episode_steps,
+                    action_repeat=cfg.action_repeat
                 )
             ]
         )
@@ -339,6 +342,7 @@ def train(cfg: TrainConfig):
                             "global_step": global_step,
                             "SPS": int(global_step / (time.time() - start_time)),
                             "num_updates": num_updates,
+                            "action_repeat": cfg.action_repeat,
                         }
                     )
                     wandb.log({"train/": train_metrics})
