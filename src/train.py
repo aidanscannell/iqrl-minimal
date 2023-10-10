@@ -18,15 +18,21 @@ import hydra
 import omegaconf
 from hydra.core.config_store import ConfigStore
 
+
 class ActionRepeatWrapper(gym.ActionWrapper):
-    def __init__(self, env, action_repeat:int):
+    def __init__(self, env, action_repeat: int):
         super().__init__(env)
-        self.action_repeat=action_repeat
+        self.action_repeat = action_repeat
 
     def step(self, action):
+        reward_total = 0.0
         for _ in range(self.action_repeat):
-            obs, reward, terminated, truncated, info=self.env.step(action)
-        return obs, reward, terminated, truncated, info
+            obs, reward, terminated, truncated, info = self.env.step(action)
+            reward_total += reward
+            if terminated or truncated:
+                break
+        return obs, reward_total, terminated, truncated, info
+
 
 def make_env(
     env_id: str,
@@ -35,7 +41,7 @@ def make_env(
     capture_video: bool,
     run_name: str,
     max_episode_steps: int,
-    action_repeat: int = 2
+    action_repeat: int = 2,
 ):
     def thunk():
         if capture_video:
@@ -56,7 +62,7 @@ def make_env(
         if capture_video:
             if idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-        env = ActionRepeatWrapper(env=env,action_repeat=action_repeat)
+        env = ActionRepeatWrapper(env=env, action_repeat=action_repeat)
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env
@@ -71,7 +77,7 @@ def make_env_list(
     run_name: str,
     max_episode_steps: int,
     capture_video: bool = False,
-    action_repeat: int = 2
+    action_repeat: int = 2,
 ) -> List[gym.Env]:
     envs_list = []
     for i in range(num_envs):
@@ -92,6 +98,7 @@ def make_env_list(
 @dataclass
 class AgentConfig:
     _target_: str = "src.agents.TD3"
+
 
 @dataclass
 class DDPGConfig(AgentConfig):
@@ -165,10 +172,12 @@ class TrainConfig:
     use_wandb: bool = False
     monitor_gym: bool = True
 
+
 cs = ConfigStore.instance()
 cs.store(name="base_train", node=TrainConfig)
 cs.store(group="agent", name="base_td3", node=TD3Config)
 cs.store(group="agent", name="base_ddpg", node=DDPGConfig)
+
 
 @hydra.main(version_base="1.3", config_path="./configs", config_name="train")
 def train(cfg: TrainConfig):
@@ -230,7 +239,7 @@ def train(cfg: TrainConfig):
                     capture_video=cfg.capture_train_video,
                     run_name=cfg.run_name,
                     max_episode_steps=cfg.max_episode_steps,
-                    action_repeat=cfg.action_repeat
+                    action_repeat=cfg.action_repeat,
                 )
             ]
         )
