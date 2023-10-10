@@ -19,7 +19,6 @@ import numpy as np
 import omegaconf
 import torch
 from hydra.core.config_store import ConfigStore
-from hydra.utils import get_original_cwd
 from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.evaluation import evaluate_policy
 from stable_baselines3.common.vec_env import SubprocVecEnv
@@ -140,14 +139,15 @@ class TrainConfig:
     use_wandb: bool = False
     monitor_gym: bool = True
 
-
 cs = ConfigStore.instance()
 cs.store(name="base_train", node=TrainConfig)
 cs.store(group="agent", name="base_td3", node=TD3Config)
 
-
 @hydra.main(version_base="1.3", config_path="./configs", config_name="train")
 def train(cfg: TrainConfig):
+    from hydra.utils import get_original_cwd
+
+
     # Seeding
     random.seed(cfg.seed)
     np.random.seed(cfg.seed)
@@ -176,7 +176,7 @@ def train(cfg: TrainConfig):
         ]
     )
     envs.single_observation_space.dtype = np.float32
-    if cfg.device is "cpu":
+    if cfg.device == "cpu":
         eval_envs = SubprocVecEnv(
             make_env_list(
                 env_id=cfg.env_id,
