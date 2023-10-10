@@ -111,7 +111,7 @@ class TrainConfig:
 
     # Agent
     agent: AgentConfig = field(default_factory=TD3Config)
-    utd_ratio: int = 1
+    utd_ratio: int = 1  # Update to data ratio
 
     # Env config
     env_id: str = "CartPole"
@@ -128,7 +128,7 @@ class TrainConfig:
     logging_epoch_freq: int = 100
     eval_every_steps: int = 5000
     seed: int = 42
-    device: str = "cpu"  # "cpu" or "gpu" etc
+    device: str = "cuda"  # "cpu" or "cuda" etc
     # cuda: bool = True  # if gpu available put on gpu
     debug: bool = False
     torch_deterministic: bool = True
@@ -156,9 +156,11 @@ def train(cfg: TrainConfig):
 
     # device = torch.device("cuda" if torch.cuda.is_available() and cfg.device else "cpu")
     # print(f"cfg.device == gpu {cfg.device == 'gpu'}")
-    device = torch.device(
-        "cuda" if torch.cuda.is_available() and cfg.device == "gpu" else "cpu"
+    # device = torch.device("cuda" if torch.cuda.is_available() and cfg.cuda else "cpu")
+    cfg.device = (
+        "cuda" if torch.cuda.is_available() and (cfg.device == "cuda") else "cpu"
     )
+    logger.info(f"Using device: {cfg.device}")
 
     # Setup vectorized environment for training/evaluation
     envs = gym.vector.SyncVectorEnv(
