@@ -18,6 +18,15 @@ import hydra
 import omegaconf
 from hydra.core.config_store import ConfigStore
 
+class ActionRepeatWrapper(gym.ActionWrapper):
+    def __init__(self, env, action_repeat:int):
+        super().__init__(env)
+        self.action_repeat=action_repeat
+
+    def step(self, action):
+        for _ in range(self.action_repeat):
+            obs, reward, terminated, truncated, info=self.env.step(action)
+        return obs, reward, terminated, truncated, info
 
 def make_env(
     env_id: str,
@@ -26,7 +35,7 @@ def make_env(
     capture_video: bool,
     run_name: str,
     max_episode_steps: int,
-    frame_skip: int = 5,
+    action_repeat: int = 2
 ):
     def thunk():
         if capture_video:
@@ -47,6 +56,7 @@ def make_env(
         if capture_video:
             if idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
+        env = ActionRepeatWrapper(env=env,action_repeat=action_repeat)
         env.action_space.seed(seed)
         env.observation_space.seed(seed)
         return env
@@ -61,6 +71,7 @@ def make_env_list(
     run_name: str,
     max_episode_steps: int,
     capture_video: bool = False,
+    action_repeat: int = 2
 ) -> List[gym.Env]:
     envs_list = []
     for i in range(num_envs):
@@ -72,6 +83,7 @@ def make_env_list(
                 capture_video=capture_video,
                 run_name=run_name,
                 max_episode_steps=max_episode_steps,
+                action_repeat=action_repeat,
             )
         )
     return envs_list
@@ -80,6 +92,22 @@ def make_env_list(
 @dataclass
 class AgentConfig:
     _target_: str = "src.agents.TD3"
+
+@dataclass
+class DDPGConfig(AgentConfig):
+    _target_: str = "src.agents.DDPG"
+    mlp_dims: List[int] = field(default_factory=lambda: [256, 256])
+    exploration_noise: float = 0.2
+    policy_noise: float = 0.2
+    noise_clip: float = 0.5
+    learning_rate: float = 3e-4
+    batch_size: int = 512
+    num_updates: int = 1000  # 1000 is 1 update per new data
+    # nstep: 3
+    gamma: float = 0.99
+    tau: float = 0.005
+    device: str = "gpu"
+    name: str = "DDPG"
 
 
 @dataclass
@@ -97,6 +125,7 @@ class TD3Config(AgentConfig):
     gamma: float = 0.99
     tau: float = 0.005
     device: str = "gpu"
+    name: str = "TD3"
 
 
 @dataclass
@@ -104,7 +133,8 @@ class TrainConfig:
     run_name: str
 
     # Agent
-    agent: AgentConfig = field(default_factory=TD3Config)
+    agent: AgentConfig = field(default_factory=AgentConfig)
+    # agent: AgentConfig = field(default_factory=TD3Config)
     utd_ratio: int = 1  # Update to data ratio
 
     # Env config
@@ -113,6 +143,7 @@ class TrainConfig:
     # frame_skip: int = 1
     capture_train_video: bool = False
     capture_eval_video: bool = True
+    action_repeat: int = 2
 
     # Experiment config
     exp_name: str = "base"
@@ -137,6 +168,7 @@ class TrainConfig:
 cs = ConfigStore.instance()
 cs.store(name="base_train", node=TrainConfig)
 cs.store(group="agent", name="base_td3", node=TD3Config)
+cs.store(group="agent", name="base_ddpg", node=DDPGConfig)
 
 @hydra.main(version_base="1.3", config_path="./configs", config_name="train")
 def train(cfg: TrainConfig):

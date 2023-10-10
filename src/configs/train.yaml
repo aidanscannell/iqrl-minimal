@@ -9,13 +9,12 @@ utd_ratio: 1 # update to data ratio
 
 env_id: "HalfCheetah-v4"
 max_episode_steps: 1000
-# frame_skip: 1
-# frame_skip: 5
 capture_train_video: False
 capture_eval_video: True
+action_repeat: 2
 
 # Experiment config
-exp_name: "base"
+# exp_name: "base"
 buffer_size: 1000000
 learning_starts: 25000
 total_timesteps: 1000000
@@ -34,7 +33,7 @@ wandb_group: ${env_id}
 wandb_tags:
   - ${env_id}
 monitor_gym: True
-run_name: ${env_id}__${exp_name}__${seed}-${now:%Y-%m-%d_%H-%M-%S}
+run_name: ${env_id}__${agent.name}__${seed}-${now:%Y-%m-%d_%H-%M-%S}
   # cfg.run_name = f"{cfg.env_id}__{cfg.exp_name}__{cfg.seed}__{int(time.time())}"  # TODO move to cfg
 
 hydra:
