@@ -16,7 +16,11 @@ logger = logging.getLogger(__name__)
 import gymnasium as gym
 import hydra
 import omegaconf
+from gymnasium.wrappers.pixel_observation import PixelObservationWrapper
 from hydra.core.config_store import ConfigStore
+from src.dmc2gymnasium import DMCGym
+
+from stable_baselines3.common.monitor import Monitor
 
 
 class ActionRepeatWrapper(gym.ActionWrapper):
@@ -43,22 +47,50 @@ def make_env(
     max_episode_steps: int,
     action_repeat: int = 2,
 ):
+    dmc = True
+    dmc = False
+
     def thunk():
         if capture_video:
-            env = gym.make(
-                env_id,
-                render_mode="rgb_array",
-                max_episode_steps=max_episode_steps,
-                # **{"frame_skip": frame_skip},
-            )
+            if dmc:
+                env = DMCGym(domain="cartpole", task="swingup")
+                # env = PixelObservationWrapper(
+                #     env,
+                #     pixels_only=False,
+                #     render_kwargs={"pixels": {"height": 64, "width": 64}},
+                # )
+            else:
+                env = gym.make(
+                    env_id,
+                    render_mode="rgb_array",
+                    max_episode_steps=max_episode_steps,
+                    # **{"frame_skip": frame_skip},
+                )
         else:
-            env = gym.make(
-                env_id,
-                max_episode_steps=max_episode_steps,
-                # frame_skip=frame_skip,
-                # **{"frame_skip": frame_skip},
-            )
-        env = gym.wrappers.RecordEpisodeStatistics(env)
+            if dmc:
+                env = DMCGym(domain="cartpole", task="swingup")
+                # env = PixelObservationWrapper(
+                #     env,
+                #     pixels_only=False,
+                #     render_kwargs={"pixels": {"height": 64, "width": 64}},
+                # )
+            else:
+                env = gym.make(
+                    env_id,
+                    max_episode_steps=max_episode_steps,
+                    # frame_skip=frame_skip,
+                    # **{"frame_skip": frame_skip},
+                )
+
+        env = Monitor(
+            env,
+            # filename=None,
+            # allow_early_resets=True,
+            # reset_keywords=(),
+            # info_keywords=(),
+            # override_existing=True,
+        )
+        # env = gym.wrappers.RecordEpisodeStatistics(env)
         if capture_video:
             if idx == 0:
                 env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
@@ -217,32 +249,32 @@ def train(cfg: TrainConfig):
         ]
     )
     envs.single_observation_space.dtype = np.float32
-    if cfg.device == "cpu":
-        eval_envs = SubprocVecEnv(
-            make_env_list(
+    # if cfg.device == "cpu":
+    #     eval_envs = SubprocVecEnv(
+    #         make_env_list(
+    #             env_id=cfg.env_id,
+    #             num_envs=5,
+    #             seed=cfg.seed + 100,
+    #             capture_video=cfg.capture_eval_video,
+    #             run_name=cfg.run_name,
+    #             max_episode_steps=cfg.max_episode_steps,
+    #             action_repeat=cfg.action_repeat,
+    #         )
+    #     )
+    # else:
+    eval_envs = gym.vector.SyncVectorEnv(
+        [
+            make_env(
                 env_id=cfg.env_id,
-                num_envs=5,
                 seed=cfg.seed + 100,
-                capture_video=cfg.capture_eval_video,
+                idx=0,
+                capture_video=cfg.capture_train_video,
                 run_name=cfg.run_name,
                 max_episode_steps=cfg.max_episode_steps,
                 action_repeat=cfg.action_repeat,
             )
-        )
-    else:
-        eval_envs = gym.vector.SyncVectorEnv(
-            [
-                make_env(
-                    env_id=cfg.env_id,
-                    seed=cfg.seed + 100,
-                    idx=0,
-                    capture_video=cfg.capture_train_video,
-                    run_name=cfg.run_name,
-                    max_episode_steps=cfg.max_episode_steps,
-                    action_repeat=cfg.action_repeat,
-                )
-            ]
-        )
+        ]
+    )
     assert isinstance(
         envs.single_action_space, gym.spaces.Box
     ), "only continuous action space is supported"
@@ -314,12 +346,14 @@ def train(cfg: TrainConfig):
                     f"global_step={global_step}, episodic_return={info['episode']['r']}"
                 )
                 episode_length = info["episode"]["l"]
+
                 if cfg.use_wandb:
                     wandb.log(
                         {
                             "episodic_return": info["episode"]["r"],
                             "episodic_length": info["episode"]["l"],
                             "global_step": global_step,
+                            "env_step": global_step * cfg.action_repeat,
                         }
                     )
                 break
@@ -337,7 +371,10 @@ def train(cfg: TrainConfig):
         # ALGO LOGIC: training.
         if global_step > cfg.learning_starts:
             if "final_info" in infos:  # Update after every episode
-                num_updates = cfg.utd_ratio * episode_length[0]  # TODO inc. frame skip
+                print(f"episode_length {episode_length}")
+                if isinstance(episode_length, np.ndarray):
+                    episode_length = episode_length[0]
+                num_updates = cfg.utd_ratio * episode_length  # TODO inc. frame skip
                 logger.info(
                     f"Training agent w. {num_updates} updates @ step {global_step}..."
                 )
@@ -352,6 +389,7 @@ def train(cfg: TrainConfig):
                             "SPS": int(global_step / (time.time() - start_time)),
                             "num_updates": num_updates,
                             "action_repeat": cfg.action_repeat,
+                            "env_step": global_step * cfg.action_repeat,
                         }
                     )
                     wandb.log({"train/": train_metrics})
@@ -365,6 +403,7 @@ def train(cfg: TrainConfig):
                     "mean_reward": mean_reward,
                     "std_reward": std_reward,
                     "global_step": global_step,
+                    "env_step": global_step * cfg.action_repeat,
                 }
                 if cfg.use_wandb:
                     wandb.log({"eval/": eval_metrics})
