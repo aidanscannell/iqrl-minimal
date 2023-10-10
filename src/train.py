@@ -229,7 +229,8 @@ def train(cfg: TrainConfig):
         cfg.buffer_size,
         envs.single_observation_space,
         envs.single_action_space,
-        device,
+        # "auto",
+        torch.device(cfg.device),
         handle_timeout_termination=False,
     )
 
