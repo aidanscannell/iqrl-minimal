@@ -168,6 +168,7 @@ class DDPG(Agent):
         reinit_opts: bool = False,
     ) -> dict:
         if reinit_opts:
+            logger.info("Reinitializing actor/critic optimizers")
             self.q_optimizer = torch.optim.Adam(
                 list(self.critic.parameters()), lr=self.learning_rate
             )

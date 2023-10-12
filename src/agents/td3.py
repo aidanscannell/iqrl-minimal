@@ -206,6 +206,7 @@ class TD3(Agent):
 
         # Reinitialize the optimizers
         if reinit_opts:
+            logger.info("Reinitializing actor/critic optimizers")
             self.q_optimizer = torch.optim.AdamW(
                 list(self.critic_1.parameters()) + list(self.critic_2.parameters()),
                 lr=self.learning_rate,
