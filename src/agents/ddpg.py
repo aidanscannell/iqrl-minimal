@@ -123,6 +123,7 @@ class DDPG(Agent):
         self.exploration_noise = exploration_noise
         self.policy_noise = policy_noise
         self.noise_clip = noise_clip
+        self.learning_rate = learning_rate
         # self.nstep = nstep
         self.gamma = gamma
         self.tau = tau
@@ -161,8 +162,18 @@ class DDPG(Agent):
         )
 
     def train(
-        self, replay_buffer: ReplayBuffer, num_updates: Optional[int] = None
+        self,
+        replay_buffer: ReplayBuffer,
+        num_updates: Optional[int] = None,
+        reinit_opts: bool = False,
     ) -> dict:
+        if reinit_opts:
+            self.q_optimizer = torch.optim.Adam(
+                list(self.critic.parameters()), lr=self.learning_rate
+            )
+            self.actor_optimizer = torch.optim.Adam(
+                list(self.actor.parameters()), lr=self.learning_rate
+            )
         if num_updates is None:
             num_updates = self.num_updates
         info = {}
