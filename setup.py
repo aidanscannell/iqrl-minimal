@@ -49,6 +49,7 @@ install_requires = [
     "gymnasium",
     "imageio",
     "umap",
+    "vector_quantize_pytorch",
 ]
 extras_require = {
     "dev": [

@@ -6,5 +6,6 @@ from .utils import *
 # from .objectives import *
 # from .mppi import MPPIAgent
 from .ddpg import DDPG
+from .vqddpg import VectorQuantized_DDPG
 from .td3 import TD3
 from .agent import Agent
