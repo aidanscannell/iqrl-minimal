@@ -151,6 +151,30 @@ class DDPGConfig(AgentConfig):
 
 
 @dataclass
+class VectorQuantizedDDPGConfig(AgentConfig):
+    _target_: str = "src.agents.DDPG"
+    mlp_dims: List[int] = field(default_factory=lambda: [256, 256])
+    exploration_noise: float = 0.2
+    policy_noise: float = 0.2
+    noise_clip: float = 0.5
+    learning_rate: float = 3e-4
+    batch_size: int = 512
+    num_updates: int = 1000  # 1000 is 1 update per new data
+    # nstep: 3
+    gamma: float = 0.99
+    tau: float = 0.005
+    device: str = "gpu"
+    name: str = "DDPG"
+    # VQ config
+    vq_learning_rate: float = 3e-4
+    vq_batch_size: int = 128
+    vq_num_updates: int = 1000
+    levels: List[int] = field(
+        default_factory=lambda: [8, 6, 5]
+    )  # target size 2^8, actual size 240
+
+
+@dataclass
 class TD3Config(AgentConfig):
     _target_: str = "src.agents.TD3"
     mlp_dims: List[int] = field(default_factory=lambda: [256, 256])
@@ -212,6 +236,7 @@ cs = ConfigStore.instance()
 cs.store(name="base_train", node=TrainConfig)
 cs.store(group="agent", name="base_td3", node=TD3Config)
 cs.store(group="agent", name="base_ddpg", node=DDPGConfig)
+cs.store(group="agent", name="base_vqddpg", node=VectorQuantizedDDPGConfig)
 
 
 @hydra.main(version_base="1.3", config_path="./configs", config_name="train")
