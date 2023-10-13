@@ -97,7 +97,7 @@ class Decoder(nn.Module):
         return x
 
 
-class SimpleFSQAutoEncoder(nn.Module):
+class FSQAutoEncoder(nn.Module):
     def __init__(
         self,
         observation_space: Space,
@@ -125,7 +125,7 @@ class SimpleFSQAutoEncoder(nn.Module):
         return x_rec.clamp(-1, 1), indices
 
 
-class VectorQuantized_DDPG(Agent):
+class VectorQuantizedDDPG(Agent):
     def __init__(
         self,
         observation_space: Space,
@@ -164,7 +164,7 @@ class VectorQuantized_DDPG(Agent):
 
         self.device = device
 
-        self.vq = SimpleFSQAutoEncoder(
+        self.vq = FSQAutoEncoder(
             observation_space=observation_space,
             mlp_dims=mlp_dims,
             levels=levels,
@@ -224,34 +224,23 @@ class VectorQuantized_DDPG(Agent):
 
         vq = self.vq
 
-        # TODO put the observations in latent space
-        # latent_replay_buffer = replay_buffer
         class LatentReplayBuffer:
             def sample(self, batch_size: int):
                 batch = replay_buffer.sample(batch_size=batch_size)
-                # batch.observations = vq.encoder(batch.observations)[1]
                 latent_obs = vq.encoder(batch.observations)[1].to(torch.float)
                 latent_obs = torch.flatten(latent_obs, -2, -1)
                 latent_next_obs = vq.encoder(batch.next_observations)[1].to(torch.float)
                 latent_next_obs = torch.flatten(latent_next_obs, -2, -1)
                 batch = ReplayBufferSamples(
-                    observations=latent_obs,
+                    observations=latent_obs.detach(),
                     actions=batch.actions,
-                    next_observations=latent_next_obs,
+                    next_observations=latent_next_obs.detach(),
                     dones=batch.dones,
                     rewards=batch.rewards,
                 )
-                # breakpoint()
                 return batch
 
         latent_replay_buffer = LatentReplayBuffer()
-        # latent_replay_buffer = ReplayBuffer(
-        #     replay_buffer.buffer_size,
-        #     self.latent_observation_space,
-        #     self.action_space,
-        #     torch.device(self.device),
-        #     handle_timeout_termination=replay_buffer.handle_timeout_termination,
-        # )
         logger.info("Training DDPG...")
         info.update(
             self.ddpg.train(replay_buffer=latent_replay_buffer, num_updates=num_updates)
@@ -264,55 +253,49 @@ class VectorQuantized_DDPG(Agent):
     ):
         if num_updates is None:
             num_updates = self.vq_num_updates
-        self.vq.encoder.apply(src.agents.utils.orthogonal_init)
-        self.vq.decoder.apply(src.agents.utils.orthogonal_init)
-        self.vq_opt = torch.optim.AdamW(self.vq.parameters(), lr=self.vq_learning_rate)
-        # def iterate_dataset(data_loader):
-        #     data_iter = iter(data_loader)
-        #     while True:
-        #         try:
-        #             x, y = next(data_iter)
-        #         except StopIteration:
-        #             data_iter = iter(data_loader)
-        #             x, y = next(data_iter)
-        #         yield x.to(device), y.to(device)
-
-        # from tqdm.auto import trange
-        # for _ in (pbar := trange(num_updates)):
+        # self.vq.encoder.apply(src.agents.utils.orthogonal_init)
+        # self.vq.decoder.apply(src.agents.utils.orthogonal_init)
+        # self.vq_opt = torch.optim.AdamW(self.vq.parameters(), lr=self.vq_learning_rate)
         info = {}
         i = 0
         for _ in range(num_updates):
             self.vq_opt.zero_grad()
-            # x, _ = next(iterate_dataset(train_loader))
             batch = replay_buffer.sample(self.vq_batch_size)
-            # out, indices, cmt_loss = self.vq(batch.observations)
-            x_train = batch.observations
-            x_rec, indices = self.vq(x_train)
-            rec_loss = (x_rec - x_train).abs().mean()
-            print(f"Iteration {i} rec_loss {rec_loss}")
-            i += 1
-            rec_loss.backward()
 
-            self.vq_opt.step()
-            wandb.log(
-                {
-                    "rec_loss": rec_loss.item(),
-                    # "cmt_loss": cmt_loss.item(),
-                    "active_percent": indices.unique().numel() / self.num_codes * 100,
-                }
-            )
-            # info.update(
-            #     {
-            #         "rec_loss": rec_loss.item(),
-            #         # "cmt_loss": cmt_loss.item(),
-            #         "active_percent": indices.unique().numel() / self.num_codes * 100,
-            #     }
-            # )
-            # pbar.set_description(
-            #     f"rec loss: {rec_loss.item():.3f} | "
-            #     + f"cmt loss: {cmt_loss.item():.3f} | "
-            #     + f"active %: {indices.unique().numel() / num_codes * 100:.3f}"
-            # )
+            for x_train in (batch.observations, batch.next_observations):
+                x_rec, indices = self.vq(x_train)
+                rec_loss = (x_rec - x_train).abs().mean()
+                i += 1
+                rec_loss.backward()
+
+                self.vq_opt.step()
+
+                if i % 100 == 0:
+                    print(f"Iteration {i} rec_loss {rec_loss}")
+                    try:
+                        wandb.log(
+                            {
+                                "rec_loss": rec_loss.item(),
+                                # "cmt_loss": cmt_loss.item(),
+                                "active_percent": indices.unique().numel()
+                                / self.num_codes
+                                * 100,
+                            }
+                        )
+                    except:
+                        pass
+                # info.update(
+                #     {
+                #         "rec_loss": rec_loss.item(),
+                #         # "cmt_loss": cmt_loss.item(),
+                #         "active_percent": indices.unique().numel() / self.num_codes * 100,
+                #     }
+                # )
+                # pbar.set_description(
+                #     f"rec loss: {rec_loss.item():.3f} | "
+                #     + f"cmt loss: {cmt_loss.item():.3f} | "
+                #     + f"active %: {indices.unique().numel() / num_codes * 100:.3f}"
+                # )
         return info
 
     @torch.no_grad()

@@ -151,8 +151,30 @@ class DDPGConfig(AgentConfig):
 
 
 @dataclass
+class VAEDDPGConfig(AgentConfig):
+    _target_: str = "src.agents.VAEDDPG"
+    mlp_dims: List[int] = field(default_factory=lambda: [256, 256])
+    exploration_noise: float = 0.2
+    policy_noise: float = 0.2
+    noise_clip: float = 0.5
+    learning_rate: float = 3e-4
+    batch_size: int = 512
+    num_updates: int = 1000  # 1000 is 1 update per new data
+    # nstep: 3
+    gamma: float = 0.99
+    tau: float = 0.005
+    device: str = "gpu"
+    name: str = "DDPG"
+    # VAE config
+    vae_learning_rate: float = 3e-4
+    vae_batch_size: int = 128
+    vae_num_updates: int = 1000
+    latent_dim: int = 20
+
+
+@dataclass
 class VectorQuantizedDDPGConfig(AgentConfig):
-    _target_: str = "src.agents.DDPG"
+    _target_: str = "src.agents.VectorQuantizedDDPG"
     mlp_dims: List[int] = field(default_factory=lambda: [256, 256])
     exploration_noise: float = 0.2
     policy_noise: float = 0.2
@@ -236,7 +258,8 @@ cs = ConfigStore.instance()
 cs.store(name="base_train", node=TrainConfig)
 cs.store(group="agent", name="base_td3", node=TD3Config)
 cs.store(group="agent", name="base_ddpg", node=DDPGConfig)
-cs.store(group="agent", name="base_vqddpg", node=VectorQuantizedDDPGConfig)
+cs.store(group="agent", name="base_vq_ddpg", node=VectorQuantizedDDPGConfig)
+cs.store(group="agent", name="base_vae_ddpg", node=VAEDDPGConfig)
 
 
 @hydra.main(version_base="1.3", config_path="./configs", config_name="train")

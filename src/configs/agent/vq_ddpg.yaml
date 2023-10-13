@@ -1,6 +1,6 @@
 defaults:
-  - base_vqddpg
-_target_: src.agents.VectorQuantized_DDPG
+  - base_vq_ddpg
+_target_: src.agents.VectorQuantizedDDPG
 # _convert_: all
 
 mlp_dims: [256, 256]
@@ -19,7 +19,7 @@ name: "VQ-DDPG"
 
 vq_learning_rate: 3e-4
 vq_batch_size: 256
-vq_num_updates: 5000
+vq_num_updates: 2000
 # vq_num_updates: 1000
 # levels: [8, 6, 5]  # target size 2^8, actual size 240
 levels: [8, 6, 5]  # target size 2^8, actual size 240
