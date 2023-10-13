@@ -21,5 +21,5 @@ vae_learning_rate: 3e-4
 vae_batch_size: 256
 vae_num_updates: 2000
 # vae_num_updates: 5000
-# latent_dim: 20
-latent_dim: 4
+latent_dim: 20
+# latent_dim: 4
