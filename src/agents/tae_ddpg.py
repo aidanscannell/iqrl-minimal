@@ -170,7 +170,7 @@ class TAEDDPG(Agent):
             mlp_dims=mlp_dims,
             latent_dim=latent_dim,
             act_fn=act_fn,
-        )
+        ).to(device)
         self.vae = VAE(
             observation_space=observation_space,
             mlp_dims=mlp_dims,
