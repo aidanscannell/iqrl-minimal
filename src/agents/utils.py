@@ -10,19 +10,37 @@ from torch import distributions as pyd
 from torch.distributions.utils import _standard_normal
 
 
-__REDUCE__ = lambda b: "mean" if b else "none"
+class EarlyStopper:
+    def __init__(self, patience: int = 1, min_delta: float = 0.0):
+        self.patience = patience
+        self.min_delta = min_delta
+        self.counter = 0
+        self.min_val = np.inf
+
+    def __call__(self, val):
+        if val < self.min_val:
+            self.min_val = val
+            self.counter = 0
+        elif val > (self.min_val + self.min_delta):
+            self.counter += 1
+            if self.counter >= self.patience:
+                return True
+        return False
 
 
-def mse(pred, target, reduce=False):
-    """Computes the MSE loss between predictions and targets."""
-    return F.mse_loss(pred, target, reduction=__REDUCE__(reduce))
+# __REDUCE__ = lambda b: "mean" if b else "none"
 
 
-def soft_update_params(model, model_target, tau: float):
-    """Update slow-moving average of online network (target network) at rate tau."""
-    with torch.no_grad():
-        for params, params_target in zip(model.parameters(), model_target.parameters()):
-            params_target.data.lerp_(params.data, tau)
+# def mse(pred, target, reduce=False):
+#     """Computes the MSE loss between predictions and targets."""
+#     return F.mse_loss(pred, target, reduction=__REDUCE__(reduce))
+
+
+# def soft_update_params(model, model_target, tau: float):
+#     """Update slow-moving average of online network (target network) at rate tau."""
+#     with torch.no_grad():
+#         for params, params_target in zip(model.parameters(), model_target.parameters()):
+#             params_target.data.lerp_(params.data, tau)
 
 
 def mlp(in_dim, mlp_dims: List[int], out_dim, act_fn=nn.ELU, out_act=nn.Identity):
@@ -58,20 +76,20 @@ def orthogonal_init(m):
             nn.init.zeros_(m.bias)
 
 
-def linear_schedule(schdl, step):
-    """
-    Outputs values following a linear decay schedule.
-    Adapted from https://github.com/facebookresearch/drqv2
-    """
-    try:
-        return float(schdl)
-    except ValueError:
-        match = re.match(r"linear\((.+),(.+),(.+)\)", schdl)
-        if match:
-            init, final, duration = [float(g) for g in match.groups()]
-            mix = np.clip(step / duration, 0.0, 1.0)
-            return (1.0 - mix) * init + mix * final
-    raise NotImplementedError(schdl)
+# def linear_schedule(schdl, step):
+#     """
+#     Outputs values following a linear decay schedule.
+#     Adapted from https://github.com/facebookresearch/drqv2
+#     """
+#     try:
+#         return float(schdl)
+#     except ValueError:
+#         match = re.match(r"linear\((.+),(.+),(.+)\)", schdl)
+#         if match:
+#             init, final, duration = [float(g) for g in match.groups()]
+#             mix = np.clip(step / duration, 0.0, 1.0)
+#             return (1.0 - mix) * init + mix * final
+#     raise NotImplementedError(schdl)
 
 
 class TruncatedNormal(pyd.Normal):
