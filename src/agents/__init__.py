@@ -8,5 +8,6 @@ from .utils import *
 from .ddpg import DDPG
 from .vq_ddpg import VectorQuantizedDDPG
 from .vae_ddpg import VAEDDPG
+from .tae_ddpg import TAEDDPG
 from .td3 import TD3
 from .agent import Agent

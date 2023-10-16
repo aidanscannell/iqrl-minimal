@@ -164,11 +164,37 @@ class VAEDDPGConfig(AgentConfig):
     gamma: float = 0.99
     tau: float = 0.005
     device: str = "gpu"
-    name: str = "DDPG"
+    name: str = "VAEDDPG"
     # VAE config
     vae_learning_rate: float = 3e-4
     vae_batch_size: int = 128
     vae_num_updates: int = 1000
+    vae_patience: int = 100
+    vae_min_delta: float = 0.0
+    latent_dim: int = 20
+
+
+@dataclass
+class TAEDDPGConfig(AgentConfig):
+    _target_: str = "src.agents.TAEDDPG"
+    mlp_dims: List[int] = field(default_factory=lambda: [256, 256])
+    exploration_noise: float = 0.2
+    policy_noise: float = 0.2
+    noise_clip: float = 0.5
+    learning_rate: float = 3e-4
+    batch_size: int = 512
+    num_updates: int = 1000  # 1000 is 1 update per new data
+    # nstep: 3
+    gamma: float = 0.99
+    tau: float = 0.005
+    device: str = "gpu"
+    name: str = "TAEDDPG"
+    # VAE config
+    vae_learning_rate: float = 3e-4
+    vae_batch_size: int = 128
+    vae_num_updates: int = 1000
+    vae_patience: int = 100
+    vae_min_delta: float = 0.0
     latent_dim: int = 20
 
 
@@ -186,11 +212,13 @@ class VectorQuantizedDDPGConfig(AgentConfig):
     gamma: float = 0.99
     tau: float = 0.005
     device: str = "gpu"
-    name: str = "DDPG"
+    name: str = "VQDDPG"
     # VQ config
     vq_learning_rate: float = 3e-4
     vq_batch_size: int = 128
     vq_num_updates: int = 1000
+    vq_patience: int = 100
+    vq_min_delta: float = 0.0
     levels: List[int] = field(
         default_factory=lambda: [8, 6, 5]
     )  # target size 2^8, actual size 240
@@ -260,6 +288,7 @@ cs.store(group="agent", name="base_td3", node=TD3Config)
 cs.store(group="agent", name="base_ddpg", node=DDPGConfig)
 cs.store(group="agent", name="base_vq_ddpg", node=VectorQuantizedDDPGConfig)
 cs.store(group="agent", name="base_vae_ddpg", node=VAEDDPGConfig)
+cs.store(group="agent", name="base_tae_ddpg", node=TAEDDPGConfig)
 
 
 @hydra.main(version_base="1.3", config_path="./configs", config_name="train")
