@@ -196,6 +196,7 @@ class TAEDDPGConfig(AgentConfig):
     vae_patience: int = 100
     vae_min_delta: float = 0.0
     latent_dim: int = 20
+    reconstruction_weight: float = 0.0
 
 
 @dataclass

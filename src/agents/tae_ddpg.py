@@ -149,6 +149,7 @@ class TAEDDPG(Agent):
         tau: float = 0.005,
         device: str = "cuda",
         name: str = "DDPG",
+        reconstruction_weight: float = 0.0,  # if 0.0 don't use decoder
     ):
         # super().__init__(
         #     observation_space=observation_space, action_space=action_space, name=name
@@ -157,6 +158,8 @@ class TAEDDPG(Agent):
         self.vae_learning_rate = vae_learning_rate
         self.vae_num_updates = vae_num_updates
         self.latent_dim = latent_dim
+
+        self.reconstruction_weight = reconstruction_weight
 
         self.vae_tau = vae_tau
 
@@ -269,11 +272,14 @@ class TAEDDPG(Agent):
         i = 0
         for _ in range(num_updates):
             batch = replay_buffer.sample(self.vae_batch_size)
-            x_rec, z = self.vae(batch.observations)
-            x_rec_next, z_next_enc = self.vae(batch.next_observations)
-            x_rec_next_target, z_next_enc_target = self.vae_target(
-                batch.next_observations
-            )
+            if self.reconstruction_weight > 0.0:
+                x_rec, z = self.vae(batch.observations)
+                x_rec_next, _ = self.vae(batch.next_observations)
+                rec_loss = (x_rec - batch.observations).abs().mean()
+                rec_next_loss = (x_rec_next - batch.next_observations).abs().mean()
+            else:
+                z = self.vae.encoder(batch.observations)
+            _, z_next_enc_target = self.vae_target(batch.next_observations)
             z_next_dynamics, reward_dynamics = self.dynamics(x=z, a=batch.actions)
             # breakpoint()
             latent_state_consitency_loss = torch.nn.functional.mse_loss(
@@ -285,9 +291,11 @@ class TAEDDPG(Agent):
             reward_loss = torch.nn.functional.mse_loss(
                 input=batch.rewards, target=reward_dynamics, reduction="mean"
             )
-            rec_loss = (x_rec - batch.observations).abs().mean()
-            rec_next_loss = (x_rec_next - batch.next_observations).abs().mean()
             loss = latent_state_consitency_loss
+
+            if self.reconstruction_weight > 0.0:
+                loss += self.reconstruction_weight * (rec_loss + rec_next_loss)
+
             # loss = latent_state_consitency_loss + reward_loss
             self.vae_opt.zero_grad()
             loss.backward()
@@ -305,15 +313,19 @@ class TAEDDPG(Agent):
             if i % 100 == 0:
                 print(f"Iteration {i} loss {loss}")
                 try:
-                    wandb.log(
-                        {
-                            "rec_loss": rec_loss.item(),
-                            "rec_next_loss": rec_next_loss.item(),
-                            "latent_state_consitency_loss": latent_state_consitency_loss.item(),
-                            "reward_loss": reward_loss.item(),
-                            "loss": loss.item(),
-                        }
-                    )
+                    metrics = {
+                        "latent_state_consitency_loss": latent_state_consitency_loss.item(),
+                        "reward_loss": reward_loss.item(),
+                        "loss": loss.item(),
+                    }
+                    if self.reconstruction_weight > 0.0:
+                        metrics.update(
+                            {
+                                "rec_loss": rec_loss.item(),
+                                "rec_next_loss": rec_next_loss.item(),
+                            }
+                        )
+                    wandb.log(metrics)
                 except:
                     pass
             i += 1
