@@ -3,7 +3,8 @@ defaults:
 _target_: src.agents.VAEDDPG
 # _convert_: all
 
-mlp_dims: [256, 256]
+# mlp_dims: [256, 256]
+mlp_dims: [128, 128]
 exploration_noise: 0.2
 policy_noise: 0.2
 noise_clip: 0.5
@@ -19,7 +20,11 @@ name: "VAE-DDPG"
 
 vae_learning_rate: 3e-4
 vae_batch_size: 256
-vae_num_updates: 2000
+# vae_num_updates: 2000
+vae_num_updates: 20000
+vae_patience: 100
+vae_min_delta: 0.0
+# vae_num_updates: 200
 # vae_num_updates: 5000
 latent_dim: 20
 # latent_dim: 4
