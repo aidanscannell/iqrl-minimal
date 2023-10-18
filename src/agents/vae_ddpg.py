@@ -6,14 +6,15 @@ from typing import Any, List, Optional, Tuple
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-import wandb
 import gymnasium as gym
 import numpy as np
 import src
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import wandb
 from gymnasium.spaces import Box, Space
+from src.agents.utils import EarlyStopper
 from src.custom_types import Action, EvalMode, State, T0
 from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.type_aliases import ReplayBufferSamples
@@ -74,6 +75,10 @@ class VAE(nn.Module):
         act_fn=nn.ELU,
     ):
         super().__init__()
+        self.observation_space = observation_space
+        self.mlp_dims = mlp_dims
+        self.latent_dim = latent_dim
+        self.act_fn = act_fn
         self.encoder = Encoder(
             observation_space=observation_space,
             mlp_dims=mlp_dims,
@@ -110,7 +115,10 @@ class VAEDDPG(Agent):
         vae_learning_rate: float = 3e-4,
         vae_batch_size: int = 128,
         vae_num_updates: int = 1000,
+        vae_patience: int = 100,
+        vae_min_delta: float = 0.0,
         latent_dim: int = 20,
+        vae_tau: float = 0.005,
         # actor_update_freq: int = 2,  # update actor less frequently than critic
         # nstep: int = 3,
         gamma: float = 0.99,
@@ -126,6 +134,8 @@ class VAEDDPG(Agent):
         self.vae_num_updates = vae_num_updates
         self.latent_dim = latent_dim
 
+        self.vae_tau = vae_tau
+
         self.device = device
 
         self.vae = VAE(
@@ -134,7 +144,17 @@ class VAEDDPG(Agent):
             latent_dim=latent_dim,
             act_fn=act_fn,
         ).to(device)
+        self.vae_target = VAE(
+            observation_space=observation_space,
+            mlp_dims=mlp_dims,
+            latent_dim=latent_dim,
+            act_fn=act_fn,
+        ).to(device)
         self.vae_opt = torch.optim.AdamW(self.vae.parameters(), lr=vae_learning_rate)
+        self.vae_target.load_state_dict(self.vae.state_dict())
+
+        self.vae_patience = vae_patience
+        self.vae_min_delta = vae_min_delta
 
         # TODO make a space for latent states
         # latent_observation_space = observation_space
@@ -179,17 +199,18 @@ class VAEDDPG(Agent):
         # info = self.train_vae_vae(replay_buffer=replay_buffer, num_updates=num_updates)
         logger.info("Finished training VAE")
 
-        vae = self.vae
+        # vae = self.vae
+        vae_target = self.vae_target
 
         class LatentReplayBuffer:
             def sample(self, batch_size: int):
                 batch = replay_buffer.sample(batch_size=batch_size)
-                latent_obs = vae.encoder(batch.observations).to(torch.float)
-                latent_next_obs = vae.encoder(batch.next_observations).to(torch.float)
+                latent_obs = vae_target.encoder(batch.observations)
+                latent_next_obs = vae_target.encoder(batch.next_observations)
                 batch = ReplayBufferSamples(
-                    observations=latent_obs.detach(),
+                    observations=latent_obs.to(torch.float).detach(),
                     actions=batch.actions,
-                    next_observations=latent_next_obs.detach(),
+                    next_observations=latent_next_obs.to(torch.float).detach(),
                     dones=batch.dones,
                     rewards=batch.rewards,
                 )
@@ -211,13 +232,21 @@ class VAEDDPG(Agent):
             num_updates = self.vae_num_updates
         # self.vae.encoder.apply(src.agents.utils.orthogonal_init)
         # self.vae.decoder.apply(src.agents.utils.orthogonal_init)
+        # self.vae = VAE(
+        #     observation_space=self.vae.observation_space,
+        #     mlp_dims=self.vae.mlp_dims,
+        #     latent_dim=self.vae.latent_dim,
+        #     act_fn=self.vae.act_fn,
+        # ).to(self.device)
         # self.vae_opt = torch.optim.AdamW(
         #     self.vae.parameters(), lr=self.vae_learning_rate
         # )
+        vae_early_stopper = EarlyStopper(
+            patience=self.vae_patience, min_delta=self.vae_min_delta
+        )
         info = {}
         i = 0
         for _ in range(num_updates):
-            self.vae_opt.zero_grad()
             # x, _ = next(iterate_dataset(train_loader))
             batch = replay_buffer.sample(self.vae_batch_size)
             # out, indices, cmt_loss = self.vae(batch.observations)
@@ -225,10 +254,20 @@ class VAEDDPG(Agent):
                 # x_train = batch.observations
                 x_rec, z = self.vae(x_train)
                 rec_loss = (x_rec - x_train).abs().mean()
-                i += 1
-                rec_loss.backward()
 
+                self.vae_opt.zero_grad()
+                rec_loss.backward()
                 self.vae_opt.step()
+
+                # Update the target network
+                for param, target_param in zip(
+                    self.vae.parameters(), self.vae_target.parameters()
+                ):
+                    target_param.data.copy_(
+                        self.vae_tau * param.data
+                        + (1 - self.vae_tau) * target_param.data
+                    )
+
                 if i % 100 == 0:
                     print(f"Iteration {i} rec_loss {rec_loss}")
                     try:
@@ -241,6 +280,13 @@ class VAEDDPG(Agent):
                         )
                     except:
                         pass
+                i += 1
+                if vae_early_stopper(rec_loss):
+                    logger.info("Early stopping criteria met, stopping VAE training...")
+                    break
+            if vae_early_stopper(rec_loss):
+                # logger.info("Early stopping criteria met, stopping VAE training...")
+                break
                 # info.update(
                 #     {
                 #         "rec_loss": rec_loss.item(),
