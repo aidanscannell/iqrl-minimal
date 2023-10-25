@@ -3,23 +3,25 @@ import logging
 import os
 import pprint
 import random
-import shutil
 import time
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import List, Optional, Tuple
+from functools import partial
+from typing import Callable, List, Optional, Any
 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+from src.agents.utils import EarlyStopper
+import torch.nn as nn
 import gymnasium as gym
 import hydra
 import omegaconf
+from omegaconf import MISSING
+from gymnasium.spaces import Box, Space
 from gymnasium.wrappers.pixel_observation import PixelObservationWrapper
 from hydra.core.config_store import ConfigStore
 from src.dmc2gymnasium import DMCGym
-
 from stable_baselines3.common.monitor import Monitor
 
 
@@ -54,7 +56,7 @@ def make_env(
     def thunk():
         if capture_video:
             if dmc_task is not None:
-                env = DMCGym(domain=env_id, task=dmc_task)
+                env = DMCGym(domain=env_id, task=dmc_task, task_kwargs={"random": seed})
                 # env = PixelObservationWrapper(
                 #     env,
                 #     pixels_only=False,
@@ -69,7 +71,7 @@ def make_env(
                 )
         else:
             if dmc_task is not None:
-                env = DMCGym(domain=env_id, task=dmc_task)
+                env = DMCGym(domain=env_id, task=dmc_task, task_kwargs={"random": seed})
                 # env = PixelObservationWrapper(
                 #     env,
                 #     pixels_only=False,
@@ -131,98 +133,86 @@ def make_env_list(
 @dataclass
 class AgentConfig:
     _target_: str = "src.agents.TD3"
+    device: str = "cuda"
 
 
 @dataclass
 class DDPGConfig(AgentConfig):
     _target_: str = "src.agents.DDPG"
+    # _partial_: bool = True
+    # observation_space: Space = MISSING
+    # action_space: Box = MISSING
     mlp_dims: List[int] = field(default_factory=lambda: [256, 256])
     exploration_noise: float = 0.2
     policy_noise: float = 0.2
     noise_clip: float = 0.5
     learning_rate: float = 3e-4
     batch_size: int = 512
-    num_updates: int = 1000  # 1000 is 1 update per new data
+    # num_updates: int = 1000  # 1000 is 1 update per new data
+    utd_ratio: int = 1  # parameter update-to-data ratio
+    actor_update_freq: int = 1  # update actor less frequently than critic
+    reset_params_freq: int = 100000  # reset params after this many param updates
     # nstep: 3
     gamma: float = 0.99
     tau: float = 0.005
-    device: str = "gpu"
+    device: str = "cuda"
     name: str = "DDPG"
 
 
 @dataclass
-class VAEDDPGConfig(AgentConfig):
-    _target_: str = "src.agents.VAEDDPG"
-    mlp_dims: List[int] = field(default_factory=lambda: [256, 256])
-    exploration_noise: float = 0.2
-    policy_noise: float = 0.2
-    noise_clip: float = 0.5
-    learning_rate: float = 3e-4
-    batch_size: int = 512
-    num_updates: int = 1000  # 1000 is 1 update per new data
-    # nstep: 3
-    gamma: float = 0.99
-    tau: float = 0.005
-    device: str = "gpu"
-    name: str = "VAEDDPG"
-    # VAE config
-    vae_learning_rate: float = 3e-4
-    vae_batch_size: int = 128
-    vae_num_updates: int = 1000
-    vae_patience: int = 100
-    vae_min_delta: float = 0.0
+class AEConfig:
+    _target_: str = "src.agents.encoders.AE"
+    # _partial_: bool = True
+    # observation_space: Space = MISSING
+    mlp_dims: List[int] = field(default_factory=lambda: [128, 128])
     latent_dim: int = 20
+    act_fn = nn.ELU
+    learning_rate: float = 3e-4
+    batch_size: int = 128
+    utd_ratio: int = 1
+    tau: float = 0.005
+    encoder_reset_params_freq: int = 10000  # reset enc params after X param updates
+    # early_stopper: Optional[EarlyStopper] = None
+    early_stopper = None
+    device: str = "cuda"
+    name: str = "AE"
+
+
+# # @dataclass
+# class AEDDPGConfig(AgentConfig):
+#     _target_: str = "src.agents.LatentActorCritic"
+#     defaults: List[Any] = field(
+#         default_factory=lambda: [
+#             {
+#                 "build_encoder_fn": "ae",
+#                 # "build_actor_critic_fn": "ddpg",
+#             }
+#         ]
+#     )
+#     # build_encoder_fn = MISSING
+#     # build_actor_critic_fn = MISSING
+#     # build_encoder_fn: Callable[[Space], src.agents.encoders.Encoder] = partial(AE)
+#     # build_actor_critic_fn: Callable[[Space, Box], ActorCritic] = partial(
+#     #     src.agents.DDPG, field(default_factory=DDPGConfig)
+#     # )
+#     device: str = "cuda"
+#     name: str = "AEDDPG"
 
 
 @dataclass
-class TAEDDPGConfig(AgentConfig):
-    _target_: str = "src.agents.TAEDDPG"
-    mlp_dims: List[int] = field(default_factory=lambda: [256, 256])
-    exploration_noise: float = 0.2
-    policy_noise: float = 0.2
-    noise_clip: float = 0.5
-    learning_rate: float = 3e-4
-    batch_size: int = 512
-    num_updates: int = 1000  # 1000 is 1 update per new data
-    # nstep: 3
-    gamma: float = 0.99
-    tau: float = 0.005
-    device: str = "gpu"
-    name: str = "TAEDDPG"
-    # VAE config
-    vae_learning_rate: float = 3e-4
-    vae_batch_size: int = 128
-    vae_num_updates: int = 1000
-    vae_patience: int = 100
-    vae_min_delta: float = 0.0
+class AEDDPGConfig(DDPGConfig):
+    _target_: str = "src.agents.AEDDPG"
+    # AE config
+    ae_learning_rate: float = 3e-4
+    ae_batch_size: int = 128
+    # ae_num_updates: int = 1000
+    ae_utd_ratio: int = 1  # encoder parameter update-to-data ratio
+    ae_patience: int = 100
+    ae_min_delta: float = 0.0
     latent_dim: int = 20
-    reconstruction_weight: float = 0.0
-
-
-@dataclass
-class VectorQuantizedDDPGConfig(AgentConfig):
-    _target_: str = "src.agents.VectorQuantizedDDPG"
-    mlp_dims: List[int] = field(default_factory=lambda: [256, 256])
-    exploration_noise: float = 0.2
-    policy_noise: float = 0.2
-    noise_clip: float = 0.5
-    learning_rate: float = 3e-4
-    batch_size: int = 512
-    num_updates: int = 1000  # 1000 is 1 update per new data
-    # nstep: 3
-    gamma: float = 0.99
-    tau: float = 0.005
-    device: str = "gpu"
-    name: str = "VQDDPG"
-    # VQ config
-    vq_learning_rate: float = 3e-4
-    vq_batch_size: int = 128
-    vq_num_updates: int = 1000
-    vq_patience: int = 100
-    vq_min_delta: float = 0.0
-    levels: List[int] = field(
-        default_factory=lambda: [8, 6, 5]
-    )  # target size 2^8, actual size 240
+    ae_tau: float = 0.005
+    encoder_reset_params_freq: int = 10000  # reset enc params after X param updates
+    name: str = "AEDDPG"
 
 
 @dataclass
@@ -244,14 +234,58 @@ class TD3Config(AgentConfig):
 
 
 @dataclass
+class AETD3Config(TD3Config):
+    _target_: str = "src.agents.AETD3"
+    # AE config
+    ae_learning_rate: float = 3e-4
+    ae_batch_size: int = 128
+    # ae_num_updates: int = 1000
+    ae_utd_ratio: int = 1  # encoder parameter update-to-data ratio
+    ae_patience: int = 100
+    ae_min_delta: float = 0.0
+    latent_dim: int = 20
+    ae_tau: float = 0.005
+    encoder_reset_params_freq: int = 10000  # reset enc params after X param updates
+    name: str = "AETD3"
+
+
+# @dataclass
+# class TransitionModelConfig:
+#     _target_: str = "src.agents.models.mlp.TransitionModel"
+#     # observation_space: Space
+#     # action_space: Box
+#     mlp_dims: List[int] = field(default_factory=lambda: [256, 256])
+#     act_fn = nn.ELU
+#     learning_rate: float = 3e-4
+#     batch_size: int = 128
+#     utd_ratio: int = 1  # transition model parameter update-to-data ratio
+#     early_stopper: EarlyStopper = None
+#     device: str = "cuda"
+
+
+@dataclass
+class MPPIDDPGConfig(DDPGConfig):
+    _target_: str = "src.agents.MPPIDDPG"
+    horizon: int = 5
+    num_mppi_iterations: int = 5
+    num_samples: int = 512
+    mixture_coef: float = 0.05
+    num_topk: int = 64
+    temperature: float = 0.5
+    momentum: float = 0.1
+    unc_prop_strategy: str = "mean"  # "mean" or "sample", "sample" require transition_model to use SVGP prediction type
+    sample_actor: bool = True
+    bootstrap: bool = True
+    device: str = "cuda"
+    name: str = "MPPI"
+
+
+@dataclass
 class TrainConfig:
     run_name: str
 
     # Agent
     agent: AgentConfig = field(default_factory=AgentConfig)
-    # agent: AgentConfig = field(default_factory=TD3Config)
-    utd_ratio: int = 1  # Update to data ratio
-    reinit_opts: bool = False
 
     # Env config
     env_id: str = "cartpole"
@@ -273,7 +307,7 @@ class TrainConfig:
     device: str = "cuda"  # "cpu" or "cuda" etc
     # cuda: bool = True  # if gpu available put on gpu
     debug: bool = False
-    torch_deterministic: bool = True
+    # torch_deterministic: bool = True
 
     # W&B config
     wandb_project_name: str = ""
@@ -285,11 +319,21 @@ class TrainConfig:
 
 cs = ConfigStore.instance()
 cs.store(name="base_train", node=TrainConfig)
-cs.store(group="agent", name="base_td3", node=TD3Config)
-cs.store(group="agent", name="base_ddpg", node=DDPGConfig)
-cs.store(group="agent", name="base_vq_ddpg", node=VectorQuantizedDDPGConfig)
-cs.store(group="agent", name="base_vae_ddpg", node=VAEDDPGConfig)
-cs.store(group="agent", name="base_tae_ddpg", node=TAEDDPGConfig)
+cs.store(group="agent", name="ddpg", node=DDPGConfig)
+cs.store(group="agent", name="td3", node=TD3Config)
+cs.store(group="agent", name="ae_ddpg", node=AEDDPGConfig)
+cs.store(group="agent", name="ae_ddpg", node=AEDDPGConfig)
+
+# cs.store(group="encoder", name="ae", node=AEConfig)
+
+# cs.store(group="agent/build_encoder_fn", name="ae", node=AEConfig)
+# cs.store(group="agent/build_actor_critic_fn", name="ddpg", node=DDPGConfig)
+# cs.store(group="build_encoder_fn", name="build_ae_fn", node=BuildAEFnConfig)
+
+
+# cs.store(group="agent", name="base_td3", node=TD3Config)
+# cs.store(group="agent", name="base_vq_ddpg", node=VectorQuantizedDDPGConfig)
+# cs.store(group="agent", name="base_tae_ddpg", node=TAEDDPGConfig)
 
 
 @hydra.main(version_base="1.3", config_path="./configs", config_name="train")
@@ -299,13 +343,27 @@ def train(cfg: TrainConfig):
     from hydra.utils import get_original_cwd
     from stable_baselines3.common.buffers import ReplayBuffer
     from stable_baselines3.common.evaluation import evaluate_policy
-    from stable_baselines3.common.vec_env import SubprocVecEnv
+
+    print(cfg)
 
     # Seeding
     random.seed(cfg.seed)
     np.random.seed(cfg.seed)
     torch.manual_seed(cfg.seed)
-    torch.backends.cudnn.deterministic = cfg.torch_deterministic
+    torch.backends.cudnn.deterministic = True
+
+    # # random.seed(random_seed)
+    # # np.random.seed(random_seed)
+    # # torch.manual_seed(random_seed)
+    # torch.cuda.manual_seed(cfg.seed)
+    # torch.manual_seed(cfg.seed)
+    # # torch.cuda.manual_seed(cfg.random_seed)
+    # # torch.backends.cudnn.deterministic = True
+    # # torch.backends.cudnn.benchmark = False
+    # np.random.seed(cfg.seed)
+    # random.seed(cfg.seed)
+    # torch.backends.cudnn.determinstic = True
+    # torch.backends.cudnn.benchmark = False
 
     # device = torch.device("cuda" if torch.cuda.is_available() and cfg.device else "cpu")
     # print(f"cfg.device == gpu {cfg.device == 'gpu'}")
@@ -313,6 +371,7 @@ def train(cfg: TrainConfig):
     cfg.device = (
         "cuda" if torch.cuda.is_available() and (cfg.device == "cuda") else "cpu"
     )
+    cfg.agent.device = cfg.device
     logger.info(f"Using device: {cfg.device}")
 
     # Setup vectorized environment for training/evaluation
@@ -407,6 +466,7 @@ def train(cfg: TrainConfig):
     # print(f"eval time multiple envs second time {time.time()-start_time }")
 
     # TRY NOT TO MODIFY: start the game
+    first_update = True
     start_time = time.time()
     obs, _ = envs.reset(seed=cfg.seed)
     for global_step in range(cfg.total_timesteps):
@@ -454,17 +514,21 @@ def train(cfg: TrainConfig):
         # ALGO LOGIC: training.
         if global_step > cfg.learning_starts:
             if "final_info" in infos:  # Update after every episode
-                print(f"episode_length {episode_length}")
+                # print(f"episode_length {episode_length}")
                 if isinstance(episode_length, np.ndarray):
                     episode_length = episode_length[0]
-                num_updates = cfg.utd_ratio * episode_length  # TODO inc. frame skip
+                # num_updates = cfg.utd_ratio * episode_length  # TODO inc. frame skip
+                if first_update:
+                    num_new_transitions = rb.size()
+                    first_update = False
+                else:
+                    num_new_transitions = episode_length
+                # num_new_transitions = episode_length
                 logger.info(
-                    f"Training agent w. {num_updates} updates @ step {global_step}..."
+                    f"Training agent w. {num_new_transitions} new data @ step {global_step}..."
                 )
-                train_metrics = agent.train(
-                    replay_buffer=rb,
-                    num_updates=num_updates,
-                    reinit_opts=cfg.reinit_opts,
+                train_metrics = agent.update(
+                    replay_buffer=rb, num_new_transitions=num_new_transitions
                 )
                 logger.info("Finished training agent.")
 
@@ -474,7 +538,7 @@ def train(cfg: TrainConfig):
                         {
                             "global_step": global_step,
                             "SPS": int(global_step / (time.time() - start_time)),
-                            "num_updates": num_updates,
+                            "num_new_transitions": num_new_transitions,
                             "action_repeat": cfg.action_repeat,
                             "env_step": global_step * cfg.action_repeat,
                         }
