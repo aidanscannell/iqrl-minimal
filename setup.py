@@ -42,7 +42,8 @@ python_requires = ">=3.8"
 install_requires = [
     "torch",
     "torchvision",
-    "torchtyping",
+    # "torchtyping",
+    "jaxtyping",
     "matplotlib",
     "numpy",
     "stable_baselines3",
