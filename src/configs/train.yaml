@@ -1,12 +1,8 @@
 defaults:
   - base_train
-#   - world_model: base
   - agent: td3 # mppi or ddpg
   - override hydra/launcher: slurm # Use slurm (on cluster) for multirun
   - _self_
-
-utd_ratio: 1 # update to data ratio
-reinit_opts: False
 
 # env_id: "HalfCheetah-v4"
 env_id: "cartpole"
@@ -28,7 +24,7 @@ eval_every_steps: 5000
 seed: 42
 device: "cuda"  # "cpu" or "cuda" etc
 debug: False
-torch_deterministic: True
+# torch_deterministic: True
 
 # W&B config
 wandb_project_name: "world_models"
