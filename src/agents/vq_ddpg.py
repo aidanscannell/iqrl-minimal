@@ -13,13 +13,15 @@ import src
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import wandb
 from gymnasium.spaces import Box, Space
-from src.custom_types import Action, EvalMode, State, T0
+from src.agents.utils import EarlyStopper
+from src.custom_types import Action, EvalMode, T0
 from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.type_aliases import ReplayBufferSamples
 from vector_quantize_pytorch import FSQ, VectorQuantize
 
-from .agent import Agent
+from .base import Agent
 
 
 class Encoder(nn.Module):

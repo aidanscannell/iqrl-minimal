@@ -12,35 +12,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from gymnasium.spaces import Box, Space
-from src.custom_types import Action, EvalMode, State, T0
+from src.custom_types import Action, EvalMode, T0
 from stable_baselines3.common.buffers import ReplayBuffer
 
-from .agent import Agent
-
-
-# class Actor(nn.Module):
-#     def __init__(self, obs_dim: int, mlp_dims: List[int], action_dim: int):
-#         super().__init__()
-#         self._actor = util.mlp(obs_dim, mlp_dims, action_dim)
-#         self.apply(util.orthogonal_init)
-
-#     def forward(self, state, std):
-#         mu = self._actor(state)
-#         mu = torch.tanh(mu)
-#         std = torch.ones_like(mu) * std
-#         return util.TruncatedNormal(mu, std)
-
-
-# class Critic(nn.Module):
-#     def __init__(self, obs_dim: int, mlp_dims: List[int], action_dim: int):
-#         super().__init__()
-#         self._critic1 = util.mlp(obs_dim + action_dim, mlp_dims, 1)
-#         self._critic2 = util.mlp(obs_dim + action_dim, mlp_dims, 1)
-#         self.apply(util.orthogonal_init)
-
-#     def forward(self, state, action):
-#         state_action_input = torch.cat([state, action], dim=-1)
-#         return self._critic1(state_action_input), self._critic2(state_action_input)
+from .base import Agent
 
 
 class QNetwork(nn.Module):
