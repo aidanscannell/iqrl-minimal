@@ -14,8 +14,7 @@ class EarlyStopper:
     def __init__(self, patience: int = 1, min_delta: float = 0.0):
         self.patience = patience
         self.min_delta = min_delta
-        self.counter = 0
-        self.min_val = np.inf
+        self.reset()
 
     def __call__(self, val):
         if val < self.min_val:
@@ -27,6 +26,10 @@ class EarlyStopper:
                 return True
         return False
 
+    def reset(self):
+        self.counter = 0
+        self.min_val = np.inf
+
 
 # __REDUCE__ = lambda b: "mean" if b else "none"
 
@@ -36,11 +39,11 @@ class EarlyStopper:
 #     return F.mse_loss(pred, target, reduction=__REDUCE__(reduce))
 
 
-# def soft_update_params(model, model_target, tau: float):
-#     """Update slow-moving average of online network (target network) at rate tau."""
-#     with torch.no_grad():
-#         for params, params_target in zip(model.parameters(), model_target.parameters()):
-#             params_target.data.lerp_(params.data, tau)
+def soft_update_params(model, model_target, tau: float):
+    """Update slow-moving average of online network (target network) at rate tau."""
+    with torch.no_grad():
+        for params, params_target in zip(model.parameters(), model_target.parameters()):
+            params_target.data.lerp_(params.data, tau)
 
 
 def mlp(in_dim, mlp_dims: List[int], out_dim, act_fn=nn.ELU, out_act=nn.Identity):
