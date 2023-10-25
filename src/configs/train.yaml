@@ -20,7 +20,8 @@ buffer_size: 1000000
 learning_starts: 10000
 total_timesteps: 1000000
 logging_epoch_freq: 100
-eval_every_steps: 5000
+eval_every_steps: 2500
+# eval_every_steps: 5000
 seed: 42
 device: "cuda"  # "cpu" or "cuda" etc
 debug: False

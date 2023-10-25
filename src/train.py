@@ -303,7 +303,7 @@ class TrainConfig:
     learning_starts: int = int(25e3)
     total_timesteps: int = int(1e6)
     logging_epoch_freq: int = 100
-    eval_every_steps: int = 5000
+    eval_every_steps: int = 2500
     seed: int = 42
     device: str = "cuda"  # "cpu" or "cuda" etc
     # cuda: bool = True  # if gpu available put on gpu
