@@ -11,11 +11,20 @@ import src
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import wandb
 from gymnasium.spaces import Box, Space
-from src.custom_types import Action, EvalMode, State, T0
+from src.agents.utils import soft_update_params
+from src.custom_types import (
+    Action,
+    BatchAction,
+    BatchObservation,
+    BatchValue,
+    EvalMode,
+    T0,
+)
 from stable_baselines3.common.buffers import ReplayBuffer
 
-from .agent import Agent
+from .base import Agent
 
 
 class QNetwork(nn.Module):
@@ -33,18 +42,15 @@ class QNetwork(nn.Module):
         self._critic = src.agents.utils.mlp(
             in_dim=input_dim, mlp_dims=mlp_dims, out_dim=1, act_fn=act_fn
         )
-        self.apply(src.agents.utils.orthogonal_init)
-        # self.fc1 = nn.Linear(input_dim, 256)
-        # self.fc2 = nn.Linear(256, 256)
-        # self.fc3 = nn.Linear(256, 1)
+        self.reset()
 
-    def forward(self, x, a):
-        x = torch.cat([x, a], 1)
-        q = self._critic(x)
-        # x = F.relu(self.fc1(x))
-        # x = F.relu(self.fc2(x))
-        # x = self.fc3(x)
-        return q
+    def forward(self, observation: BatchObservation, action: BatchAction) -> BatchValue:
+        x = torch.cat([observation, action], -1)
+        q_value = self._critic(x)
+        return q_value
+
+    def reset(self):
+        self.apply(src.agents.utils.orthogonal_init)
 
 
 class Actor(nn.Module):
@@ -62,10 +68,7 @@ class Actor(nn.Module):
             out_dim=np.prod(action_space.shape),
             act_fn=act_fn,
         )
-        self.apply(src.agents.utils.orthogonal_init)
-        # self.fc1 = nn.Linear(np.array(observation_space).prod(), 256)
-        # self.fc2 = nn.Linear(256, 256)
-        # self.fc_mu = nn.Linear(256, np.prod(action_space_shape))
+        self.reset()
 
         # Action rescaling
         self.register_buffer(
@@ -83,14 +86,15 @@ class Actor(nn.Module):
             ),
         )
 
-    def forward(self, x):
-        x = self._actor(x)
+    def forward(self, observation: BatchObservation) -> BatchAction:
+        x = self._actor(observation)
         x = torch.tanh(x)
-        return x * self.action_scale + self.action_bias
-        # x = F.relu(self.fc1(x))
-        # x = F.relu(self.fc2(x))
-        # x = torch.tanh(self.fc_mu(x))
-        # return x * self.action_scale + self.action_bias
+        action = x * self.action_scale + self.action_bias
+        return action
+        # return util.TruncatedNormal(x, std)
+
+    def reset(self):
+        self.apply(src.agents.utils.orthogonal_init)
 
 
 class DDPG(Agent):
@@ -105,8 +109,9 @@ class DDPG(Agent):
         noise_clip: float = 0.5,
         learning_rate: float = 3e-4,
         batch_size: int = 128,
-        num_updates: int = 1000,
-        # actor_update_freq: int = 2,  # update actor less frequently than critic
+        utd_ratio: int = 1,  # parameter update-to-data ratio
+        actor_update_freq: int = 1,  # update actor less frequently than critic
+        reset_params_freq: int = 100000,  # reset params after this many param updates
         # nstep: int = 3,
         gamma: float = 0.99,
         tau: float = 0.005,
@@ -116,14 +121,16 @@ class DDPG(Agent):
         super().__init__(
             observation_space=observation_space, action_space=action_space, name=name
         )
-        self.batch_size = batch_size
-        self.num_updates = num_updates
-        # self.utd_ratio = utd_ratio
-        self.actor_update_freq = 1  # Always 1 for DDPG
+        self.mlp_dims = mlp_dims
+        self.act_fn = act_fn
         self.exploration_noise = exploration_noise
         self.policy_noise = policy_noise
         self.noise_clip = noise_clip
         self.learning_rate = learning_rate
+        self.batch_size = batch_size
+        self.utd_ratio = utd_ratio
+        self.actor_update_freq = actor_update_freq  # Should be 1 for true DDPG
+        self.reset_params_freq = reset_params_freq
         # self.nstep = nstep
         self.gamma = gamma
         self.tau = tau
@@ -144,14 +151,14 @@ class DDPG(Agent):
         ).to(device)
         self.target_actor.load_state_dict(self.actor.state_dict())
 
-        # Init two (twin) critics and their targets
+        # Init critic and it's targets
         self.critic = QNetwork(
             observation_space, action_space, mlp_dims=mlp_dims, act_fn=act_fn
         ).to(device)
-        self.critic_target = QNetwork(
+        self.target_critic = QNetwork(
             observation_space, action_space, mlp_dims=mlp_dims, act_fn=act_fn
         ).to(device)
-        self.critic_target.load_state_dict(self.critic.state_dict())
+        self.target_critic.load_state_dict(self.critic.state_dict())
 
         # Optimizers
         self.q_optimizer = torch.optim.Adam(
@@ -161,33 +168,91 @@ class DDPG(Agent):
             list(self.actor.parameters()), lr=learning_rate
         )
 
-    def train(
-        self,
-        replay_buffer: ReplayBuffer,
-        num_updates: Optional[int] = None,
-        reinit_opts: bool = False,
-    ) -> dict:
-        if reinit_opts:
-            logger.info("Reinitializing actor/critic optimizers")
-            self.q_optimizer = torch.optim.Adam(
-                list(self.critic.parameters()), lr=self.learning_rate
-            )
-            self.actor_optimizer = torch.optim.Adam(
-                list(self.actor.parameters()), lr=self.learning_rate
-            )
-        if num_updates is None:
-            num_updates = self.num_updates
-        info = {}
+        # Counters for number of param updates
+        self.critic_update_counter = 0
+        self.actor_update_counter = 0
+
+    def update(self, replay_buffer: ReplayBuffer, num_new_transitions: int) -> dict:
+        num_updates = num_new_transitions * self.utd_ratio
+        logger.info(f"Performing {num_updates} DDPG updates")
+
         for i in range(num_updates):
             batch = replay_buffer.sample(self.batch_size)
-            # TODO make info not overwritten at each iteration
-            info.update(self.critic_update(data=batch))
 
-            if i % self.actor_update_freq == 0:
-                info.update(self.actor_update(data=batch))
+            info = self.update_step(batch=batch, i=i)
+
+            # Reset actor/critic after a fixed number of parameter updates
+            #
+            if self.critic_update_counter % self.reset_params_freq == 0:
+                logger.info("Resetting critic's params")
+                self.critic.reset()
+                self.target_critic.load_state_dict(self.critic.state_dict())
+                self.critic_opt = torch.optim.AdamW(
+                    self.critic.parameters(), lr=self.learning_rate
+                )
+                # if self.actor_update_counter % self.reset_params_freq == 0:
+                logger.info("Resetting actor's params")
+                self.actor.reset()
+                self.target_actor.load_state_dict(self.actor.state_dict())
+                self.actor_opt = torch.optim.AdamW(
+                    self.actor.parameters(), lr=self.learning_rate
+                )
+                for j in range(replay_buffer.size() - num_updates):
+                    batch = replay_buffer.sample(self.batch_size)
+                    info = self.update_step(batch=batch, i=i + j)
+                self.critic_update_counter = 1
+                self.actor_update_counter = 1
+                break
+
+                # self.critic_update_counter += 1
+
+        # for i in range(num_updates):
+        #     batch = replay_buffer.sample(self.batch_size)
+        #     # TODO make info not overwritten at each iteration
+        #     info.update(self.critic_update(data=batch))
+
+        #     if i % self.actor_update_freq == 0:
+        #         # Reset actor after a fixed number of parameter updates
+        #         if self.actor_update_counter % self.reset_params_freq == 0:
+        #             logger.info("Resetting actor's params")
+        #             self.actor.reset()
+        #             self.target_actor.load_state_dict(self.actor.state_dict())
+        #             self.actor_opt = torch.optim.AdamW(
+        #                 self.actor.parameters(), lr=self.learning_rate
+        #             )
+        #             # for _ in range(replay_buffer.size() - num_updates):
+        #             #     info.update(self.actor_update(data=batch))
+        #         else:
+        #             info.update(self.actor_update(data=batch))
         return info
 
-    def critic_update(self, data) -> dict:
+    def update_step(self, batch, i: int = -1) -> dict:
+        info = {}
+
+        # Update critic
+        info.update(self.critic_update_step(data=batch))
+
+        # Update actor less frequently than critic
+        if self.critic_update_counter % self.actor_update_freq == 0:
+            info.update(self.actor_update_step(data=batch))
+
+        if i % 100 == 0:
+            if wandb.run is not None:
+                wandb.log(info)
+
+        return info
+
+    def critic_update_step(self, data) -> dict:
+        # Reset critic after a fixed number of parameter updates
+        self.critic_update_counter += 1
+        # if self.critic_update_counter % self.reset_params_freq == 0:
+        #     logger.info("Resetting critic's params")
+        #     self.critic.reset()
+        #     self.target_critic.load_state_dict(self.critic.state_dict())
+        #     self.critic_opt = torch.optim.AdamW(
+        #         self.critic.parameters(), lr=self.learning_rate
+        #     )
+
         with torch.no_grad():
             clipped_noise = (
                 torch.randn_like(data.actions, device=self.device) * self.policy_noise
@@ -196,7 +261,7 @@ class DDPG(Agent):
             next_state_actions = (
                 self.target_actor(data.next_observations) + clipped_noise
             ).clamp(self.action_space.low[0], self.action_space.high[0])
-            critic_next_target = self.critic_target(
+            critic_next_target = self.target_critic(
                 data.next_observations, next_state_actions
             )
             next_q_value = data.rewards.flatten() + (
@@ -212,12 +277,14 @@ class DDPG(Agent):
         self.q_optimizer.step()
 
         # Update the target network
-        for param, target_param in zip(
-            self.critic.parameters(), self.critic_target.parameters()
-        ):
-            target_param.data.copy_(
-                self.tau * param.data + (1 - self.tau) * target_param.data
-            )
+        # with torch.no_grad():
+        #     for param, target_param in zip(
+        #         self.critic.parameters(), self.target_critic.parameters()
+        #     ):
+        #         target_param.data.copy_(
+        #             self.tau * param.data + (1 - self.tau) * target_param.data
+        #         )
+        soft_update_params(self.critic, self.target_critic, tau=self.tau)
 
         info = {
             "critic_values": critic_a_values.mean().item(),
@@ -225,7 +292,8 @@ class DDPG(Agent):
         }
         return info
 
-    def actor_update(self, data) -> dict:
+    def actor_update_step(self, data) -> dict:
+        self.actor_update_counter += 1
         actor_loss = -self.critic(
             data.observations, self.actor(data.observations)
         ).mean()
@@ -234,12 +302,14 @@ class DDPG(Agent):
         self.actor_optimizer.step()
 
         # Update the target network
-        for param, target_param in zip(
-            self.actor.parameters(), self.target_actor.parameters()
-        ):
-            target_param.data.copy_(
-                self.tau * param.data + (1 - self.tau) * target_param.data
-            )
+        soft_update_params(self.actor, self.target_actor, tau=self.tau)
+        # with torch.no_grad():
+        #     for param, target_param in zip(
+        #         self.actor.parameters(), self.target_actor.parameters()
+        #     ):
+        #         target_param.data.copy_(
+        #             self.tau * param.data + (1 - self.tau) * target_param.data
+        #         )
 
         info = {"actor_loss": actor_loss.item()}
         return info
