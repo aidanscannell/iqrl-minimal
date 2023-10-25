@@ -1,11 +1,24 @@
 #!/usr/bin/env python3
 from typing import NamedTuple, Tuple
 
-from torchtyping import TensorType
+from jaxtyping import Float
+from torch import Tensor
 
-Observation = TensorType["batch_size", "obs_dim"]
-State = TensorType["batch_size", "state_dim"]
-Action = TensorType["batch_size", "action_dim"]
+
+# from torchtyping import TensorType
+
+Observation = Float[Tensor, "obs_dim"]
+# State = Float[Tensor, "state_dim"]
+Latent = Float[Tensor, "latent_dim"]
+Action = Float[Tensor, "action_dim"]
+#
+BatchObservation = Float[Observation, "batch"]
+# BatchState = Float[State, "batch"]
+BatchLatent = Float[Latent, "batch"]
+BatchAction = Float[Action, "batch"]
+
+Value = Float[Tensor, ""]
+BatchValue = Float[Value, "batch_size"]
 
 # InputData = TensorType["num_data", "input_dim"]
 # OutputData = TensorType["num_data", "output_dim"]
