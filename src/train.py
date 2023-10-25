@@ -299,6 +299,7 @@ class TrainConfig:
     # Experiment config
     exp_name: str = "base"
     buffer_size: int = int(1e6)
+    pretrain_utd: Optional[int] = None  # If not none pretrain on random data with utd
     learning_starts: int = int(25e3)
     total_timesteps: int = int(1e6)
     logging_epoch_freq: int = 100
@@ -519,11 +520,13 @@ def train(cfg: TrainConfig):
                     episode_length = episode_length[0]
                 # num_updates = cfg.utd_ratio * episode_length  # TODO inc. frame skip
                 if first_update:
-                    num_new_transitions = rb.size()
+                    if cfg.pretrain_utd is not None:
+                        num_new_transitions = cfg.pretrain_utd * rb.size()
+                    else:
+                        num_new_transitions = episode_length
                     first_update = False
                 else:
                     num_new_transitions = episode_length
-                # num_new_transitions = episode_length
                 logger.info(
                     f"Training agent w. {num_new_transitions} new data @ step {global_step}..."
                 )
