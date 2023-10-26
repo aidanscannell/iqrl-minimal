@@ -42,15 +42,19 @@ class QNetwork(nn.Module):
         self._critic = src.agents.utils.mlp(
             in_dim=input_dim, mlp_dims=mlp_dims, out_dim=1, act_fn=act_fn
         )
-        self.reset()
+        self.reset(full_reset=True)
 
     def forward(self, observation: BatchObservation, action: BatchAction) -> BatchValue:
         x = torch.cat([observation, action], -1)
         q_value = self._critic(x)
         return q_value
 
-    def reset(self):
-        self.apply(src.agents.utils.orthogonal_init)
+    def reset(self, full_reset: bool = False):
+        if full_reset:
+            self.apply(src.agents.utils.orthogonal_init)
+        else:
+            params = list(self.parameters())
+            src.agents.utils.orthogonal_init(params[-2:])
 
 
 class Actor(nn.Module):
@@ -93,8 +97,12 @@ class Actor(nn.Module):
         return action
         # return util.TruncatedNormal(x, std)
 
-    def reset(self):
-        self.apply(src.agents.utils.orthogonal_init)
+    def reset(self, full_reset: bool = False):
+        if full_reset:
+            self.apply(src.agents.utils.orthogonal_init)
+        else:
+            params = list(self.parameters())
+            src.agents.utils.orthogonal_init(params[-2:])
 
 
 class DDPG(Agent):
@@ -172,7 +180,10 @@ class DDPG(Agent):
         self.critic_update_counter = 0
         self.actor_update_counter = 0
 
+        self.reset_flag = False
+
     def update(self, replay_buffer: ReplayBuffer, num_new_transitions: int) -> dict:
+        self.reset_flag = False
         num_updates = num_new_transitions * self.utd_ratio
         logger.info(f"Performing {num_updates} DDPG updates")
 
@@ -182,48 +193,9 @@ class DDPG(Agent):
             info = self.update_step(batch=batch, i=i)
 
             # Reset actor/critic after a fixed number of parameter updates
-            #
             if self.critic_update_counter % self.reset_params_freq == 0:
-                logger.info("Resetting critic's params")
-                self.critic.reset()
-                self.target_critic.load_state_dict(self.critic.state_dict())
-                self.critic_opt = torch.optim.AdamW(
-                    self.critic.parameters(), lr=self.learning_rate
-                )
-                # if self.actor_update_counter % self.reset_params_freq == 0:
-                logger.info("Resetting actor's params")
-                self.actor.reset()
-                self.target_actor.load_state_dict(self.actor.state_dict())
-                self.actor_opt = torch.optim.AdamW(
-                    self.actor.parameters(), lr=self.learning_rate
-                )
-                for j in range(replay_buffer.size() - num_updates):
-                    batch = replay_buffer.sample(self.batch_size)
-                    info = self.update_step(batch=batch, i=i + j)
-                self.critic_update_counter = 1
-                self.actor_update_counter = 1
-                break
+                self.reset(full_reset=False)
 
-                # self.critic_update_counter += 1
-
-        # for i in range(num_updates):
-        #     batch = replay_buffer.sample(self.batch_size)
-        #     # TODO make info not overwritten at each iteration
-        #     info.update(self.critic_update(data=batch))
-
-        #     if i % self.actor_update_freq == 0:
-        #         # Reset actor after a fixed number of parameter updates
-        #         if self.actor_update_counter % self.reset_params_freq == 0:
-        #             logger.info("Resetting actor's params")
-        #             self.actor.reset()
-        #             self.target_actor.load_state_dict(self.actor.state_dict())
-        #             self.actor_opt = torch.optim.AdamW(
-        #                 self.actor.parameters(), lr=self.learning_rate
-        #             )
-        #             # for _ in range(replay_buffer.size() - num_updates):
-        #             #     info.update(self.actor_update(data=batch))
-        #         else:
-        #             info.update(self.actor_update(data=batch))
         return info
 
     def update_step(self, batch, i: int = -1) -> dict:
@@ -289,6 +261,7 @@ class DDPG(Agent):
         info = {
             "critic_values": critic_a_values.mean().item(),
             "critic_loss": critic_loss.item(),
+            "critic_update_counter": self.critic_update_counter,
         }
         return info
 
@@ -311,7 +284,10 @@ class DDPG(Agent):
         #             self.tau * param.data + (1 - self.tau) * target_param.data
         #         )
 
-        info = {"actor_loss": actor_loss.item()}
+        info = {
+            "actor_loss": actor_loss.item(),
+            "actor_update_counter": self.actor_update_counter,
+        }
         return info
 
     @torch.no_grad()
@@ -322,3 +298,26 @@ class DDPG(Agent):
         actions = actions.cpu().numpy()
         actions = actions.clip(self.action_space.low, self.action_space.high)
         return actions
+
+    def reset(self, full_reset: bool = False):
+        logger.info("Resetting actor/critic params")
+        self.actor.reset(full_reset=full_reset)
+        self.critic.reset(full_reset=full_reset)
+        self.target_actor.load_state_dict(self.actor.state_dict())
+        self.target_critic.load_state_dict(self.critic.state_dict())
+        self.critic_opt = torch.optim.AdamW(
+            self.critic.parameters(), lr=self.learning_rate
+        )
+        self.actor_opt = torch.optim.AdamW(
+            self.actor.parameters(), lr=self.learning_rate
+        )
+        self.reset_flag = True
+        # TODO more updates after resetting?
+        # for j in range(replay_buffer.size() - num_updates):
+        #     batch = replay_buffer.sample(self.batch_size)
+        #     info = self.update_step(batch=batch, i=i + j)
+        # self.critic_update_counter = 1
+        # self.actor_update_counter = 1
+        # break
+
+        # self.critic_update_counter += 1

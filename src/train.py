@@ -151,7 +151,7 @@ class DDPGConfig(AgentConfig):
     # num_updates: int = 1000  # 1000 is 1 update per new data
     utd_ratio: int = 1  # parameter update-to-data ratio
     actor_update_freq: int = 1  # update actor less frequently than critic
-    reset_params_freq: int = 100000  # reset params after this many param updates
+    reset_params_freq: int = 40000  # reset params after this many param updates
     # nstep: 3
     gamma: float = 0.99
     tau: float = 0.005
@@ -159,23 +159,23 @@ class DDPGConfig(AgentConfig):
     name: str = "DDPG"
 
 
-@dataclass
-class AEConfig:
-    _target_: str = "src.agents.encoders.AE"
-    # _partial_: bool = True
-    # observation_space: Space = MISSING
-    mlp_dims: List[int] = field(default_factory=lambda: [128, 128])
-    latent_dim: int = 20
-    act_fn = nn.ELU
-    learning_rate: float = 3e-4
-    batch_size: int = 128
-    utd_ratio: int = 1
-    tau: float = 0.005
-    encoder_reset_params_freq: int = 10000  # reset enc params after X param updates
-    # early_stopper: Optional[EarlyStopper] = None
-    early_stopper = None
-    device: str = "cuda"
-    name: str = "AE"
+# @dataclass
+# class AEConfig:
+#     _target_: str = "src.agents.encoders.AE"
+#     # _partial_: bool = True
+#     # observation_space: Space = MISSING
+#     mlp_dims: List[int] = field(default_factory=lambda: [128, 128])
+#     latent_dim: int = 20
+#     act_fn = nn.ELU
+#     learning_rate: float = 3e-4
+#     batch_size: int = 128
+#     utd_ratio: int = 1
+#     tau: float = 0.005
+#     encoder_reset_params_freq: int = 10000  # reset enc params after X param updates
+#     # early_stopper: Optional[EarlyStopper] = None
+#     early_stopper = None
+#     device: str = "cuda"
+#     name: str = "AE"
 
 
 # # @dataclass
@@ -211,7 +211,7 @@ class AEDDPGConfig(DDPGConfig):
     ae_min_delta: float = 0.0
     latent_dim: int = 20
     ae_tau: float = 0.005
-    encoder_reset_params_freq: int = 10000  # reset enc params after X param updates
+    # encoder_reset_params_freq: int = 10000  # reset enc params after X param updates
     name: str = "AEDDPG"
 
 
@@ -280,12 +280,50 @@ class MPPIDDPGConfig(DDPGConfig):
     name: str = "MPPI"
 
 
+# @dataclass
+# class TritonConfig:
+#     defaults: List[Any] = field(
+#         default_factory=lambda: [{"submitit_slurm": "submitit_slurm"}]
+#     )
+
+#     _target_: str = (
+#         "hydra_plugins.hydra_submitit_launcher.submitit_launcher.SlurmLauncher"
+#     )
+#     # submitit_folder: ${hydra.sweep.dir}/.submitit/%j
+#     timeout_min: int = 120  # 2 hours
+#     tasks_per_node: int = 1
+#     nodes: int = 1
+#     # name: str = 1  # ${hydra.job.name}
+#     comment: Optional[str] = None
+#     exclude: Optional[str] = None
+#     signal_delay_s: int = 600
+#     max_num_timeout: int = 20
+#     # additional_parameters: dict = {}
+#     array_parallelism: int = 256
+#     # setup: List = []
+#     constraint: str = "volta"
+#     mem_gb: int = 50
+#     gres: str = "gpu:1"
+
+
 @dataclass
 class TrainConfig:
-    run_name: str
+    defaults: List[Any] = field(
+        default_factory=lambda: [
+            {
+                "agent": "ddpg",
+                # "override hydra/launcher": "slurm",  # Use slurm (on cluster) for multirun
+                # "override hydra/launcher": "triton_config",  # Use slurm (on cluster) for multirun
+            },
+            # {
+            #     "override hydra/launcher": "triton_config",  # Use slurm (on cluster) for multirun
+            # },
+        ]
+    )
 
+    run_name: str = f"cartpole_DDPG_42_{time.time()}"
     # Agent
-    agent: AgentConfig = field(default_factory=AgentConfig)
+    # agent: AgentConfig = field(default_factory=AgentConfig)
 
     # Env config
     env_id: str = "cartpole"
@@ -319,7 +357,8 @@ class TrainConfig:
 
 
 cs = ConfigStore.instance()
-cs.store(name="base_train", node=TrainConfig)
+cs.store(name="train_config", node=TrainConfig)
+# cs.store(name="triton_config", group="hydra/launcher", node=TritonConfig)
 cs.store(group="agent", name="ddpg", node=DDPGConfig)
 cs.store(group="agent", name="td3", node=TD3Config)
 cs.store(group="agent", name="ae_ddpg", node=AEDDPGConfig)
@@ -338,6 +377,7 @@ cs.store(group="agent", name="ae_ddpg", node=AEDDPGConfig)
 
 
 @hydra.main(version_base="1.3", config_path="./configs", config_name="train")
+# @hydra.main(version_base=None, config_name="train_config")
 def train(cfg: TrainConfig):
     import numpy as np
     import torch

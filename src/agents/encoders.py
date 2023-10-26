@@ -34,6 +34,8 @@ class Encoder:
 
     # def __post_init__(self):
     #     super().__init__()
+    def reset(self, full_reset: bool = False):
+        raise NotImplementedError
 
 
 class AE(Encoder):
@@ -47,7 +49,7 @@ class AE(Encoder):
         batch_size: int = 128,
         utd_ratio: int = 1,
         tau: float = 0.005,
-        encoder_reset_params_freq: int = 10000,  # reset enc params after X param updates
+        # encoder_reset_params_freq: int = 10000,  # reset enc params after X param updates
         early_stopper: Optional[EarlyStopper] = None,
         # early_stopper = EarlyStopper(patience=self.patience, min_delta=self.min_delta)
         device: str = "cuda",
@@ -62,7 +64,7 @@ class AE(Encoder):
         self.batch_size = batch_size
         self.utd_ratio = utd_ratio
         self.tau = tau
-        self.encoder_reset_params_freq = encoder_reset_params_freq
+        # self.encoder_reset_params_freq = encoder_reset_params_freq
         self.early_stopper = early_stopper
         self.device = device
         self.name = name
@@ -151,9 +153,16 @@ class AE(Encoder):
         self.decoder.eval()
         return metrics
 
-    def reset(self):
-        self.encoder.reset()
-        self.decoder.reset()
+    def reset(self, full_reset: bool = False):
+        logger.info("Resetting encoder/decoder params")
+        self.encoder.reset(full_reset=full_reset)
+        self.decoder.reset(full_reset=full_reset)
+        self.target_encoder.load_state_dict(self.encoder.state_dict())
+        self.target_decoder.load_state_dict(self.decoder.state_dict())
+        self.opt = torch.optim.AdamW(
+            list(self.encoder.parameters()) + list(self.decoder.parameters()),
+            lr=self.learning_rate,
+        )
 
 
 class MLPEncoder(nn.Module):
@@ -171,14 +180,18 @@ class MLPEncoder(nn.Module):
         self._mlp = src.agents.utils.mlp(
             in_dim=in_dim, mlp_dims=mlp_dims, out_dim=latent_dim, act_fn=act_fn
         )
-        self.reset()
+        self.reset(full_reset=True)
 
     def forward(self, x):
         z = self._mlp(x)
         return z
 
-    def reset(self):
-        self.apply(src.agents.utils.orthogonal_init)
+    def reset(self, full_reset: bool = False):
+        if full_reset:
+            self.apply(src.agents.utils.orthogonal_init)
+        else:
+            params = list(self.parameters())
+            src.agents.utils.orthogonal_init(params[-2:])
 
 
 class MLPDecoder(nn.Module):
@@ -195,11 +208,15 @@ class MLPDecoder(nn.Module):
         self._mlp = src.agents.utils.mlp(
             in_dim=latent_dim, mlp_dims=mlp_dims, out_dim=out_dim, act_fn=act_fn
         )
-        self.reset()
+        self.reset(full_reset=True)
 
     def forward(self, z):
         x = self._mlp(z)
         return x
 
-    def reset(self):
-        self.apply(src.agents.utils.orthogonal_init)
+    def reset(self, full_reset: bool = False):
+        if full_reset:
+            self.apply(src.agents.utils.orthogonal_init)
+        else:
+            params = list(self.parameters())
+            src.agents.utils.orthogonal_init(params[-2:])

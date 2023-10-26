@@ -60,6 +60,8 @@ class LatentActorCritic(Agent):
 
     def update(self, replay_buffer: ReplayBuffer, num_new_transitions: int) -> dict:
         logger.info("Training representation...")
+        if self.actor_critic.reset_flag:
+            self.encoder.reset(full_reset=False)
         info = self.encoder.update(
             replay_buffer=replay_buffer, num_new_transitions=num_new_transitions
         )
@@ -102,6 +104,11 @@ class LatentActorCritic(Agent):
             observation=z, eval_mode=eval_mode, t0=t0
         )
 
+    def reset(self, full_reset: bool = False):
+        logger.info("Restting agent...")
+        self.encoder.reset(full_reset=full_reset)
+        self.actor_critic.reset(full_reset=full_reset)
+
 
 class AEDDPG(LatentActorCritic):
     def __init__(
@@ -118,7 +125,7 @@ class AEDDPG(LatentActorCritic):
         batch_size: int = 128,
         utd_ratio: int = 1,  # DDPG parameter update-to-data ratio
         actor_update_freq: int = 1,  # update actor less frequently than critic
-        reset_params_freq: int = 100000,  # reset params after this many param updates
+        reset_params_freq: int = 40000,  # reset params after this many critic param updates
         # nstep: int = 3,
         gamma: float = 0.99,
         tau: float = 0.005,
@@ -131,7 +138,7 @@ class AEDDPG(LatentActorCritic):
         ae_min_delta: float = 0.0,
         latent_dim: int = 20,
         ae_tau: float = 0.005,
-        encoder_reset_params_freq: int = 10000,  # reset enc params after X param updates
+        # encoder_reset_params_freq: int = 10000,  # reset enc params after X param updates
         device: str = "cuda",
         name: str = "AEDDPG",
     ):
@@ -144,7 +151,7 @@ class AEDDPG(LatentActorCritic):
             batch_size=ae_batch_size,
             utd_ratio=ae_utd_ratio,
             tau=ae_tau,
-            encoder_reset_params_freq=encoder_reset_params_freq,
+            # encoder_reset_params_freq=encoder_reset_params_freq,
             early_stopper=EarlyStopper(patience=ae_patience, min_delta=ae_min_delta),
             device=device,
             name="AE",

@@ -63,4 +63,8 @@ class ActorCritic(Agent, abc.ABC):
     action_space: Box
     actor: Actor
     critic: Critic
+    reset_flag: bool = False  # True if params have been reset
     name: str = "BaseActorCriticAgent"
+
+    def reset(self, full_reset: bool = False):
+        raise NotImplementedError
