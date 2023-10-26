@@ -74,26 +74,26 @@ class AE(Encoder):
             mlp_dims=mlp_dims,
             latent_dim=latent_dim,
             act_fn=act_fn,
-        )
+        ).to(device)
         self.target_encoder = MLPEncoder(
             observation_space=observation_space,
             mlp_dims=mlp_dims,
             latent_dim=latent_dim,
             act_fn=act_fn,
-        )
+        ).to(device)
         self.target_encoder.load_state_dict(self.encoder.state_dict())
         self.decoder = MLPDecoder(
             observation_space=observation_space,
             mlp_dims=mlp_dims,
             latent_dim=latent_dim,
             act_fn=act_fn,
-        )
+        ).to(device)
         self.target_decoder = MLPDecoder(
             observation_space=observation_space,
             mlp_dims=mlp_dims,
             latent_dim=latent_dim,
             act_fn=act_fn,
-        )
+        ).to(device)
         self.target_decoder.load_state_dict(self.decoder.state_dict())
 
         self.opt = torch.optim.AdamW(
