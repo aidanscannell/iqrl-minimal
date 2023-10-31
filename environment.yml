@@ -1,7 +1,7 @@
 name: world-models
 channels:
   # - pytorch-nightly
-  - nvidia
+  - nvidia::cudatoolkit=11.1
   - anaconda
   - conda-forge
   - defaults
@@ -12,8 +12,8 @@ dependencies:
   # - cudatoolkit=11.7
   - pip
   - pip:
-    - torch
-    - torchvision
+    # - torch
+    # - torchvision
     - jaxtyping
     - matplotlib
     - numpy
