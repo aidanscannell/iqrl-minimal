@@ -138,15 +138,19 @@ class DDPG(Agent):
         for i in range(num_updates):
             batch = replay_buffer.sample(self.batch_size)
 
-            info = self.update_step(batch=batch, i=i)
+            info = self.update_step(batch=batch)
 
             # Reset actor/critic after a fixed number of parameter updates
             if self.critic_update_counter % self.reset_params_freq == 0:
                 self.reset(full_reset=False)
 
+            if i % 100 == 0:
+                if wandb.run is not None:
+                    wandb.log(info)
+
         return info
 
-    def update_step(self, batch, i: int = -1) -> dict:
+    def update_step(self, batch) -> dict:
         info = {}
 
         # Update critic
@@ -155,10 +159,6 @@ class DDPG(Agent):
         # Update actor less frequently than critic
         if self.critic_update_counter % self.actor_update_freq == 0:
             info.update(self.actor_update_step(data=batch))
-
-        if i % 100 == 0:
-            if wandb.run is not None:
-                wandb.log(info)
 
         return info
 
@@ -279,6 +279,10 @@ class ActorCritic(Agent, abc.ABC):
     reset_flag: bool = False  # True if params have been reset
     name: str = "BaseActorCriticAgent"
 
+    @abc.abstractmethod
+    def update_step(self, batch) -> Optional[dict]:
+        raise NotImplementedError
+
     def reset(self, full_reset: bool = False):
         raise NotImplementedError
 
@@ -319,6 +323,13 @@ class LatentActorCritic(Agent):
         )
 
     def update(self, replay_buffer: ReplayBuffer, num_new_transitions: int) -> dict:
+        return self.update_mode_1(
+            replay_buffer=replay_buffer, num_new_transitions=num_new_transitions
+        )
+
+    def update_mode_1(
+        self, replay_buffer: ReplayBuffer, num_new_transitions: int
+    ) -> dict:
         logger.info("Training representation...")
         if self.actor_critic.reset_flag:
             self.encoder.reset(full_reset=False)
@@ -353,6 +364,27 @@ class LatentActorCritic(Agent):
             )
         )
         logger.info("Finished training actor critic")
+        return info
+
+    def update_mode_2(
+        self, replay_buffer: ReplayBuffer, num_new_transitions: int
+    ) -> dict:
+        logger.info("Training representation...")
+        if self.actor_critic.reset_flag:
+            self.encoder.reset(full_reset=False)
+
+        self.utd_ratio = self.actor_critic.utd_ratio
+        self.batch_size = self.actor_critic.batch_size
+        info = {}
+        num_updates = num_new_transitions * self.utd_ratio
+        for i in range(num_updates):
+            batch = replay_buffer.sample(self.batch_size)
+            info.update(self.encoder.update_step(batch=batch))
+            latent_obs = self.encoder(batch.observations, target=True)
+            latent_next_obs = self.encoder(batch.next_observations, target=True)
+            batch.observation = latent_obs.to(torch.float).detach()
+            batch.next_observation = latent_next_obs.to(torch.float).detach()
+            info.update(self.actor_critic.update_step(batch=batch))
         return info
 
     @torch.no_grad()

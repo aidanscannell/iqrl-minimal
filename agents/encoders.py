@@ -33,6 +33,9 @@ class Encoder:
     def update(self, replay_buffer: ReplayBuffer, num_new_transitions: int) -> dict:
         raise NotImplementedError
 
+    def update_step(self, batch) -> dict:
+        raise NotImplementedError
+
     # def trigger_reset(self):
     #     z_mem_pred = self(self.x_mem)
     #     mem_dist = (self.z_mem - z_mem_pred).abs().mean()
@@ -145,37 +148,42 @@ class AE(Encoder):
 
         for i in range(num_updates):
             batch = replay_buffer.sample(self.batch_size)
-            x_train = torch.concat([batch.observations, batch.next_observations], 0)
-
-            z = self.encoder(x_train)
-            x_rec = self.decoder(z)
-            rec_loss = (x_rec - x_train).abs().mean()
-
-            loss = rec_loss
-            self.opt.zero_grad()
-            loss.backward()
-            self.opt.step()
-            metrics = {
-                "rec_loss": rec_loss.item(),
-                "loss": loss.item(),
-            }
-
-            # Update the target networks
-            soft_update_params(self.encoder, self.target_encoder, tau=self.tau)
-            soft_update_params(self.decoder, self.target_decoder, tau=self.tau)
+            metrics = self.update_step(batch=batch)
 
             if i % 100 == 0:
-                logger.info(f"Iteration {i} rec_loss {rec_loss}")
+                logger.info(f"Iteration {i} rec_loss {metrics['rec_loss']}")
                 if wandb.run is not None:
                     wandb.log(metrics)
 
             if self.early_stopper is not None:
-                if self.early_stopper(rec_loss):
+                if self.early_stopper(metrics["rec_loss"]):
                     logger.info("Early stopping criteria met, stopping AE training...")
                     break
 
         self.encoder.eval()
         self.decoder.eval()
+        return metrics
+
+    def update_step(self, batch):
+        x_train = torch.concat([batch.observations, batch.next_observations], 0)
+
+        z = self.encoder(x_train)
+        x_rec = self.decoder(z)
+        rec_loss = (x_rec - x_train).abs().mean()
+
+        loss = rec_loss
+        self.opt.zero_grad()
+        loss.backward()
+        self.opt.step()
+        metrics = {
+            "rec_loss": rec_loss.item(),
+            "loss": loss.item(),
+        }
+
+        # Update the target networks
+        soft_update_params(self.encoder, self.target_encoder, tau=self.tau)
+        soft_update_params(self.decoder, self.target_decoder, tau=self.tau)
+
         return metrics
 
     def reset(self, full_reset: bool = False):
@@ -451,6 +459,31 @@ class FSQAutoEncoder(Encoder):
         self.encoder.eval()
         self.decoder.eval()
         return metrics
+
+    # def update_step(self, replay_buffer: ReplayBuffer):
+    #     batch = replay_buffer.sample(self.batch_size)
+    #     # x_train = torch.concat([batch.observations, batch.next_observations], 0)
+    #     x_train = batch.observations
+
+    #     z = self.encoder(x_train)
+    #     z, indices = self.encoder(x_train)
+    #     x_rec = self.decoder(z)
+    #     rec_loss = (x_rec - x_train).abs().mean()
+
+    #     loss = rec_loss
+    #     self.opt.zero_grad()
+    #     loss.backward()
+    #     self.opt.step()
+    #     metrics = {
+    #         "rec_loss": rec_loss.item(),
+    #         "loss": loss.item(),
+    #         "active_percent": indices.unique().numel() / self.latent_dim * 100,
+    #     }
+
+    #     # Update the target networks
+    #     soft_update_params(self.encoder, self.target_encoder, tau=self.tau)
+    #     soft_update_params(self.decoder, self.target_decoder, tau=self.tau)
+    #     return metrics
 
     def reset(self, full_reset: bool = False):
         logger.info("Resetting encoder/decoder params")

@@ -107,6 +107,15 @@ def train(cfg):
     #     verbose=1,
     #     tensorboard_log=f"runs/{run.id}",
     # )
+    eval_callback = EvalCallback(
+        eval_env,
+        best_model_save_path=eval_log_dir,
+        log_path=eval_log_dir,
+        eval_freq=max(500 // n_training_envs, 1),
+        n_eval_episodes=5,
+        deterministic=True,
+        render=False,
+    )
     model.learn(
         total_timesteps=cfg.total_timesteps,
         callback=WandbCallback(
