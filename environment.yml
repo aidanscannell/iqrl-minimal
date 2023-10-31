@@ -1,0 +1,40 @@
+name: world-models
+channels:
+  # - pytorch-nightly
+  - nvidia
+  - anaconda
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9.0
+  - pytorch
+  - torchvision
+  # - cudatoolkit=11.7
+  - pip
+  - pip:
+    - torch
+    - torchvision
+    - jaxtyping
+    - matplotlib
+    - numpy
+    - stable_baselines3
+    - gymnasium
+    - imageio
+    - umap
+    - vector_quantize_pytorch
+    # dev
+    - black==23.3.0
+    - pre-commit==3.2.2
+    - pyright==1.1.301
+    - isort==5.12.0
+    - pyflakes==3.0.1
+    - pytest==7.2.2
+    # experiments
+    - wandb
+    - hydra-core
+    - hydra-submitit-launcher
+    - jupyter
+    - mujoco==2.3.3
+    - dm_control  # deepmind control suite
+    - urllib3>=1.26.11  # TODO check this works
+    - moviepy
