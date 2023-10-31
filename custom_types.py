@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
-from typing import NamedTuple, Tuple
+import abc
+from dataclasses import dataclass
+from typing import Any, Callable, List, NamedTuple, Optional, Tuple
 
+from gymnasium.spaces import Box, Space
 from jaxtyping import Float
+from stable_baselines3.common.buffers import ReplayBuffer
 from torch import Tensor
 
 
@@ -46,3 +50,31 @@ T0 = bool
 # Input = TensorType["batch_size, input_dim"]
 # OutputMean = TensorType["batch_size, output_dim"]
 # OutputVar = TensorType["batch_size, output_dim"]
+
+
+@dataclass
+class Agent(abc.ABC):
+    observation_space: Space
+    action_space: Box
+    name: str = "BaseAgent"
+
+    @abc.abstractmethod
+    def select_action(
+        self, observation, eval_mode: EvalMode = False, t0: T0 = None
+    ) -> Action:
+        raise NotImplementedError
+
+    @abc.abstractmethod
+    def update(
+        self, replay_buffer: ReplayBuffer, num_new_transitions: int
+    ) -> Optional[dict]:
+        raise NotImplementedError
+
+    def predict(
+        self, observation, state=None, episode_start=None, deterministic: bool = False
+    ):
+        """Allows agent to work with Stablebaselines evaluate_policy"""
+        action = self.select_action(observation=observation, eval_mode=True)
+        # action = self.select_action(observation=observation, eval_mode=True, t0=t0)
+        recurrent_state = None
+        return action, recurrent_state
