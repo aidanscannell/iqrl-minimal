@@ -1,16 +1,17 @@
 defaults:
   - train_config
+  # - env: cartpole_swingup
   # - agent: td3 # mppi or ddpg
   - override hydra/launcher: slurm # Use slurm (on cluster) for multirun
   - _self_
 
 # env_id: "HalfCheetah-v4"
-env_id: "cartpole"
+# env_id: "cartpole"
 max_episode_steps: 1000
 capture_train_video: False
 capture_eval_video: True
 action_repeat: 2
-dmc_task: "swingup"
+# dmc_task: "swingup"
 # dmc_task: null
 
 # Experiment config
@@ -31,11 +32,11 @@ debug: False
 wandb_project_name: "world_models"
 use_wandb: True
 # use_wandb: False
-wandb_group: ${env_id}
+wandb_group: ${env.env_id}
 wandb_tags:
-  - ${env_id}
+  - ${env.env_id}
 monitor_gym: True
-run_name: ${env_id}__${agent.name}__${seed}-${now:%Y-%m-%d_%H-%M-%S}
+run_name: ${env.env_id}__${agent.name}__${seed}-${now:%Y-%m-%d_%H-%M-%S}
   # cfg.run_name = f"{cfg.env_id}__{cfg.exp_name}__{cfg.seed}__{int(time.time())}"  # TODO move to cfg
 
 hydra:

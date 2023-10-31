@@ -1,379 +1,17 @@
 #!/usr/bin/env python3
 import logging
-import os
 import pprint
 import random
 import time
-from dataclasses import dataclass, field
-from functools import partial
-from typing import Callable, List, Optional, Any
 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from src.agents.utils import EarlyStopper
-import torch.nn as nn
 import gymnasium as gym
 import hydra
 import omegaconf
-from omegaconf import MISSING
-from gymnasium.spaces import Box, Space
-from gymnasium.wrappers.pixel_observation import PixelObservationWrapper
-from hydra.core.config_store import ConfigStore
-from src.dmc2gymnasium import DMCGym
-from stable_baselines3.common.monitor import Monitor
-
-
-class ActionRepeatWrapper(gym.ActionWrapper):
-    def __init__(self, env, action_repeat: int):
-        super().__init__(env)
-        self.action_repeat = action_repeat
-
-    def step(self, action):
-        reward_total = 0.0
-        for _ in range(self.action_repeat):
-            obs, reward, terminated, truncated, info = self.env.step(action)
-            reward_total += reward
-            if terminated or truncated:
-                break
-        return obs, reward_total, terminated, truncated, info
-
-
-def make_env(
-    env_id: str,
-    seed: int,
-    idx: int,
-    capture_video: bool,
-    run_name: str,
-    max_episode_steps: int,
-    action_repeat: int = 2,
-    dmc_task: Optional[str] = None,
-):
-    # dmc = True
-    # dmc = False
-
-    def thunk():
-        if capture_video:
-            if dmc_task is not None:
-                env = DMCGym(domain=env_id, task=dmc_task, task_kwargs={"random": seed})
-                # env = PixelObservationWrapper(
-                #     env,
-                #     pixels_only=False,
-                #     render_kwargs={"pixels": {"height": 64, "width": 64}},
-                # )
-            else:
-                env = gym.make(
-                    env_id,
-                    render_mode="rgb_array",
-                    max_episode_steps=max_episode_steps,
-                    # **{"frame_skip": frame_skip},
-                )
-        else:
-            if dmc_task is not None:
-                env = DMCGym(domain=env_id, task=dmc_task, task_kwargs={"random": seed})
-                # env = PixelObservationWrapper(
-                #     env,
-                #     pixels_only=False,
-                #     render_kwargs={"pixels": {"height": 64, "width": 64}},
-                # )
-            else:
-                env = gym.make(
-                    env_id,
-                    max_episode_steps=max_episode_steps,
-                    # frame_skip=frame_skip,
-                    # **{"frame_skip": frame_skip},
-                )
-
-        # env = Monitor(
-        #     env,
-        #     # filename=None,
-        #     # allow_early_resets=True,
-        #     # reset_keywords=(),
-        #     # info_keywords=(),
-        #     # override_existing=True,
-        # )
-        env = gym.wrappers.RecordEpisodeStatistics(env)
-        if capture_video:
-            if idx == 0:
-                env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-        env = ActionRepeatWrapper(env=env, action_repeat=action_repeat)
-        env.action_space.seed(seed)
-        env.observation_space.seed(seed)
-        return env
-
-    return thunk
-
-
-def make_env_list(
-    env_id: str,
-    num_envs: int,
-    seed: int,
-    run_name: str,
-    max_episode_steps: int,
-    capture_video: bool = False,
-    action_repeat: int = 2,
-) -> List[gym.Env]:
-    envs_list = []
-    for i in range(num_envs):
-        envs_list.append(
-            make_env(
-                env_id=env_id,
-                seed=seed + i,
-                idx=i,
-                capture_video=capture_video,
-                run_name=run_name,
-                max_episode_steps=max_episode_steps,
-                action_repeat=action_repeat,
-            )
-        )
-    return envs_list
-
-
-@dataclass
-class AgentConfig:
-    _target_: str = "src.agents.TD3"
-    device: str = "cuda"
-
-
-@dataclass
-class DDPGConfig(AgentConfig):
-    _target_: str = "src.agents.DDPG"
-    # _partial_: bool = True
-    # observation_space: Space = MISSING
-    # action_space: Box = MISSING
-    mlp_dims: List[int] = field(default_factory=lambda: [256, 256])
-    exploration_noise: float = 0.2
-    policy_noise: float = 0.2
-    noise_clip: float = 0.5
-    learning_rate: float = 3e-4
-    batch_size: int = 512
-    # num_updates: int = 1000  # 1000 is 1 update per new data
-    utd_ratio: int = 1  # parameter update-to-data ratio
-    actor_update_freq: int = 1  # update actor less frequently than critic
-    reset_params_freq: int = 40000  # reset params after this many param updates
-    # nstep: 3
-    gamma: float = 0.99
-    tau: float = 0.005
-    device: str = "cuda"
-    name: str = "DDPG"
-
-
-# @dataclass
-# class AEConfig:
-#     _target_: str = "src.agents.encoders.AE"
-#     # _partial_: bool = True
-#     # observation_space: Space = MISSING
-#     mlp_dims: List[int] = field(default_factory=lambda: [128, 128])
-#     latent_dim: int = 20
-#     act_fn = nn.ELU
-#     learning_rate: float = 3e-4
-#     batch_size: int = 128
-#     utd_ratio: int = 1
-#     tau: float = 0.005
-#     encoder_reset_params_freq: int = 10000  # reset enc params after X param updates
-#     # early_stopper: Optional[EarlyStopper] = None
-#     early_stopper = None
-#     device: str = "cuda"
-#     name: str = "AE"
-
-
-# # @dataclass
-# class AEDDPGConfig(AgentConfig):
-#     _target_: str = "src.agents.LatentActorCritic"
-#     defaults: List[Any] = field(
-#         default_factory=lambda: [
-#             {
-#                 "build_encoder_fn": "ae",
-#                 # "build_actor_critic_fn": "ddpg",
-#             }
-#         ]
-#     )
-#     # build_encoder_fn = MISSING
-#     # build_actor_critic_fn = MISSING
-#     # build_encoder_fn: Callable[[Space], src.agents.encoders.Encoder] = partial(AE)
-#     # build_actor_critic_fn: Callable[[Space, Box], ActorCritic] = partial(
-#     #     src.agents.DDPG, field(default_factory=DDPGConfig)
-#     # )
-#     device: str = "cuda"
-#     name: str = "AEDDPG"
-
-
-@dataclass
-class AEDDPGConfig(DDPGConfig):
-    _target_: str = "src.agents.AEDDPG"
-    # AE config
-    ae_learning_rate: float = 3e-4
-    ae_batch_size: int = 128
-    # ae_num_updates: int = 1000
-    ae_utd_ratio: int = 1  # encoder parameter update-to-data ratio
-    ae_patience: int = 100
-    ae_min_delta: float = 0.0
-    latent_dim: int = 20
-    ae_tau: float = 0.005
-    # encoder_reset_params_freq: int = 10000  # reset enc params after X param updates
-    name: str = "AEDDPG"
-
-
-@dataclass
-class TD3Config(AgentConfig):
-    _target_: str = "src.agents.TD3"
-    mlp_dims: List[int] = field(default_factory=lambda: [256, 256])
-    exploration_noise: float = 0.2
-    policy_noise: float = 0.2
-    noise_clip: float = 0.5
-    learning_rate: float = 3e-4
-    batch_size: int = 512
-    num_updates: int = 1000  # 1000 is 1 update per new data
-    actor_update_freq: int = 2
-    # nstep: 3
-    gamma: float = 0.99
-    tau: float = 0.005
-    device: str = "gpu"
-    name: str = "TD3"
-
-
-@dataclass
-class AETD3Config(TD3Config):
-    _target_: str = "src.agents.AETD3"
-    # AE config
-    ae_learning_rate: float = 3e-4
-    ae_batch_size: int = 128
-    # ae_num_updates: int = 1000
-    ae_utd_ratio: int = 1  # encoder parameter update-to-data ratio
-    ae_patience: int = 100
-    ae_min_delta: float = 0.0
-    latent_dim: int = 20
-    ae_tau: float = 0.005
-    encoder_reset_params_freq: int = 10000  # reset enc params after X param updates
-    name: str = "AETD3"
-
-
-# @dataclass
-# class TransitionModelConfig:
-#     _target_: str = "src.agents.models.mlp.TransitionModel"
-#     # observation_space: Space
-#     # action_space: Box
-#     mlp_dims: List[int] = field(default_factory=lambda: [256, 256])
-#     act_fn = nn.ELU
-#     learning_rate: float = 3e-4
-#     batch_size: int = 128
-#     utd_ratio: int = 1  # transition model parameter update-to-data ratio
-#     early_stopper: EarlyStopper = None
-#     device: str = "cuda"
-
-
-@dataclass
-class MPPIDDPGConfig(DDPGConfig):
-    _target_: str = "src.agents.MPPIDDPG"
-    horizon: int = 5
-    num_mppi_iterations: int = 5
-    num_samples: int = 512
-    mixture_coef: float = 0.05
-    num_topk: int = 64
-    temperature: float = 0.5
-    momentum: float = 0.1
-    unc_prop_strategy: str = "mean"  # "mean" or "sample", "sample" require transition_model to use SVGP prediction type
-    sample_actor: bool = True
-    bootstrap: bool = True
-    device: str = "cuda"
-    name: str = "MPPI"
-
-
-# @dataclass
-# class TritonConfig:
-#     defaults: List[Any] = field(
-#         default_factory=lambda: [{"submitit_slurm": "submitit_slurm"}]
-#     )
-
-#     _target_: str = (
-#         "hydra_plugins.hydra_submitit_launcher.submitit_launcher.SlurmLauncher"
-#     )
-#     # submitit_folder: ${hydra.sweep.dir}/.submitit/%j
-#     timeout_min: int = 120  # 2 hours
-#     tasks_per_node: int = 1
-#     nodes: int = 1
-#     # name: str = 1  # ${hydra.job.name}
-#     comment: Optional[str] = None
-#     exclude: Optional[str] = None
-#     signal_delay_s: int = 600
-#     max_num_timeout: int = 20
-#     # additional_parameters: dict = {}
-#     array_parallelism: int = 256
-#     # setup: List = []
-#     constraint: str = "volta"
-#     mem_gb: int = 50
-#     gres: str = "gpu:1"
-
-
-@dataclass
-class TrainConfig:
-    defaults: List[Any] = field(
-        default_factory=lambda: [
-            {
-                "agent": "ddpg",
-                # "override hydra/launcher": "slurm",  # Use slurm (on cluster) for multirun
-                # "override hydra/launcher": "triton_config",  # Use slurm (on cluster) for multirun
-            },
-            # {
-            #     "override hydra/launcher": "triton_config",  # Use slurm (on cluster) for multirun
-            # },
-        ]
-    )
-
-    run_name: str = f"cartpole_DDPG_42_{time.time()}"
-    # Agent
-    # agent: AgentConfig = field(default_factory=AgentConfig)
-
-    # Env config
-    env_id: str = "cartpole"
-    max_episode_steps: int = 1000
-    # frame_skip: int = 1
-    capture_train_video: bool = False
-    capture_eval_video: bool = True
-    action_repeat: int = 2
-    dmc_task: Optional[str] = "swingup"
-
-    # Experiment config
-    exp_name: str = "base"
-    buffer_size: int = int(1e6)
-    pretrain_utd: Optional[int] = None  # If not none pretrain on random data with utd
-    learning_starts: int = int(25e3)
-    total_timesteps: int = int(1e6)
-    logging_epoch_freq: int = 100
-    eval_every_steps: int = 2500
-    seed: int = 42
-    device: str = "cuda"  # "cpu" or "cuda" etc
-    # cuda: bool = True  # if gpu available put on gpu
-    debug: bool = False
-    # torch_deterministic: bool = True
-
-    # W&B config
-    wandb_project_name: str = ""
-    wandb_group: Optional[str] = None
-    wandb_tags: Optional[List[str]] = None
-    use_wandb: bool = False
-    monitor_gym: bool = True
-
-
-cs = ConfigStore.instance()
-cs.store(name="train_config", node=TrainConfig)
-# cs.store(name="triton_config", group="hydra/launcher", node=TritonConfig)
-cs.store(group="agent", name="ddpg", node=DDPGConfig)
-cs.store(group="agent", name="td3", node=TD3Config)
-cs.store(group="agent", name="ae_ddpg", node=AEDDPGConfig)
-cs.store(group="agent", name="ae_ddpg", node=AEDDPGConfig)
-
-# cs.store(group="encoder", name="ae", node=AEConfig)
-
-# cs.store(group="agent/build_encoder_fn", name="ae", node=AEConfig)
-# cs.store(group="agent/build_actor_critic_fn", name="ddpg", node=DDPGConfig)
-# cs.store(group="build_encoder_fn", name="build_ae_fn", node=BuildAEFnConfig)
-
-
-# cs.store(group="agent", name="base_td3", node=TD3Config)
-# cs.store(group="agent", name="base_vq_ddpg", node=VectorQuantizedDDPGConfig)
-# cs.store(group="agent", name="base_tae_ddpg", node=TAEDDPGConfig)
+from configs.base import TrainConfig
 
 
 @hydra.main(version_base="1.3", config_path="./configs", config_name="train")
@@ -384,6 +22,7 @@ def train(cfg: TrainConfig):
     from hydra.utils import get_original_cwd
     from stable_baselines3.common.buffers import ReplayBuffer
     from stable_baselines3.common.evaluation import evaluate_policy
+    from utils.env import make_env
 
     print(cfg)
 
@@ -419,14 +58,14 @@ def train(cfg: TrainConfig):
     envs = gym.vector.SyncVectorEnv(
         [
             make_env(
-                env_id=cfg.env_id,
+                env_id=cfg.env.env_id,
                 seed=cfg.seed,
                 idx=0,
                 capture_video=cfg.capture_train_video,
                 run_name=cfg.run_name,
                 max_episode_steps=cfg.max_episode_steps,
                 action_repeat=cfg.action_repeat,
-                dmc_task=cfg.dmc_task,
+                dmc_task=cfg.env.dmc_task,
             )
         ]
     )
@@ -447,14 +86,14 @@ def train(cfg: TrainConfig):
     eval_envs = gym.vector.SyncVectorEnv(
         [
             make_env(
-                env_id=cfg.env_id,
+                env_id=cfg.env.env_id,
                 seed=cfg.seed + 100,
                 idx=0,
                 capture_video=cfg.capture_train_video,
                 run_name=cfg.run_name,
                 max_episode_steps=cfg.max_episode_steps,
                 action_repeat=cfg.action_repeat,
-                dmc_task=cfg.dmc_task,
+                dmc_task=cfg.env.dmc_task,
             )
         ]
     )

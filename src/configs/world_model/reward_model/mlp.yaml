@@ -1,4 +1,0 @@
-_target_: src.world_model.MLPRewardModel
-obs_shape: ${obs_shape}
-mlp_dims: [512, 512]
-latent_dim: ${latent_dim}
