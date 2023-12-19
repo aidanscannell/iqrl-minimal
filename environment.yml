@@ -1,44 +1,28 @@
 name: world-models
 channels:
-  # - pytorch-nightly
-  - pytorch
   - nvidia
-  - anaconda
-  - conda-forge
-  - defaults
-dependencies:
-  - python=3.9.0
-  # - pytorch
-  # - torchvision
   - pytorch
-  - torchvision
-  - pytorch-cuda=12.1
-  # - cudatoolkit=11.7
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pytorch=2.0
+  - pytorch-cuda=11.8
+  - wandb=0.15
+  - hydra-core=1.3
+  - hydra-submitit-launcher=1.2
+  - gpytorch=1.11  # Needed for the SVGP transition/reward models
+  - laplace-torch==0.1a2 # For Laplace transition model
+  - imageio  # For VideoRecorder in utils/video.py
+  - moviepy  # For VideoRecorder in utils/video.py
   - pip
   - pip:
-    # - torch
-    # - torchvision
-    - jaxtyping
-    - matplotlib
-    - numpy
-    - stable_baselines3
-    - gymnasium
-    - imageio
-    - umap
-    - vector_quantize_pytorch
-    # dev
-    - black==23.3.0
-    - pre-commit==3.2.2
-    - pyright==1.1.301
-    - isort==5.12.0
-    - pyflakes==3.0.1
-    - pytest==7.2.2
-    # experiments
-    - wandb
-    - hydra-core
-    - hydra-submitit-launcher
-    - jupyter
-    - mujoco==2.3.3
-    - dm_control  # deepmind control suite
-    - urllib3>=1.26.11  # TODO check this works
-    - moviepy
+      - jaxtyping==0.2.23  # Types with shapes for tensors
+      - dm_control==1.0.15  # Handles mujoco installation
+      - jaxtyping
+      # - numpy
+      # - gymnasium
+      # - imageio
+      # - umap
+      - vector_quantize_pytorch
+      # experiments
+      # - moviepy
