@@ -40,6 +40,35 @@ class DDPGConfig(AgentConfig):
     name: str = "DDPG"
 
 
+@dataclass
+class SACConfig(AgentConfig):
+    _target_: str = "agents.SAC"
+    # _partial_: bool = True
+    # observation_space: Space = MISSING
+    # action_space: Box = MISSING
+    mlp_dims: List[int] = field(default_factory=lambda: [256, 256])
+    log_std_min: float = -5.0
+    log_std_max: float = 2.0
+    linear_approx: bool = False
+    alpha: float = 0.2  # entropy regularization coefficient
+    autotune: bool = True  # automatic tuning of the entropy coefficient
+    exploration_noise: float = 0.2
+    policy_noise: float = 0.2
+    noise_clip: float = 0.5
+    q_lr: float = 1e-3
+    policy_lr: float = 3e-4
+    batch_size: int = 32
+    # num_updates: int = 1000  # 1000 is 1 update per new data
+    utd_ratio: int = 1  # parameter update-to-data ratio
+    actor_update_freq: int = 1  # update actor less frequently than critic
+    reset_params_freq: int = 40000  # reset params after this many param updates
+    # nstep: 3
+    gamma: float = 0.99
+    tau: float = 0.005
+    device: str = "cuda"
+    name: str = "SAC"
+
+
 # @dataclass
 # class AEConfig:
 #     _target_: str = "agents.encoders.AE"
