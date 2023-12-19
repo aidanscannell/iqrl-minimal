@@ -3,36 +3,17 @@ Train world model using lower bound on RL objective.
 
 ## Install
 
-### Option 1: using make
-Make a virtual environment and install the dependencies with:
-```sh
-make .venv/bin/activate
-```
-Activate the environment with:
+### AMD GPU
+Install on LUMI with:
 ``` sh
-source .venv/bin/activate
-```
-The [Makefile](Makefile) just runs:
-``` sh
-python -m venv $(VENV)
-python -m pip install --upgrade pip
-pip install laplace-torch==0.1a2
-pip install -e ".[experiments, dev]"
+WORLD_MODELS_CONTAINER_DIR=/scratch/project_462000217/aidan/world-models/container
+mkdir  $WORLD_MODELS_CONTAINER_DIR
+module load LUMI/22.08
+module load lumi-container-wrapper
+conda-containerize new --mamba --prefix $WORLD_MODELS_CONTAINER_DIR environment.yaml
+conda-containerize update $WORLD_MODELS_CONTAINER_DIR --post-install post-install-amd.txt
 ```
 
-### Option 2: pip install
-Alternatively, manually install the dependencies with:
-``` sh
-pip install laplace-torch==0.1a2
-pip install -r requirements.txt
-```
-We install `laplace-torch` separately due to version conflicts with `backpacpk-for-pytorch`.
-
-### Example
-Here's a short example:
-```python
-import src
-```
 
 ## Citation
 ```bibtex
