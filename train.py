@@ -15,13 +15,13 @@ logger = logging.getLogger(__name__)
 import gymnasium as gym
 import hydra
 import omegaconf
-from configs.base import TrainConfig
+from cfgs.base import TrainConfig
 from custom_types import Action, EvalMode, T0
 from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.type_aliases import ReplayBufferSamples
 
 
-@hydra.main(version_base="1.3", config_path="./configs", config_name="train")
+@hydra.main(version_base="1.3", config_path="./cfgs", config_name="train")
 # @hydra.main(version_base=None, config_name="train_config")
 def train(cfg: TrainConfig):
     import numpy as np
