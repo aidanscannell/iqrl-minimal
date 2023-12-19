@@ -52,6 +52,8 @@ class DMCGym(Env):
         rendering="egl",
     ):
         """TODO comment up"""
+        self.height = 512
+        self.width = 512
 
         # for details see https://github.com/deepmind/dm_control
         assert rendering in ["glfw", "egl", "osmesa"]
@@ -118,5 +120,5 @@ class DMCGym(Env):
         info = {}
         return observation, info
 
-    def render(self, height, width, camera_id=0):
-        return self._env.physics.render(height=height, width=width, camera_id=camera_id)
+    def render(self, camera_id=0):
+        return self._env.physics.render(height=self.height, width=self.width, camera_id=camera_id)
