@@ -1,60 +1,40 @@
 #!/usr/bin/env python3
-import abc
 import logging
 import pprint
 import random
 import time
-from dataclasses import dataclass
-from functools import partial
-from typing import Any, Callable, List, Optional
+
+import hydra
+from cfgs.base import TrainConfig
 
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-import gymnasium as gym
-import hydra
-import omegaconf
-from cfgs.base import TrainConfig
-from custom_types import Action, EvalMode, T0
-from stable_baselines3.common.buffers import ReplayBuffer
-from stable_baselines3.common.type_aliases import ReplayBufferSamples
-
 
 @hydra.main(version_base="1.3", config_path="./cfgs", config_name="train")
-# @hydra.main(version_base=None, config_name="train_config")
 def train(cfg: TrainConfig):
+    import gymnasium as gym
     import numpy as np
+    import omegaconf
     import torch
     from hydra.utils import get_original_cwd
     from stable_baselines3.common.buffers import ReplayBuffer
     from stable_baselines3.common.evaluation import evaluate_policy
     from utils.env import make_env
 
-    print(cfg)
+    cfg_dict = omegaconf.OmegaConf.to_container(
+        cfg, resolve=False, throw_on_missing=False
+    )
+    pprint.pprint(cfg_dict)
 
     # Seeding
     random.seed(cfg.seed)
     np.random.seed(cfg.seed)
     torch.manual_seed(cfg.seed)
     torch.backends.cudnn.deterministic = True
-
-    # # random.seed(random_seed)
-    # # np.random.seed(random_seed)
-    # # torch.manual_seed(random_seed)
-    # torch.cuda.manual_seed(cfg.seed)
-    # torch.manual_seed(cfg.seed)
-    # # torch.cuda.manual_seed(cfg.random_seed)
-    # # torch.backends.cudnn.deterministic = True
-    # # torch.backends.cudnn.benchmark = False
-    # np.random.seed(cfg.seed)
-    # random.seed(cfg.seed)
-    # torch.backends.cudnn.determinstic = True
     # torch.backends.cudnn.benchmark = False
 
-    # device = torch.device("cuda" if torch.cuda.is_available() and cfg.device else "cpu")
-    # print(f"cfg.device == gpu {cfg.device == 'gpu'}")
-    # device = torch.device("cuda" if torch.cuda.is_available() and cfg.cuda else "cpu")
     cfg.device = (
         "cuda" if torch.cuda.is_available() and (cfg.device == "cuda") else "cpu"
     )
@@ -65,14 +45,16 @@ def train(cfg: TrainConfig):
     envs = gym.vector.SyncVectorEnv(
         [
             make_env(
-                env_id=cfg.env.env_id,
+                env_id=cfg.env_id,
+                # env_id=cfg.env.env_id,
                 seed=cfg.seed,
                 idx=0,
                 capture_video=cfg.capture_train_video,
                 run_name=cfg.run_name,
                 max_episode_steps=cfg.max_episode_steps,
                 action_repeat=cfg.action_repeat,
-                dmc_task=cfg.env.dmc_task,
+                dmc_task=cfg.dmc_task,
+                # dmc_task=cfg.env.dmc_task,
             )
         ]
     )
@@ -93,14 +75,16 @@ def train(cfg: TrainConfig):
     eval_envs = gym.vector.SyncVectorEnv(
         [
             make_env(
-                env_id=cfg.env.env_id,
+                env_id=cfg.env_id,
+                # env_id=cfg.env.env_id,
                 seed=cfg.seed + 100,
                 idx=0,
-                capture_video=cfg.capture_train_video,
+                capture_video=cfg.capture_eval_video,
                 run_name=cfg.run_name,
                 max_episode_steps=cfg.max_episode_steps,
                 action_repeat=cfg.action_repeat,
-                dmc_task=cfg.env.dmc_task,
+                dmc_task=cfg.dmc_task,
+                # dmc_task=cfg.env.dmc_task,
             )
         ]
     )
