@@ -28,6 +28,8 @@ class Encoder(nn.Module):
         mlp_dims: List[int],
         latent_dim: int = 20,
         act_fn=nn.ELU,
+        normalize: bool = True,
+        simplex_dim: int = 10,
     ):
         super().__init__()
         in_dim = np.array(observation_space.shape).prod()
@@ -36,10 +38,17 @@ class Encoder(nn.Module):
         self._mlp = h.mlp(
             in_dim=in_dim, mlp_dims=mlp_dims, out_dim=latent_dim, act_fn=act_fn
         )
+        self.normalize = normalize
+        self.simplex_dim = simplex_dim
         self.reset(full_reset=True)
 
     def forward(self, x):
         z = self._mlp(x)
+        # breakpoint()
+        if self.normalize:
+            z = h.simnorm(z, V=self.simplex_dim)
+        # print(f"min z {torch.min(z)}")
+        # print(f"max z {torch.max(z)}")
         return z
 
     def reset(self, full_reset: bool = False):
@@ -85,6 +94,8 @@ class AE(nn.Module):
         mlp_dims: List[int],
         latent_dim: int = 20,
         act_fn=nn.ELU,
+        normalize: bool = True,
+        simplex_dim: int = 10,
     ):
         super().__init__()
         self.observation_space = observation_space
@@ -96,6 +107,8 @@ class AE(nn.Module):
             mlp_dims=mlp_dims,
             latent_dim=latent_dim,
             act_fn=act_fn,
+            normalize=normalize,
+            simplex_dim=simplex_dim,
         )
         self.decoder = Decoder(
             observation_space=observation_space,
@@ -146,6 +159,8 @@ class AEDDPG(Agent):
         ae_min_delta: float = 0.0,
         latent_dim: int = 20,
         ae_tau: float = 0.005,
+        ae_normalize: bool = True,
+        simplex_dim: int = 10,
         # encoder_reset_params_freq: int = 10000,  # reset enc params after X param updates
         device: str = "cuda",
         name: str = "AEDDPG",
@@ -168,30 +183,42 @@ class AEDDPG(Agent):
             mlp_dims=mlp_dims,
             latent_dim=latent_dim,
             act_fn=act_fn,
+            normalize=ae_normalize,
+            simplex_dim=simplex_dim,
         ).to(device)
         self.ae_target = AE(
             observation_space=observation_space,
             mlp_dims=mlp_dims,
             latent_dim=latent_dim,
             act_fn=act_fn,
+            normalize=ae_normalize,
+            simplex_dim=simplex_dim,
         ).to(device)
         self.ae_opt = torch.optim.AdamW(self.ae.parameters(), lr=ae_learning_rate)
         self.ae_target.load_state_dict(self.ae.state_dict())
 
         self.ae_patience = ae_patience
         self.ae_min_delta = ae_min_delta
+        self.ae_early_stopper = h.EarlyStopper(
+            patience=ae_patience, min_delta=ae_min_delta
+        )
 
         # TODO make a space for latent states
         # latent_observation_space = observation_space
         # high = np.array(levels).prod()
         # TODO is this the right way to make observation space??
         # TODO Should we bound z in -100,100 instead of -inf,inf??
-        self.latent_observation_space = gym.spaces.Box(
-            low=-np.inf,
-            high=np.inf,
-            shape=(latent_dim,)
-            # low=0.0, high=high, shape=(latent_dim,)
-        )
+        if ae_normalize:
+            self.latent_observation_space = gym.spaces.Box(
+                low=0, high=1, shape=(latent_dim,)
+            )
+        else:
+            self.latent_observation_space = gym.spaces.Box(
+                low=-np.inf,
+                high=np.inf,
+                shape=(latent_dim,)
+                # low=0.0, high=high, shape=(latent_dim,)
+            )
         print(f"latent_observation_space {self.latent_observation_space}")
         # Init ddpg agent
         self.ddpg = agents.DDPG(
