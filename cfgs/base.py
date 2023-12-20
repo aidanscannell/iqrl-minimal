@@ -112,7 +112,13 @@ class SACConfig(AgentConfig):
 @dataclass
 class AEDDPGConfig(DDPGConfig):
     _target_: str = "agents.AEDDPG"
+    # Reset stuff
+    reset_strategy: str = "latent_dist"  #  "latent_dist" or "every-x-param-updates"
+    reset_params_freq: int = 100000  # reset params after this many param updates
+    reset_threshold: float = 0.01  # reset latent (z) when changed by more than this
+    memory_size: int = 10000  # mem size for calculating ||z_{mem} - e_{\phi}(x_mem)||
     # AE config
+    train_strategy: str = "interleaved"  # "interleaved" or "representation-first"
     ae_learning_rate: float = 3e-4
     ae_batch_size: int = 512
     # ae_batch_size: int = 128
@@ -131,6 +137,11 @@ class AEDDPGConfig(DDPGConfig):
 @dataclass
 class VQDDPGConfig(DDPGConfig):
     _target_: str = "agents.VQDDPG"
+    # Reset stuff
+    reset_strategy: str = "latent_dist"  #  "latent_dist" or "every_x_param_updates"
+    reset_params_freq: int = 100000  # reset params after this many param updates
+    reset_threshold: float = 0.01
+    memory_size: int = 10000
     # AE config
     ae_learning_rate: float = 3e-5
     ae_batch_size: int = 128
@@ -236,16 +247,16 @@ class MPPIDDPGConfig(DDPGConfig):
 #     gres: str = "gpu:1"
 
 
-@dataclass
-class EnvConfig:
-    env_id: str
-    dmc_task: Optional[str] = None
+# @dataclass
+# class EnvConfig:
+#     env_id: str
+#     dmc_task: Optional[str] = None
 
 
-@dataclass
-class CartpoleSwingupEnvConfig(EnvConfig):
-    env_id: str = "cartpole"
-    dmc_task: Optional[str] = "swingup"
+# @dataclass
+# class CartpoleSwingupEnvConfig(EnvConfig):
+#     env_id: str = "cartpole"
+#     dmc_task: Optional[str] = "swingup"
 
 
 @dataclass
@@ -253,7 +264,7 @@ class TrainConfig:
     defaults: List[Any] = field(
         default_factory=lambda: [
             {"agent": "ddpg"},
-            {"env": "cartpole_swingup"},
+            # {"env": "cartpole_swingup"},
             # {
             #     "override hydra/launcher": "triton_config",  # Use slurm (on cluster) for multirun
             # "override hydra/launcher": "slurm",  # Use slurm (on cluster) for multirun
@@ -269,6 +280,8 @@ class TrainConfig:
     # env: EnvConfig = field(default_factory=CartpoleSwingupEnvConfig)
 
     # Env config
+    env_id: str = "cartpole"
+    dmc_task: Optional[str] = None
     max_episode_steps: int = 1000
     # frame_skip: int = 1
     capture_train_video: bool = False
@@ -305,8 +318,8 @@ cs.store(group="agent", name="td3", node=TD3Config)
 cs.store(group="agent", name="ae_ddpg", node=AEDDPGConfig)
 cs.store(group="agent", name="vq_ddpg", node=VQDDPGConfig)
 
-cs.store(group="env", name="env_config", node=EnvConfig)
-cs.store(group="env", name="cartpole_swingup", node=CartpoleSwingupEnvConfig)
+# cs.store(group="env", name="env_config", node=EnvConfig)
+# cs.store(group="env", name="cartpole_swingup", node=CartpoleSwingupEnvConfig)
 
 # cs.store(group="encoder", name="ae", node=AEConfig)
 

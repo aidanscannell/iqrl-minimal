@@ -146,11 +146,16 @@ class AEDDPG(Agent):
         batch_size: int = 128,
         utd_ratio: int = 1,  # DDPG parameter update-to-data ratio
         actor_update_freq: int = 1,  # update actor less frequently than critic
-        reset_params_freq: int = 100000,  # reset params after this many param updates
         # nstep: int = 3,
         gamma: float = 0.99,
         tau: float = 0.005,
+        # Reset stuff
+        reset_strategy: str = "latent_dist",  #  "latent_dist" or "every-x-param-updates"
+        reset_params_freq: int = 100000,  # reset params after this many param updates
+        reset_threshold: float = 0.01,
+        memory_size: int = 10000,
         # AE config
+        train_strategy: str = "interleaved",  # "interleaved" or "representation-first"
         ae_learning_rate: float = 3e-4,
         ae_batch_size: int = 128,
         # ae_num_updates: int = 1000,
@@ -168,12 +173,21 @@ class AEDDPG(Agent):
         # super().__init__(
         #     observation_space=observation_space, action_space=action_space, name=name
         # )
+        if (
+            train_strategy == "representation-first"
+            and reset_strategy == "every-x-param-updates"
+        ):
+            raise NotImplementedError
+
+        self.train_strategy = train_strategy
+
         self.ae_learning_rate = ae_learning_rate
         self.ae_batch_size = ae_batch_size
-        self.ae_utd_ratio = ae_utd_ratio
         # self.ae_num_updates = ae_num_updates
+        self.ae_utd_ratio = ae_utd_ratio
+        self.ae_patience = ae_patience
+        self.ae_min_delta = ae_min_delta
         self.latent_dim = latent_dim
-
         self.ae_tau = ae_tau
 
         self.device = device
@@ -197,8 +211,6 @@ class AEDDPG(Agent):
         self.ae_opt = torch.optim.AdamW(self.ae.parameters(), lr=ae_learning_rate)
         self.ae_target.load_state_dict(self.ae.state_dict())
 
-        self.ae_patience = ae_patience
-        self.ae_min_delta = ae_min_delta
         self.ae_early_stopper = h.EarlyStopper(
             patience=ae_patience, min_delta=ae_min_delta
         )
@@ -220,7 +232,7 @@ class AEDDPG(Agent):
                 # low=0.0, high=high, shape=(latent_dim,)
             )
         print(f"latent_observation_space {self.latent_observation_space}")
-        # Init ddpg agent
+        # Init DDPG agent
         self.ddpg = agents.DDPG(
             observation_space=self.latent_observation_space,
             action_space=action_space,
@@ -244,22 +256,61 @@ class AEDDPG(Agent):
         # self.use_memory_flag = False
 
         self.encoder_update_conter = 0
+
+        self.reset_strategy = reset_strategy
         # self.encoder_reset_params_freq = encoder_reset_params_freq
         self.reset_params_freq = reset_params_freq
+        self.reset_threshold = reset_threshold
+        self.memory_size = memory_size
+
+        self.old_replay_buffer = None
 
     def update(self, replay_buffer: ReplayBuffer, num_new_transitions: int) -> dict:
-        method = "same"
-        if method == "same":
-            return self.update_1(
+        self.ae.train()
+        # self.ddpg.train()
+
+        if self.reset_strategy == "latent_dist":
+            update_memory = False
+            if self.old_replay_buffer is None:
+                logger.info("Building memory first time...")
+                update_memory = True
+                # self._update_memory(
+                #     replay_buffer=replay_buffer, memory_size=self.memory_size
+                # )
+            elif self.trigger_reset():
+                self.reset(full_reset=False)
+                update_memory = True
+                # Do more updates if reset
+                # TODO how many updates should be done when reset?
+                num_new_transitions = replay_buffer.size()
+
+        if self.train_strategy == "interleaved":
+            info = self.update_1(
+                replay_buffer=replay_buffer, num_new_transitions=num_new_transitions
+            )
+        elif self.train_strategy == "representation-first":
+            info = self.update_2(
                 replay_buffer=replay_buffer, num_new_transitions=num_new_transitions
             )
         else:
-            return self.update_2(
-                replay_buffer=replay_buffer, num_new_transitions=num_new_transitions
+            raise NotImplementedError(
+                "train_strategy should be either 'interleaved' or 'representation-first'"
             )
+
+        if self.reset_strategy == "latent_dist":
+            if update_memory:
+                logger.info("Updating memory...")
+                self._update_memory(
+                    replay_buffer=replay_buffer, memory_size=self.memory_size
+                )
+
+        self.ae.eval()
+        # self.ddpg.eval()
+        return info
 
     def update_1(self, replay_buffer: ReplayBuffer, num_new_transitions: int) -> dict:
         """Update representation and DDPG at same time"""
+        # TODO which utd to use here? Make clear to user
         num_updates = num_new_transitions * self.ddpg.utd_ratio
         info = {}
 
@@ -273,7 +324,7 @@ class AEDDPG(Agent):
             latent_next_obs = self.ae_target.encoder(batch.next_observations)
             # batch.observation = latent_obs.to(torch.float).detach()
             # batch.next_observation = latent_next_obs.to(torch.float).detach()
-            batch = ReplayBufferSamples(
+            latent_batch = ReplayBufferSamples(
                 observations=latent_obs.to(torch.float).detach(),
                 actions=batch.actions,
                 next_observations=latent_next_obs.to(torch.float).detach(),
@@ -282,11 +333,12 @@ class AEDDPG(Agent):
             )
 
             # DDPG on latent representation
-            info.update(self.ddpg.update_step(batch=batch))
+            info.update(self.ddpg.update_step(batch=latent_batch))
 
             # Reset ae/actor/critic after a fixed number of parameter updates
-            if self.ddpg.critic_update_counter % self.ddpg.reset_params_freq == 0:
-                self.reset(full_reset=False)
+            if self.reset_strategy == "every-x-param-updates":
+                if self.ddpg.critic_update_counter % self.ddpg.reset_params_freq == 0:
+                    self.reset(full_reset=False)
 
             if i % 100 == 0:
                 logger.info(f"Iteration {i} rec_loss {info['rec_loss']}")
@@ -299,12 +351,14 @@ class AEDDPG(Agent):
 
     def update_2(self, replay_buffer: ReplayBuffer, num_new_transitions: int) -> dict:
         """Update representation and then do DDPG"""
-        num_updates = num_new_transitions * self.ddpg.utd_ratio
-        # num_updates = num_new_transitions * self.utd_ratio
-        info = {}
+        if self.ae_early_stopper is not None:
+            self.ae_early_stopper.reset()
 
+        num_ae_updates = num_new_transitions * self.ae_utd_ratio
+
+        info = {}
         logger.info("Training AE...")
-        for i in range(num_updates):
+        for i in range(num_ae_updates):
             batch = replay_buffer.sample(self.ae_batch_size)
             info.update(self.update_representation_step(batch=batch))
 
@@ -312,8 +366,15 @@ class AEDDPG(Agent):
                 logger.info(f"Iteration {i} rec_loss {info['rec_loss']}")
                 if wandb.run is not None:
                     wandb.log(info)
+
+            if self.ae_early_stopper is not None:
+                if self.ae_early_stopper(info["rec_loss"]):
+                    logger.info("Early stopping criteria met, stopping AE training...")
+                    break
+
         logger.info("Finished training AE")
 
+        num_updates = num_new_transitions * self.ddpg.utd_ratio
         logger.info(f"Performing {num_updates} DDPG updates...")
         for i in range(num_updates):
             batch = replay_buffer.sample(self.ddpg.batch_size)
@@ -323,7 +384,7 @@ class AEDDPG(Agent):
             latent_next_obs = self.ae_target.encoder(batch.next_observations)
             # batch.observation = latent_obs.to(torch.float).detach()
             # batch.next_observation = latent_next_obs.to(torch.float).detach()
-            batch = ReplayBufferSamples(
+            latent_batch = ReplayBufferSamples(
                 observations=latent_obs.to(torch.float).detach(),
                 actions=batch.actions,
                 next_observations=latent_next_obs.to(torch.float).detach(),
@@ -332,11 +393,12 @@ class AEDDPG(Agent):
             )
 
             # DDPG on latent representation
-            info.update(self.ddpg.update_step(batch=batch))
+            info.update(self.ddpg.update_step(batch=latent_batch))
 
             # Reset actor/critic after a fixed number of parameter updates
-            if self.critic_update_counter % self.reset_params_freq == 0:
-                self.reset(full_reset=False)
+            # TODO implement custom reset criterion
+            # if self.ddpg.critic_update_counter % self.ddpg.reset_params_freq == 0:
+            #     self.reset(full_reset=False)
 
             if i % 100 == 0:
                 if wandb.run is not None:
@@ -432,6 +494,44 @@ class AEDDPG(Agent):
     #         #     break
 
     #     return info
+
+    def _update_memory(self, replay_buffer: ReplayBuffer, memory_size: int = 10000):
+        # self.use_memory = True
+        # if self.use_memory:
+        #     self.use_memory_flag = True
+        # memory_size = replay_buffer.size()
+
+        self.old_replay_buffer = replay_buffer
+
+        self.old_ae = AE(
+            observation_space=self.ae.observation_space,
+            mlp_dims=self.ae.mlp_dims,
+            latent_dim=self.ae.latent_dim,
+            act_fn=self.ae.act_fn,
+        ).to(self.device)
+        self.old_ae.load_state_dict(self.ae.state_dict())
+
+        # memory = replay_buffer.sample(memory_size)
+        # print(f"memory {memory}")
+        # self.x_mem = torch.concat([memory.observations, memory.next_observations], 0)
+        memory_batch = self.old_replay_buffer.sample(memory_size)
+        self.x_mem = memory_batch.observations
+        print(f"self.x_mem {self.x_mem.shape}")
+        with torch.no_grad():
+            self.z_mem = self.old_ae.encoder(self.x_mem)
+        print(f"self.z_mem {self.z_mem.shape}")
+
+    def trigger_reset(self) -> bool:
+        z_mem_pred = self.ae.encoder(self.x_mem)
+        mem_dist = (self.z_mem - z_mem_pred).abs().mean()
+        logger.info(f"mem_dist {mem_dist}")
+        if wandb.run is not None:
+            wandb.log({"mem_dist": mem_dist})
+        if mem_dist > self.reset_threshold:
+            reset = True
+        else:
+            reset = False
+        return reset
 
     @torch.no_grad()
     def select_action(self, observation, eval_mode: EvalMode = False, t0: T0 = None):
