@@ -114,13 +114,16 @@ class AEDDPGConfig(DDPGConfig):
     _target_: str = "agents.AEDDPG"
     # AE config
     ae_learning_rate: float = 3e-4
-    ae_batch_size: int = 128
+    ae_batch_size: int = 512
+    # ae_batch_size: int = 128
     # ae_num_updates: int = 1000
     ae_utd_ratio: int = 1  # encoder parameter update-to-data ratio
     ae_patience: int = 100
     ae_min_delta: float = 0.0
     latent_dim: int = 20
     ae_tau: float = 0.005
+    ae_normalize: bool = True
+    simplex_dim: int = 10
     # encoder_reset_params_freq: int = 10000  # reset enc params after X param updates
     name: str = "AEDDPG"
 
