@@ -10,6 +10,19 @@ from torch import distributions as pyd
 from torch.distributions.utils import _standard_normal
 
 
+def simnorm(z, V=8):
+    shape = z.shape
+    # print(f"shape {shape}")
+    # print(f"first z {z.shape}")
+    z = z.view(*shape[:-1], -1, V)
+    # print(f"z after first view {z.shape}")
+    z = torch.softmax(z, dim=-1)
+    # print(f"z after softmax {z.shape}")
+    z = z.view(*shape)
+    # print(f"z after view {z.shape}")
+    return z
+
+
 class EarlyStopper:
     def __init__(self, patience: int = 1, min_delta: float = 0.0):
         self.patience = patience
