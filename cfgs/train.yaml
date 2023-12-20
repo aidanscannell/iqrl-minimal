@@ -37,7 +37,7 @@ wandb_group: ${env_id}
 wandb_tags:
   - ${env_id}
 monitor_gym: True
-run_name: ${env_id}__${agent.name}__utd=${agent.utd_ratio}__${}__${seed}-${now:%Y-%m-%d_%H-%M-%S}
+run_name: ${env_id}__${agent.name}__utd=${agent.utd_ratio}__${seed}-${now:%Y-%m-%d_%H-%M-%S}
   # cfg.run_name = f"{cfg.env_id}__{cfg.exp_name}__{cfg.seed}__{int(time.time())}"  # TODO move to cfg
 
 hydra:
