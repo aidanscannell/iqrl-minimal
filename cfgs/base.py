@@ -119,6 +119,7 @@ class AEDDPGConfig(DDPGConfig):
     memory_size: int = 10000  # mem size for calculating ||z_{mem} - e_{\phi}(x_mem)||
     # AE config
     train_strategy: str = "interleaved"  # "interleaved" or "representation-first"
+    temporal_consistency: bool = False  # if True include dynamic model in encoder
     ae_learning_rate: float = 3e-4
     ae_batch_size: int = 512
     # ae_batch_size: int = 128

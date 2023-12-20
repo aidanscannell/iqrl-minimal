@@ -87,6 +87,30 @@ class Decoder(nn.Module):
             h.orthogonal_init(params[-2:])
 
 
+class MLPDynamics(nn.Module):
+    def __init__(
+        self,
+        action_space: Space,
+        mlp_dims: List[int],
+        latent_dim: int = 20,
+        act_fn=nn.ELU,
+    ):
+        super().__init__()
+        self.latent_dim = latent_dim
+        in_dim = np.array(action_space.shape).prod() + latent_dim
+        # TODO data should be normalized???
+        self._mlp = h.mlp(
+            in_dim=in_dim, mlp_dims=mlp_dims, out_dim=latent_dim + 1, act_fn=act_fn
+        )
+        self.apply(h.orthogonal_init)
+
+    def forward(self, x, a):
+        x = torch.cat([x, a], 1)
+        z = self._mlp(x)
+        r = z[..., -1:]
+        return z[..., :-1], r
+
+
 class AE(nn.Module):
     def __init__(
         self,
@@ -156,6 +180,7 @@ class AEDDPG(Agent):
         memory_size: int = 10000,
         # AE config
         train_strategy: str = "interleaved",  # "interleaved" or "representation-first"
+        temporal_consistency: bool = False,  # if True include dynamic model for representation learning
         ae_learning_rate: float = 3e-4,
         ae_batch_size: int = 128,
         # ae_num_updates: int = 1000,
@@ -181,6 +206,7 @@ class AEDDPG(Agent):
 
         self.train_strategy = train_strategy
 
+        self.temporal_consistency = temporal_consistency
         self.ae_learning_rate = ae_learning_rate
         self.ae_batch_size = ae_batch_size
         # self.ae_num_updates = ae_num_updates
@@ -192,6 +218,13 @@ class AEDDPG(Agent):
 
         self.device = device
 
+        if temporal_consistency:
+            self.dynamics = MLPDynamics(
+                action_space=action_space,
+                mlp_dims=mlp_dims,
+                latent_dim=latent_dim,
+                act_fn=act_fn,
+            ).to(device)
         self.ae = AE(
             observation_space=observation_space,
             mlp_dims=mlp_dims,
@@ -208,7 +241,10 @@ class AEDDPG(Agent):
             normalize=ae_normalize,
             simplex_dim=simplex_dim,
         ).to(device)
-        self.ae_opt = torch.optim.AdamW(self.ae.parameters(), lr=ae_learning_rate)
+        encoder_params = list(self.ae.parameters())
+        if temporal_consistency:
+            encoder_params += list(self.dynamics.parameters())
+        self.ae_opt = torch.optim.AdamW(encoder_params, lr=ae_learning_rate)
         self.ae_target.load_state_dict(self.ae.state_dict())
 
         self.ae_early_stopper = h.EarlyStopper(
@@ -424,8 +460,31 @@ class AEDDPG(Agent):
 
         x_rec, z = self.ae(x_train)
         rec_loss = (x_rec - x_train).abs().mean()
-
         loss = rec_loss
+        info = {
+            "rec_loss": rec_loss.item(),
+            "loss": loss.item(),
+        }
+
+        if self.temporal_consistency:
+            # TODO multistep temporal consistency
+            z_next_dynamics, reward_dynamics = self.dynamics(x=z, a=batch.actions)
+            with torch.no_grad():
+                _, z_next_enc_target = self.ae_target(batch.next_observations)
+            temporal_consitency_loss = torch.nn.functional.mse_loss(
+                input=z_next_enc_target, target=z_next_dynamics, reduction="mean"
+            )
+            # reward_loss = torch.nn.functional.mse_loss(
+            #     input=batch.rewards, target=reward_dynamics, reduction="mean"
+            # )
+            loss += temporal_consitency_loss
+            info.update(
+                {
+                    "loss": loss.item(),
+                    "temporal_consitency_loss": temporal_consitency_loss.item(),
+                }
+            )
+
         self.ae_opt.zero_grad()
         loss.backward()
         self.ae_opt.step()
@@ -433,10 +492,6 @@ class AEDDPG(Agent):
         # Update the target network
         soft_update_params(self.ae, self.ae_target, tau=self.ae_tau)
 
-        info = {
-            "rec_loss": rec_loss.item(),
-            "loss": loss.item(),
-        }
         return info
 
     # def update_representation(
