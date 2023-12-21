@@ -39,7 +39,7 @@ wandb_group: ${env_id}
 wandb_tags:
   - ${env_id}
 monitor_gym: True
-run_name: ${agent.name}_${agent.reset_strategy}_${agent.train_strategy}_norm-${agent.ae_normalize}_temp-${agent.temporal_consistency}_utd=${agent.utd_ratio}__${seed}-${now:%Y-%m-%d_%H-%M-%S}
+run_name: ${agent.name}__${seed}-${now:%Y-%m-%d_%H-%M-%S}
 # run_name: ${env_id}__${agent.name}__utd=${agent.utd_ratio}__${seed}-${now:%Y-%m-%d_%H-%M-%S}
   # cfg.run_name = f"{cfg.env_id}__{cfg.exp_name}__{cfg.seed}__{int(time.time())}"  # TODO move to cfg
 
