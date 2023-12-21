@@ -1,0 +1,34 @@
+_target_: "agents.AEDDPG"
+# DDPG stuff
+mlp_dims: [256, 256]
+exploration_noise: 1.0
+policy_noise: 0.2
+noise_clip: 0.3
+learning_rate: 3e-4
+batch_size: 256
+# num_updates: int = 1000  # 1000 is 1 update per new data
+utd_ratio: 1  # parameter update-to-data ratio
+actor_update_freq: 2  # update actor less frequently than critic
+# nstep: 3
+discount: 0.99
+tau: 0.005
+device: ${device}
+# Reset stuff
+reset_strategy: "latent_dist"  #  "latent_dist" or "every-x-param-updates"
+reset_params_freq: 100000  # reset params after this many param updates
+reset_threshold: 0.01  # reset latent (z) when changed by more than this
+memory_size: 10000  # mem size for calculating ||z_{mem} - e_{\phi}(x_mem)||
+# AE config
+train_strategy: "interleaved"  # "interleaved" or "representation-first"
+temporal_consistency: False  # if True include dynamic model in encoder
+ae_learning_rate: 3e-4
+ae_batch_size: 256
+ae_utd_ratio: 1  # encoder parameter update-to-data ratio
+ae_patience: 100
+ae_min_delta: 0.0
+latent_dim: 50
+ae_tau: 0.005
+ae_normalize: True
+simplex_dim: 10
+# encoder_reset_params_freq: int = 10000  # reset enc params after X param updates
+name: "AEDDPG"
