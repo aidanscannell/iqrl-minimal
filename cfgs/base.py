@@ -315,9 +315,9 @@ class TrainConfig:
 cs = ConfigStore.instance()
 cs.store(name="train_config", node=TrainConfig)
 # cs.store(name="triton_config", group="hydra/launcher", node=TritonConfig)
-cs.store(group="agent", name="ddpg", node=DDPGConfig)
+# cs.store(group="agent", name="ddpg", node=DDPGConfig)
 cs.store(group="agent", name="td3", node=TD3Config)
-cs.store(group="agent", name="ae_ddpg", node=AEDDPGConfig)
+# cs.store(group="agent", name="ae_ddpg", node=AEDDPGConfig)
 cs.store(group="agent", name="vq_ddpg", node=VQDDPGConfig)
 
 # cs.store(group="env", name="env_config", node=EnvConfig)
