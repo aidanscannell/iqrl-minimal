@@ -244,7 +244,7 @@ class DDPG(Agent):
             )
             next_q_value = data.rewards.flatten() + (
                 1 - data.dones.flatten()
-            ) * self.gamma * (critic_next_target).view(-1)
+            ) * self.discount * (critic_next_target).view(-1)
 
         critic_a_values = self.critic(data.observations, data.actions).view(-1)
         critic_loss = F.mse_loss(critic_a_values, next_q_value)
