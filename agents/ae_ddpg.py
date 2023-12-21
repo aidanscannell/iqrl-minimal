@@ -171,7 +171,7 @@ class AEDDPG(Agent):
         utd_ratio: int = 1,  # DDPG parameter update-to-data ratio
         actor_update_freq: int = 1,  # update actor less frequently than critic
         # nstep: int = 3,
-        gamma: float = 0.99,
+        discount: float = 0.99,
         tau: float = 0.005,
         # Reset stuff
         reset_strategy: str = "latent_dist",  #  "latent_dist" or "every-x-param-updates"
@@ -282,7 +282,7 @@ class AEDDPG(Agent):
             utd_ratio=utd_ratio,
             actor_update_freq=actor_update_freq,
             reset_params_freq=reset_params_freq,
-            gamma=gamma,
+            discount=discount,
             tau=tau,
             device=device,
             name=name,

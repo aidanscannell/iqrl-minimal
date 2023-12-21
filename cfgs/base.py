@@ -34,7 +34,7 @@ class DDPGConfig(AgentConfig):
     actor_update_freq: int = 1  # update actor less frequently than critic
     reset_params_freq: int = 40000  # reset params after this many param updates
     # nstep: 3
-    gamma: float = 0.99
+    discount: float = 0.99
     tau: float = 0.005
     device: str = "cuda"
     name: str = "DDPG"
@@ -63,7 +63,7 @@ class SACConfig(AgentConfig):
     actor_update_freq: int = 1  # update actor less frequently than critic
     reset_params_freq: int = 40000  # reset params after this many param updates
     # nstep: 3
-    gamma: float = 0.99
+    discount: float = 0.99
     tau: float = 0.005
     device: str = "cuda"
     name: str = "SAC"
@@ -169,7 +169,7 @@ class TD3Config(AgentConfig):
     num_updates: int = 1000  # 1000 is 1 update per new data
     actor_update_freq: int = 2
     # nstep: 3
-    gamma: float = 0.99
+    discount: float = 0.99
     tau: float = 0.005
     device: str = "gpu"
     name: str = "TD3"

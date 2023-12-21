@@ -126,7 +126,7 @@ class DDPG(Agent):
         actor_update_freq: int = 1,  # update actor less frequently than critic
         reset_params_freq: int = 100000,  # reset params after this many param updates
         # nstep: int = 3,
-        gamma: float = 0.99,
+        discount: float = 0.99,
         tau: float = 0.005,
         device: str = "cuda",
         name: str = "DDPG",
@@ -145,7 +145,7 @@ class DDPG(Agent):
         self.actor_update_freq = actor_update_freq  # Should be 1 for true DDPG
         self.reset_params_freq = reset_params_freq
         # self.nstep = nstep
-        self.gamma = gamma
+        self.discount = discount
         self.tau = tau
         self.device = device
 
