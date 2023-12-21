@@ -24,14 +24,15 @@ class DDPGConfig(AgentConfig):
     # observation_space: Space = MISSING
     # action_space: Box = MISSING
     mlp_dims: List[int] = field(default_factory=lambda: [256, 256])
-    exploration_noise: float = 0.2
+    exploration_noise: float = 1.0
+    # exploration_noise: float = 0.2
     policy_noise: float = 0.2
-    noise_clip: float = 0.5
+    noise_clip: float = 0.3
     learning_rate: float = 3e-4
-    batch_size: int = 512
+    batch_size: int = 256
     # num_updates: int = 1000  # 1000 is 1 update per new data
     utd_ratio: int = 1  # parameter update-to-data ratio
-    actor_update_freq: int = 1  # update actor less frequently than critic
+    actor_update_freq: int = 2  # update actor less frequently than critic
     reset_params_freq: int = 40000  # reset params after this many param updates
     # nstep: 3
     discount: float = 0.99
@@ -121,13 +122,13 @@ class AEDDPGConfig(DDPGConfig):
     train_strategy: str = "interleaved"  # "interleaved" or "representation-first"
     temporal_consistency: bool = False  # if True include dynamic model in encoder
     ae_learning_rate: float = 3e-4
-    ae_batch_size: int = 512
+    ae_batch_size: int = 256
     # ae_batch_size: int = 128
     # ae_num_updates: int = 1000
     ae_utd_ratio: int = 1  # encoder parameter update-to-data ratio
     ae_patience: int = 100
     ae_min_delta: float = 0.0
-    latent_dim: int = 20
+    latent_dim: int = 50
     ae_tau: float = 0.005
     ae_normalize: bool = True
     simplex_dim: int = 10
