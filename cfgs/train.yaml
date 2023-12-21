@@ -1,5 +1,6 @@
 defaults:
-  - train_config
+  # - train_config
+  - agent: ae_ddpg # mppi or ddpg
   # - agent: td3 # mppi or ddpg
   # - override hydra/launcher: slurm # Use slurm (on cluster) for multirun
   - override hydra/launcher: lumi # Use slurm (on cluster) for multirun
@@ -18,6 +19,7 @@ action_repeat: 2
 # Experiment config
 # exp_name: "base"
 buffer_size: 1000000
+pretrain_utd: null # If not none pretrain on random data with utd
 # learning_starts: 25000
 learning_starts: 10000
 total_timesteps: 1000000
@@ -37,7 +39,8 @@ wandb_group: ${env_id}
 wandb_tags:
   - ${env_id}
 monitor_gym: True
-run_name: ${env_id}__${agent.name}__utd=${agent.utd_ratio}__${seed}-${now:%Y-%m-%d_%H-%M-%S}
+run_name: ${agent.name}_${agent.reset_strategy}_${agent.train_strategy}_norm-${agent.ae_normalize}_temp-${agent.temporal_consistency}_utd=${agent.utd_ratio}__${seed}-${now:%Y-%m-%d_%H-%M-%S}
+# run_name: ${env_id}__${agent.name}__utd=${agent.utd_ratio}__${seed}-${now:%Y-%m-%d_%H-%M-%S}
   # cfg.run_name = f"{cfg.env_id}__{cfg.exp_name}__{cfg.seed}__{int(time.time())}"  # TODO move to cfg
 
 hydra:
