@@ -1,4 +1,6 @@
 # train_episode: 500
+# std_schedule: linear(1.0, 0.1, 50)
 agent:
   latent_dim: 50
-# std_schedule: linear(1.0, 0.1, 50)
+  # Reset stuff
+  reset_params_freq: 100000  # reset params after this many param updates
