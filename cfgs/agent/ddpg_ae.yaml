@@ -1,4 +1,4 @@
-_target_: "agents.AEDDPG"
+_target_: "agents.DDPG_AE"
 # DDPG stuff
 mlp_dims: [256, 256]
 exploration_noise: 1.0
@@ -14,7 +14,7 @@ discount: 0.99
 tau: 0.005
 device: ${device}
 # Reset stuff
-reset_strategy: "latent_dist"  #  "latent_dist" or "every-x-param-updates"
+reset_strategy: "latent-dist"  #  "latent-dist" or "every-x-param-updates"
 reset_params_freq: 100000  # reset params after this many param updates
 reset_threshold: 0.01  # reset latent (z) when changed by more than this
 memory_size: 10000  # mem size for calculating ||z_{mem} - e_{\phi}(x_mem)||
