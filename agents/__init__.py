@@ -5,4 +5,4 @@
 # from .actors import Actor, MLPActor
 # from .agents import Agent, ActorCritic, LatentActorCritic, AEDDPG, DDPG, VQDDPG
 from .ddpg import DDPG
-from .ae_ddpg import AEDDPG
+from .ddpg_ae import DDPG_AE
