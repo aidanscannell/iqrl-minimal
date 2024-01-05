@@ -37,7 +37,7 @@ use_wandb: True
 # use_wandb: False
 wandb_group: ${env_id}
 wandb_tags:
-  - ${env_id}
+  - ${env_id}-${dmc_task}
 monitor_gym: True
 run_name: ${agent.name}__${seed}-${now:%Y-%m-%d_%H-%M-%S}
 # run_name: ${env_id}__${agent.name}__utd=${agent.utd_ratio}__${seed}-${now:%Y-%m-%d_%H-%M-%S}
