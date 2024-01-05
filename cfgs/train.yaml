@@ -35,7 +35,7 @@ debug: False
 wandb_project_name: "world_models"
 use_wandb: True
 # use_wandb: False
-wandb_group: ${env_id}
+wandb_group: ${env_id}-${dmc_task}
 wandb_tags:
   - ${env_id}-${dmc_task}
 monitor_gym: True
