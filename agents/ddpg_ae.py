@@ -155,7 +155,7 @@ class AE(nn.Module):
         self.decoder.reset(full_reset=full_reset)
 
 
-class AEDDPG(Agent):
+class DDPG_AE(Agent):
     def __init__(
         self,
         # DDPG config
@@ -174,7 +174,7 @@ class AEDDPG(Agent):
         discount: float = 0.99,
         tau: float = 0.005,
         # Reset stuff
-        reset_strategy: str = "latent_dist",  #  "latent_dist" or "every-x-param-updates"
+        reset_strategy: str = "latent-dist",  #  "latent-dist" or "every-x-param-updates"
         reset_params_freq: int = 100000,  # reset params after this many param updates
         reset_threshold: float = 0.01,
         memory_size: int = 10000,
@@ -193,7 +193,7 @@ class AEDDPG(Agent):
         simplex_dim: int = 10,
         # encoder_reset_params_freq: int = 10000,  # reset enc params after X param updates
         device: str = "cuda",
-        name: str = "AEDDPG",
+        name: str = "DDPG-AE",
     ):
         # super().__init__(
         #     observation_space=observation_space, action_space=action_space, name=name
@@ -305,7 +305,7 @@ class AEDDPG(Agent):
         self.ae.train()
         # self.ddpg.train()
 
-        if self.reset_strategy == "latent_dist":
+        if self.reset_strategy == "latent-dist":
             update_memory = False
             if self.old_replay_buffer is None:
                 logger.info("Building memory first time...")
@@ -333,7 +333,7 @@ class AEDDPG(Agent):
                 "train_strategy should be either 'interleaved' or 'representation-first'"
             )
 
-        if self.reset_strategy == "latent_dist":
+        if self.reset_strategy == "latent-dist":
             if update_memory:
                 logger.info("Updating memory...")
                 self._update_memory(
@@ -350,7 +350,7 @@ class AEDDPG(Agent):
         num_updates = num_new_transitions * self.ddpg.utd_ratio
         info = {}
 
-        logger.info(f"Performing {num_updates} AEDDPG updates...")
+        logger.info(f"Performing {num_updates} DDPG-AE updates...")
         for i in range(num_updates):
             batch = replay_buffer.sample(self.ddpg.batch_size)
             info.update(self.update_representation_step(batch=batch))
@@ -381,7 +381,7 @@ class AEDDPG(Agent):
                 if wandb.run is not None:
                     wandb.log(info)
 
-        logger.info("Finished training AEDDPG")
+        logger.info("Finished training DDPG-AE")
 
         return info
 
