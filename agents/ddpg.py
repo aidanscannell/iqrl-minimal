@@ -42,21 +42,25 @@ class Critic(nn.Module):
         input_dim = np.array(observation_space.shape).prod() + np.prod(
             action_space.shape
         )
-        self._critic = h.mlp(in_dim=input_dim, mlp_dims=mlp_dims, out_dim=1)
+        self._q1 = h.mlp(in_dim=input_dim, mlp_dims=mlp_dims, out_dim=1)
+        self._q2 = h.mlp(in_dim=input_dim, mlp_dims=mlp_dims, out_dim=1)
         self.reset(full_reset=True)
 
     def forward(
         self, observation: BatchObservation, action: BatchAction, target: bool = False
     ) -> Tuple[BatchValue, BatchValue]:
         x = torch.cat([observation, action], -1)
-        q_value = self._critic(x)
-        return q_value
+        q1 = self._q1(x)
+        q2 = self._q2(x)
+        return q1, q2
 
     def reset(self, full_reset: bool = False):
         if full_reset:
             self.apply(h.orthogonal_init)
         else:
             params = list(self.parameters())
+            # TODO make this get the right params for q1 and q2
+            breakpoint()
             h.orthogonal_init(params[-2:])
 
 
@@ -236,19 +240,22 @@ class DDPG(Agent):
             next_state_actions = (
                 self.target_actor(data.next_observations) + clipped_noise
             ).clamp(self.action_space.low[0], self.action_space.high[0])
-            critic_next_target = self.target_critic(
+            q1_next_target, q2_next_target = self.target_critic(
                 data.next_observations, next_state_actions, target=True
             )
+            min_q_next_target = torch.min(q1_next_target, q2_next_target)
             next_q_value = data.rewards.flatten() + (
                 1 - data.dones.flatten()
-            ) * self.discount * (critic_next_target).view(-1)
+            ) * self.discount * (min_q_next_target).view(-1)
 
-        critic_a_values = self.critic(data.observations, data.actions).view(-1)
-        critic_loss = F.mse_loss(critic_a_values, next_q_value)
+        q1_values, q2_values = self.critic(data.observations, data.actions)
+        q1_loss = F.mse_loss(q1_values.view(-1), next_q_value)
+        q2_loss = F.mse_loss(q2_values.view(-1), next_q_value)
+        q_loss = q1_loss + q2_loss
 
         # Optimize the model
         self.q_optimizer.zero_grad()
-        critic_loss.backward()
+        q_loss.backward()
         self.q_optimizer.step()
 
         # Update the target network
@@ -262,17 +269,19 @@ class DDPG(Agent):
         soft_update_params(self.critic, self.target_critic, tau=self.tau)
 
         info = {
-            "critic_values": critic_a_values.mean().item(),
-            "critic_loss": critic_loss.item(),
+            "q1_values": q1_values.mean().item(),
+            "q2_values": q2_values.mean().item(),
+            "q1_loss": q1_loss.item(),
+            "q2_loss": q2_loss.item(),
+            "q_loss": q_loss.item() / 2,
             "critic_update_counter": self.critic_update_counter,
         }
         return info
 
     def actor_update_step(self, data: ReplayBufferSamples) -> dict:
         self.actor_update_counter += 1
-        actor_loss = -self.critic(
-            data.observations, self.actor(data.observations)
-        ).mean()
+        q1, q2 = self.critic(data.observations, self.actor(data.observations))
+        actor_loss = -torch.min(q1, q2).mean()
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
