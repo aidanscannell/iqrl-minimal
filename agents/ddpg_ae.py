@@ -386,7 +386,7 @@ class DDPG_AE(Agent):
 
             # Reset ae/actor/critic after a fixed number of parameter updates
             if self.reset_strategy == "every-x-param-updates":
-                if self.reset_params_freq is not None:
+                if not isinstance(self.reset_params_freq, int):
                     if self.ddpg.critic_update_counter % self.reset_params_freq == 0:
                         self.reset(full_reset=False)
 
