@@ -126,7 +126,9 @@ class DDPG(Agent):
         batch_size: int = 128,
         utd_ratio: int = 1,  # parameter update-to-data ratio
         actor_update_freq: int = 1,  # update actor less frequently than critic
-        reset_params_freq: int = 100000,  # reset params after this many param updates
+        reset_params_freq: Optional[
+            int
+        ] = None,  # reset params after this many param updates
         # nstep: int = 3,
         discount: float = 0.99,
         tau: float = 0.005,
@@ -201,8 +203,9 @@ class DDPG(Agent):
             info = self.update_step(batch=batch)
 
             # Reset actor/critic after a fixed number of parameter updates
-            if self.critic_update_counter % self.reset_params_freq == 0:
-                self.reset(full_reset=False)
+            if self.reset_params_freq is not None:
+                if self.critic_update_counter % self.reset_params_freq == 0:
+                    self.reset(full_reset=False)
 
             if i % 100 == 0:
                 if wandb.run is not None:
