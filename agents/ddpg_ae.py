@@ -281,7 +281,8 @@ class DDPG_AE(Agent):
             batch_size=batch_size,
             utd_ratio=utd_ratio,
             actor_update_freq=actor_update_freq,
-            reset_params_freq=reset_params_freq,
+            # reset_params_freq=reset_params_freq,
+            reset_params_freq=None,  # handle resetting in this class
             discount=discount,
             tau=tau,
             device=device,
