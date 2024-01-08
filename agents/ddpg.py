@@ -3,7 +3,7 @@ import abc
 import logging
 from dataclasses import dataclass
 from functools import partial
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, List, Optional, Tuple
 
 
 logging.basicConfig(level=logging.INFO)
@@ -48,7 +48,9 @@ class Critic(nn.Module):
         )
         self.reset(full_reset=True)
 
-    def forward(self, observation: BatchObservation, action: BatchAction) -> BatchValue:
+    def forward(
+        self, observation: BatchObservation, action: BatchAction, target: bool = False
+    ) -> Tuple[BatchValue, BatchValue]:
         x = torch.cat([observation, action], -1)
         q_value = self._critic(x)
         return q_value
@@ -240,7 +242,7 @@ class DDPG(Agent):
                 self.target_actor(data.next_observations) + clipped_noise
             ).clamp(self.action_space.low[0], self.action_space.high[0])
             critic_next_target = self.target_critic(
-                data.next_observations, next_state_actions
+                data.next_observations, next_state_actions, target=True
             )
             next_q_value = data.rewards.flatten() + (
                 1 - data.dones.flatten()
