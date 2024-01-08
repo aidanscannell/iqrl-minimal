@@ -110,7 +110,8 @@ class MLPDynamics(nn.Module):
         self._mlp = h.mlp(
             in_dim=in_dim,
             mlp_dims=mlp_dims,
-            out_dim=latent_dim + 1,
+            out_dim=latent_dim,
+            # out_dim=latent_dim + 1,
             act_fn=act_fn,
         )
         self.apply(h.orthogonal_init)
@@ -118,8 +119,9 @@ class MLPDynamics(nn.Module):
     def forward(self, x, a):
         x = torch.cat([x, a], 1)
         z = self._mlp(x)
-        r = z[..., -1:]
-        return z[..., :-1], r
+        return z
+        # r = z[..., -1:]
+        # return z[..., :-1], r
 
 
 class AE(nn.Module):
@@ -187,6 +189,7 @@ class DDPG_AE(Agent):
         # AE config
         train_strategy: str = "interleaved",  # "interleaved" or "representation-first"
         temporal_consistency: bool = False,  # if True include dynamic model for representation learning
+        reconstruction_loss: bool = True,  # if True use reconstruction loss with decoder
         ae_learning_rate: float = 3e-4,
         ae_batch_size: int = 128,
         # ae_num_updates: int = 1000,
@@ -213,6 +216,7 @@ class DDPG_AE(Agent):
         self.train_strategy = train_strategy
 
         self.temporal_consistency = temporal_consistency
+        self.reconstruction_loss = reconstruction_loss
         self.ae_learning_rate = ae_learning_rate
         self.ae_batch_size = ae_batch_size
         # self.ae_num_updates = ae_num_updates
@@ -464,20 +468,18 @@ class DDPG_AE(Agent):
         #         self.ae.parameters(), lr=self.ae_learning_rate
         #     )
 
-        # x_train = torch.concat([batch.observations, batch.next_observations], 0)
         x_train = batch.observations
-
         x_rec, z = self.ae(x_train)
-        rec_loss = (x_rec - x_train).abs().mean()
-        loss = rec_loss
-        info = {
-            "rec_loss": rec_loss.item(),
-            "loss": loss.item(),
-        }
+
+        if self.reconstruction_loss:
+            rec_loss = (x_rec - x_train).abs().mean()
+        else:
+            rec_loss = torch.zeros(1)
 
         if self.temporal_consistency:
             # TODO multistep temporal consistency
-            z_next_dynamics, reward_dynamics = self.dynamics(x=z, a=batch.actions)
+            z_next_dynamics = self.dynamics(x=z, a=batch.actions)
+            # z_next_dynamics, reward_dynamics = self.dynamics(x=z, a=batch.actions)
             with torch.no_grad():
                 _, z_next_enc_target = self.ae_target(batch.next_observations)
             temporal_consitency_loss = torch.nn.functional.mse_loss(
@@ -486,13 +488,16 @@ class DDPG_AE(Agent):
             # reward_loss = torch.nn.functional.mse_loss(
             #     input=batch.rewards, target=reward_dynamics, reduction="mean"
             # )
-            loss += temporal_consitency_loss
-            info.update(
-                {
-                    "loss": loss.item(),
-                    "temporal_consitency_loss": temporal_consitency_loss.item(),
-                }
-            )
+            # loss += temporal_consitency_loss
+        else:
+            temporal_consitency_loss = torch.zeros(1)
+
+        loss = rec_loss + temporal_consitency_loss
+        info = {
+            "temporal_consitency_loss": temporal_consitency_loss.item(),
+            "rec_loss": rec_loss.item(),
+            "loss": loss.item(),
+        }
 
         self.ae_opt.zero_grad()
         loss.backward()
