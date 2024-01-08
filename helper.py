@@ -160,7 +160,8 @@ class LinearSchedule:
         return self.values[self.step_idx]
 
     def step(self):
-        self.step_idx += 1
+        if self.step_idx < self.num_steps:
+            self.step_idx += 1
 
 
 # def linear_schedule(schdl, step):
