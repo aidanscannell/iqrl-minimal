@@ -2,8 +2,8 @@
 total_timesteps: 5000000
 # std_schedule: linear(1.0, 0.2, 500)
 agent:
-  latent_dim: 100
-  reset_params_freq: 200000  # reset params after this many param updates
+  latent_dim: 128
+  reset_params_freq: 100000  # reset params after this many param updates
 
 hydra:
   launcher:

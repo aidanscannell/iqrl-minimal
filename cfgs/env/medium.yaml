@@ -1,7 +1,7 @@
 total_timesteps: 5000000
 
 agent:
-  latent_dim: 50
+  latent_dim: 64
   reset_params_freq: 200000  # reset params after this many param updates
 
 hydra:
