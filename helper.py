@@ -160,7 +160,7 @@ class LinearSchedule:
         return self.values[self.step_idx]
 
     def step(self):
-        if self.step_idx < self.num_steps:
+        if self.step_idx < self.num_steps - 1:
             self.step_idx += 1
 
 
