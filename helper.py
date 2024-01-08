@@ -57,19 +57,75 @@ def soft_update_params(model, model_target, tau: float):
     with torch.no_grad():
         for params, params_target in zip(model.parameters(), model_target.parameters()):
             params_target.data.lerp_(params.data, tau)
+            # One below is from CleanRL
+            # params_target.data.copy_(tau * params.data + (1 - tau) * params_target.data)
 
 
-def mlp(in_dim, mlp_dims: List[int], out_dim, act_fn=nn.ELU, out_act=nn.Identity):
-    """Returns an MLP."""
+class SimNorm(nn.Module):
+    """
+    Simplicial normalization.
+    Adapted from https://arxiv.org/abs/2204.00616.
+    """
+
+    def __init__(self, dim):
+        super().__init__()
+        self.dim = dim
+
+    def forward(self, x):
+        shp = x.shape
+        x = x.view(*shp[:-1], -1, self.dim)
+        x = F.softmax(x, dim=-1)
+        return x.view(*shp)
+
+    def __repr__(self):
+        return f"SimNorm(dim={self.dim})"
+
+
+class NormedLinear(nn.Linear):
+    """
+    Linear layer with LayerNorm, Mish activation, and optionally dropout.
+    """
+
+    def __init__(self, *args, dropout=0.0, act=nn.Mish(inplace=True), **kwargs):
+        super().__init__(*args, **kwargs)
+        self.ln = nn.LayerNorm(self.out_features)
+        self.act = act
+        self.dropout = nn.Dropout(dropout, inplace=True) if dropout else None
+
+    def forward(self, x):
+        x = super().forward(x)
+        if self.dropout:
+            x = self.dropout(x)
+        return self.act(self.ln(x))
+
+    def __repr__(self):
+        repr_dropout = f", dropout={self.dropout.p}" if self.dropout else ""
+        return f"NormedLinear(in_features={self.in_features}, \
+        out_features={self.out_features}, \
+        bias={self.bias is not None}{repr_dropout}, \
+        act={self.act.__class__.__name__})"
+
+
+def mlp(in_dim, mlp_dims, out_dim, act_fn=None, dropout=0.0):
+    """
+    Basic building block of TD-MPC2.
+    MLP with LayerNorm, Mish activations, and optionally dropout.
+
+    Adapted from https://github.com/tdmpc2/tdmpc2-eval/blob/main/helper.py
+    """
     if isinstance(mlp_dims, int):
-        raise ValueError("mlp dimensions should be list, but got int.")
+        mlp_dims = [mlp_dims]
 
-    layers = [nn.Linear(in_dim, mlp_dims[0]), act_fn()]
-    for i in range(len(mlp_dims) - 1):
-        layers += [nn.Linear(mlp_dims[i], mlp_dims[i + 1]), act_fn()]
-
-    layers += [nn.Linear(mlp_dims[-1], out_dim), out_act()]
-    return nn.Sequential(*layers)
+    dims = [int(in_dim)] + mlp_dims + [int(out_dim)]
+    mlp = nn.ModuleList()
+    for i in range(len(dims) - 2):
+        mlp.append(NormedLinear(dims[i], dims[i + 1], dropout=dropout * (i == 0)))
+    mlp.append(
+        NormedLinear(dims[-2], dims[-1], act=act_fn)
+        if act_fn
+        else nn.Linear(dims[-2], dims[-1])
+    )
+    return nn.Sequential(*mlp)
 
 
 def orthogonal_init(m):

@@ -37,15 +37,12 @@ class Critic(nn.Module):
         observation_space: Space,
         action_space: Box,
         mlp_dims: List[int],
-        act_fn=nn.ELU,
     ):
         super().__init__()
         input_dim = np.array(observation_space.shape).prod() + np.prod(
             action_space.shape
         )
-        self._critic = h.mlp(
-            in_dim=input_dim, mlp_dims=mlp_dims, out_dim=1, act_fn=act_fn
-        )
+        self._critic = h.mlp(in_dim=input_dim, mlp_dims=mlp_dims, out_dim=1)
         self.reset(full_reset=True)
 
     def forward(
@@ -69,14 +66,12 @@ class Actor(nn.Module):
         observation_space: Space,
         action_space: Box,
         mlp_dims: List[int],
-        act_fn=nn.ELU,
     ):
         super().__init__()
         self._actor = h.mlp(
             in_dim=np.array(observation_space.shape).prod(),
             mlp_dims=mlp_dims,
             out_dim=np.prod(action_space.shape),
-            act_fn=act_fn,
         )
         self.reset()
 
@@ -118,7 +113,6 @@ class DDPG(Agent):
         observation_space: Space,
         action_space: Box,
         mlp_dims: List[int] = [512, 512],
-        act_fn=nn.ELU,
         exploration_noise: float = 0.2,
         policy_noise: float = 0.2,
         noise_clip: float = 0.5,
@@ -140,7 +134,6 @@ class DDPG(Agent):
             observation_space=observation_space, action_space=action_space, name=name
         )
         self.mlp_dims = mlp_dims
-        self.act_fn = act_fn
         self.exploration_noise = exploration_noise
         self.policy_noise = policy_noise
         self.noise_clip = noise_clip
@@ -159,22 +152,20 @@ class DDPG(Agent):
             observation_space=observation_space,
             action_space=action_space,
             mlp_dims=mlp_dims,
-            act_fn=act_fn,
         ).to(device)
         self.target_actor = Actor(
             observation_space=observation_space,
             action_space=action_space,
             mlp_dims=mlp_dims,
-            act_fn=act_fn,
         ).to(device)
         self.target_actor.load_state_dict(self.actor.state_dict())
 
         # Init critic and it's targets
-        self.critic = Critic(
-            observation_space, action_space, mlp_dims=mlp_dims, act_fn=act_fn
-        ).to(device)
+        self.critic = Critic(observation_space, action_space, mlp_dims=mlp_dims).to(
+            device
+        )
         self.target_critic = Critic(
-            observation_space, action_space, mlp_dims=mlp_dims, act_fn=act_fn
+            observation_space, action_space, mlp_dims=mlp_dims
         ).to(device)
         self.target_critic.load_state_dict(self.critic.state_dict())
 
