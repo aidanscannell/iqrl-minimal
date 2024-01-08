@@ -474,7 +474,7 @@ class DDPG_AE(Agent):
         if self.reconstruction_loss:
             rec_loss = (x_rec - x_train).abs().mean()
         else:
-            rec_loss = torch.zeros(1)
+            rec_loss = torch.zeros(1).to(self.device)
 
         if self.temporal_consistency:
             # TODO multistep temporal consistency
@@ -490,7 +490,7 @@ class DDPG_AE(Agent):
             # )
             # loss += temporal_consitency_loss
         else:
-            temporal_consitency_loss = torch.zeros(1)
+            temporal_consitency_loss = torch.zeros(1).to(self.device)
 
         loss = rec_loss + temporal_consitency_loss
         info = {
