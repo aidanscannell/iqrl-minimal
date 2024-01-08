@@ -225,6 +225,8 @@ class DDPG_AE(Agent):
         self.ae_min_delta = ae_min_delta
         self.latent_dim = latent_dim
         self.ae_tau = ae_tau
+        self.ae_normalize = ae_normalize
+        self.simplex_dim = simplex_dim
 
         self.device = device
 
@@ -576,7 +578,8 @@ class DDPG_AE(Agent):
             observation_space=self.ae.observation_space,
             mlp_dims=self.ae.mlp_dims,
             latent_dim=self.ae.latent_dim,
-            act_fn=self.ae.act_fn,
+            normalize=self.ae_normalize,
+            simplex_dim=self.simplex_dim,
         ).to(self.device)
         self.old_ae.load_state_dict(self.ae.state_dict())
 
