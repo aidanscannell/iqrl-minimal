@@ -16,7 +16,7 @@ import torch.nn.functional as F
 import wandb
 from custom_types import Action, Agent, EvalMode, T0
 from gymnasium.spaces import Box, Space
-from helper import soft_update_params
+from helper import SimNorm, soft_update_params
 from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.type_aliases import ReplayBufferSamples
 
@@ -27,16 +27,22 @@ class Encoder(nn.Module):
         observation_space: Space,
         mlp_dims: List[int],
         latent_dim: int = 20,
-        act_fn=nn.ELU,
         normalize: bool = True,
         simplex_dim: int = 10,
     ):
         super().__init__()
         in_dim = np.array(observation_space.shape).prod()
         # TODO data should be normalized???
+        if normalize:
+            act_fn = SimNorm(dim=simplex_dim)
+        else:
+            act_fn = None
         self.latent_dim = latent_dim
         self._mlp = h.mlp(
-            in_dim=in_dim, mlp_dims=mlp_dims, out_dim=latent_dim, act_fn=act_fn
+            in_dim=in_dim,
+            mlp_dims=mlp_dims,
+            out_dim=latent_dim,
+            act_fn=act_fn,
         )
         self.normalize = normalize
         self.simplex_dim = simplex_dim
@@ -65,14 +71,11 @@ class Decoder(nn.Module):
         observation_space: Space,
         mlp_dims: List[int],
         latent_dim: int = 20,
-        act_fn=nn.ELU,
     ):
         super().__init__()
         self.latent_dim = latent_dim
         out_dim = np.array(observation_space.shape).prod()
-        self._mlp = h.mlp(
-            in_dim=latent_dim, mlp_dims=mlp_dims, out_dim=out_dim, act_fn=act_fn
-        )
+        self._mlp = h.mlp(in_dim=latent_dim, mlp_dims=mlp_dims, out_dim=out_dim)
         self.reset(full_reset=True)
 
     def forward(self, z):
@@ -93,14 +96,22 @@ class MLPDynamics(nn.Module):
         action_space: Space,
         mlp_dims: List[int],
         latent_dim: int = 20,
-        act_fn=nn.ELU,
+        normalize: bool = True,
+        simplex_dim: int = 10,
     ):
         super().__init__()
         self.latent_dim = latent_dim
         in_dim = np.array(action_space.shape).prod() + latent_dim
+        if normalize:
+            act_fn = SimNorm(dim=simplex_dim)
+        else:
+            act_fn = None
         # TODO data should be normalized???
         self._mlp = h.mlp(
-            in_dim=in_dim, mlp_dims=mlp_dims, out_dim=latent_dim + 1, act_fn=act_fn
+            in_dim=in_dim,
+            mlp_dims=mlp_dims,
+            out_dim=latent_dim + 1,
+            act_fn=act_fn,
         )
         self.apply(h.orthogonal_init)
 
@@ -117,7 +128,6 @@ class AE(nn.Module):
         observation_space: Space,
         mlp_dims: List[int],
         latent_dim: int = 20,
-        act_fn=nn.ELU,
         normalize: bool = True,
         simplex_dim: int = 10,
     ):
@@ -125,12 +135,10 @@ class AE(nn.Module):
         self.observation_space = observation_space
         self.mlp_dims = mlp_dims
         self.latent_dim = latent_dim
-        self.act_fn = act_fn
         self.encoder = Encoder(
             observation_space=observation_space,
             mlp_dims=mlp_dims,
             latent_dim=latent_dim,
-            act_fn=act_fn,
             normalize=normalize,
             simplex_dim=simplex_dim,
         )
@@ -138,7 +146,6 @@ class AE(nn.Module):
             observation_space=observation_space,
             mlp_dims=mlp_dims,
             latent_dim=latent_dim,
-            act_fn=act_fn,
         )
 
     def forward(self, x):
@@ -162,7 +169,6 @@ class DDPG_AE(Agent):
         observation_space: Space,
         action_space: Box,
         mlp_dims: List[int] = [512, 512],
-        act_fn=nn.ELU,
         exploration_noise: float = 0.2,
         policy_noise: float = 0.2,
         noise_clip: float = 0.5,
@@ -223,13 +229,13 @@ class DDPG_AE(Agent):
                 action_space=action_space,
                 mlp_dims=mlp_dims,
                 latent_dim=latent_dim,
-                act_fn=act_fn,
+                normalize=ae_normalize,
+                simplex_dim=simplex_dim,
             ).to(device)
         self.ae = AE(
             observation_space=observation_space,
             mlp_dims=mlp_dims,
             latent_dim=latent_dim,
-            act_fn=act_fn,
             normalize=ae_normalize,
             simplex_dim=simplex_dim,
         ).to(device)
@@ -237,7 +243,6 @@ class DDPG_AE(Agent):
             observation_space=observation_space,
             mlp_dims=mlp_dims,
             latent_dim=latent_dim,
-            act_fn=act_fn,
             normalize=ae_normalize,
             simplex_dim=simplex_dim,
         ).to(device)
@@ -273,7 +278,7 @@ class DDPG_AE(Agent):
             observation_space=self.latent_observation_space,
             action_space=action_space,
             mlp_dims=mlp_dims,
-            act_fn=act_fn,
+            # act_fn=act_fn,
             exploration_noise=exploration_noise,
             policy_noise=policy_noise,
             noise_clip=noise_clip,
