@@ -200,6 +200,7 @@ class DDPG(Agent):
 
             if i % 100 == 0:
                 if wandb.run is not None:
+                    info.update({"reset_ddpg": int(self.reset_flag)})
                     wandb.log(info)
 
         return info

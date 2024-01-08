@@ -310,6 +310,7 @@ class DDPG_AE(Agent):
     def update(self, replay_buffer: ReplayBuffer, num_new_transitions: int) -> dict:
         self.ae.train()
         # self.ddpg.train()
+        self.ddpg.reset_flag = False
 
         if self.reset_strategy == "latent-dist":
             update_memory = False
@@ -385,6 +386,7 @@ class DDPG_AE(Agent):
             if i % 100 == 0:
                 logger.info(f"Iteration {i} rec_loss {info['rec_loss']}")
                 if wandb.run is not None:
+                    info.update({"reset_ddpg": int(self.ddpg.reset_flag)})
                     wandb.log(info)
 
         logger.info("Finished training DDPG-AE")
@@ -407,6 +409,7 @@ class DDPG_AE(Agent):
             if i % 100 == 0:
                 logger.info(f"Iteration {i} rec_loss {info['rec_loss']}")
                 if wandb.run is not None:
+                    info.update({"reset_ddpg": int(self.ddpg.reset_flag)})
                     wandb.log(info)
 
             if self.ae_early_stopper is not None:
