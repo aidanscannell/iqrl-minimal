@@ -58,10 +58,9 @@ class Critic(nn.Module):
         if full_reset:
             self.apply(h.orthogonal_init)
         else:
-            params = list(self.parameters())
-            # TODO make this get the right params for q1 and q2
-            breakpoint()
-            h.orthogonal_init(params[-2:])
+            for q in [self._q1, self._q2]:
+                params = list(q.parameters())
+                h.orthogonal_init(params[-2:])
 
 
 class Actor(nn.Module):
