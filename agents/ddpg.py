@@ -213,7 +213,7 @@ class DDPG(Agent):
                     info.update(
                         {
                             "reset_ddpg": int(self.reset_flag),
-                            "exploration_noise": self.explortion_noise,
+                            "exploration_noise": self.exploration_noise,
                         }
                     )
                     wandb.log(info)

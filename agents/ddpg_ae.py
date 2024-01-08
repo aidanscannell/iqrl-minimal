@@ -359,6 +359,7 @@ class DDPG_AE(Agent):
                     replay_buffer=replay_buffer, memory_size=self.memory_size
                 )
 
+        self.ddpg._exploration_noise.step()
         self.ae.eval()
         # self.ddpg.eval()
         return info
@@ -399,7 +400,12 @@ class DDPG_AE(Agent):
             if i % 100 == 0:
                 logger.info(f"Iteration {i} rec_loss {info['rec_loss']}")
                 if wandb.run is not None:
-                    info.update({"reset_ddpg": int(self.ddpg.reset_flag)})
+                    info.update(
+                        {
+                            "reset_ddpg": int(self.ddpg.reset_flag),
+                            "exploration_noise": self.ddpg.exploration_noise,
+                        }
+                    )
                     wandb.log(info)
 
         logger.info("Finished training DDPG-AE")
@@ -422,7 +428,12 @@ class DDPG_AE(Agent):
             if i % 100 == 0:
                 logger.info(f"Iteration {i} rec_loss {info['rec_loss']}")
                 if wandb.run is not None:
-                    info.update({"reset_ddpg": int(self.ddpg.reset_flag)})
+                    info.update(
+                        {
+                            "reset_ddpg": int(self.ddpg.reset_flag),
+                            "exploration_noise": self.ddpg.exploration_noise,
+                        }
+                    )
                     wandb.log(info)
 
             if self.ae_early_stopper is not None:
