@@ -1,6 +1,7 @@
 _target_: "agents.DDPG_AE"
 # DDPG stuff
-mlp_dims: [256, 256]
+mlp_dims: [512, 512]
+# mlp_dims: [256, 256]
 exploration_noise: 1.0
 policy_noise: 0.2
 noise_clip: 0.3
