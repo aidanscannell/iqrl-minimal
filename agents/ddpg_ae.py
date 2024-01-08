@@ -487,7 +487,8 @@ class DDPG_AE(Agent):
 
         if self.temporal_consistency:
             # TODO multistep temporal consistency
-            z_next_dynamics = self.dynamics(x=z, a=batch.actions)
+            delta_z_dynamics = self.dynamics(x=z, a=batch.actions)
+            z_next_dynamics = z + delta_z_dynamics
             # z_next_dynamics, reward_dynamics = self.dynamics(x=z, a=batch.actions)
             with torch.no_grad():
                 _, z_next_enc_target = self.ae_target(batch.next_observations)
