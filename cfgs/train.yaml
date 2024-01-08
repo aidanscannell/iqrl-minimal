@@ -9,32 +9,25 @@ defaults:
 # Env config
 env_id: "cartpole"
 dmc_task: "swingup"
-# env_id: "HalfCheetah-v4"
-# env_id: "cartpole"
 max_episode_steps: 1000
 capture_train_video: False
 capture_eval_video: True
 action_repeat: 2
 
 # Experiment config
-# exp_name: "base"
 buffer_size: 1000000
 pretrain_utd: null # If not none pretrain on random data with utd
-# learning_starts: 25000
 learning_starts: 10000
 total_timesteps: 1000000
 logging_epoch_freq: 100
 eval_every_steps: 2500
-# eval_every_steps: 5000
 seed: 42
 device: "cuda"  # "cpu" or "cuda" etc
 debug: False
-# torch_deterministic: True
 
 # W&B config
 wandb_project_name: "world_models"
 use_wandb: True
-# use_wandb: False
 wandb_group: ${env_id}-${dmc_task}
 wandb_tags:
   - ${env_id}-${dmc_task}
