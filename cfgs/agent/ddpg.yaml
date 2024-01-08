@@ -1,7 +1,9 @@
 _target_: "agents.DDPG"
 # DDPG stuff
 mlp_dims: [512, 512]
-exploration_noise: 1.0
+exploration_noise_start: 1.0
+exploration_noise_end: 0.1
+exploration_noise_num_steps: 50
 policy_noise: 0.2
 noise_clip: 0.3
 learning_rate: 3e-4

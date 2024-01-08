@@ -3,7 +3,7 @@ import abc
 import logging
 from dataclasses import dataclass
 from functools import partial
-from typing import Any, Callable, List, Optional, Tuple
+from typing import Any, Callable, List, Optional, Tuple, Union
 
 
 logging.basicConfig(level=logging.INFO)
@@ -26,7 +26,7 @@ from custom_types import (
     Agent,
 )
 from gymnasium.spaces import Box, Space
-from helper import EarlyStopper, soft_update_params
+from helper import EarlyStopper, LinearSchedule, soft_update_params
 from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.type_aliases import ReplayBufferSamples
 
@@ -116,7 +116,10 @@ class DDPG(Agent):
         observation_space: Space,
         action_space: Box,
         mlp_dims: List[int] = [512, 512],
-        exploration_noise: float = 0.2,
+        exploration_noise_start: float = 1.0,
+        exploration_noise_end: float = 0.1,
+        exploration_noise_num_steps: int = 50,  # number of episodes do decay noise
+        # exploration_noise: float = 0.2,
         policy_noise: float = 0.2,
         noise_clip: float = 0.5,
         learning_rate: float = 3e-4,
@@ -137,7 +140,11 @@ class DDPG(Agent):
             observation_space=observation_space, action_space=action_space, name=name
         )
         self.mlp_dims = mlp_dims
-        self.exploration_noise = exploration_noise
+        self._exploration_noise = h.LinearSchedule(
+            start=exploration_noise_start,
+            end=exploration_noise_end,
+            num_steps=exploration_noise_num_steps,
+        )
         self.policy_noise = policy_noise
         self.noise_clip = noise_clip
         self.learning_rate = learning_rate
@@ -203,8 +210,15 @@ class DDPG(Agent):
 
             if i % 100 == 0:
                 if wandb.run is not None:
-                    info.update({"reset_ddpg": int(self.reset_flag)})
+                    info.update(
+                        {
+                            "reset_ddpg": int(self.reset_flag),
+                            "exploration_noise": self.explortion_noise,
+                        }
+                    )
                     wandb.log(info)
+
+        self._exploration_noise.step()
 
         return info
 
@@ -309,6 +323,10 @@ class DDPG(Agent):
         actions = actions.cpu().numpy()
         actions = actions.clip(self.action_space.low, self.action_space.high)
         return actions
+
+    @property
+    def exploration_noise(self):
+        return self._exploration_noise()
 
     def reset(self, full_reset: bool = False):
         logger.info("Resetting actor/critic params")

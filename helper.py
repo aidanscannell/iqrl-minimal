@@ -148,6 +148,21 @@ def orthogonal_init(m):
             nn.init.zeros_(m.bias)
 
 
+class LinearSchedule:
+    def __init__(self, start: float, end: float, num_steps: int):
+        self.start = start
+        self.end = end
+        self.num_steps = num_steps
+        self.step_idx = 0
+        self.values = np.linspace(start, end, num_steps)
+
+    def __call__(self):
+        return self.values[self.step_idx]
+
+    def step(self):
+        self.step_idx += 1
+
+
 # def linear_schedule(schdl, step):
 #     """
 #     Outputs values following a linear decay schedule.
