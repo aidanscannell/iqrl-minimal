@@ -116,7 +116,7 @@ class DDPG(Agent):
         reset_params_freq: Optional[
             int
         ] = None,  # reset params after this many param updates
-        # nstep: int = 3,
+        nstep: int = 3,
         discount: float = 0.99,
         tau: float = 0.005,
         device: str = "cuda",
@@ -139,7 +139,7 @@ class DDPG(Agent):
         self.utd_ratio = utd_ratio
         self.actor_update_freq = actor_update_freq  # Should be 1 for true DDPG
         self.reset_params_freq = reset_params_freq
-        # self.nstep = nstep
+        self.nstep = nstep
         self.discount = discount
         self.tau = tau
         self.device = device
@@ -212,8 +212,32 @@ class DDPG(Agent):
     def update_step(self, batch: ReplayBufferSamples) -> dict:
         info = {}
 
+        # Form n-step samples
+        nstep_rewards = batch.rewards[: -(self.nstep - 1)]
+        dones = batch.dones[: -(self.nstep - 1)].clone()
+        if torch.max(dones) > 0.8:
+            print(f"dones has True")
+            breakpoint()
+        for t in range(1, self.nstep - 1):
+            nstep_rewards += (
+                (1 - dones)
+                * self.discount**t
+                * batch.rewards[t : -(self.nstep - 1 - t)]
+            )
+            dones += batch.dones[t : -(self.nstep - 1 - t)].clone()
+        dones += batch.dones[t + 1 :].clone()
+        nstep_rewards += (1 - dones) * self.discount ** (t + 1) * batch.rewards[t + 1 :]
+
+        batch_nstep = ReplayBufferSamples(
+            observations=batch.observations[: -(self.nstep - 1)],
+            actions=batch.actions[: -(self.nstep - 1)],
+            next_observations=batch.next_observations[self.nstep - 1 :],
+            dones=dones,
+            rewards=nstep_rewards,
+        )
+
         # Update critic
-        info.update(self.critic_update_step(data=batch))
+        info.update(self.critic_update_step(data=batch_nstep))
 
         # Update actor less frequently than critic
         if self.critic_update_counter % self.actor_update_freq == 0:
@@ -238,7 +262,7 @@ class DDPG(Agent):
             min_q_next_target = torch.min(q1_next_target, q2_next_target)
             next_q_value = data.rewards.flatten() + (
                 1 - data.dones.flatten()
-            ) * self.discount * (min_q_next_target).view(-1)
+            ) * self.discount**self.nstep * (min_q_next_target).view(-1)
 
         q1_values, q2_values = self.critic(data.observations, data.actions)
         q1_loss = F.mse_loss(q1_values.view(-1), next_q_value)
