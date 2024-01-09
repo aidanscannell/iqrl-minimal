@@ -47,7 +47,7 @@ class Critic(nn.Module):
         self.reset(full_reset=True)
 
     def forward(
-        self, observation: BatchObservation, action: BatchAction, target: bool = False
+        self, observation: BatchObservation, action: BatchAction
     ) -> Tuple[BatchValue, BatchValue]:
         x = torch.cat([observation, action], -1)
         q1 = self._q1(x)
