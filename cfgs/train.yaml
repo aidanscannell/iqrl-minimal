@@ -7,8 +7,10 @@ defaults:
   - _self_
 
 # Environment
-env_id: "cartpole"
-dmc_task: "swingup"
+# env_id: ${env_id}
+# dmc_task: ${dmc_task}
+# env_id: "cartpole"
+# dmc_task: "swingup"
 
 # Experiment
 max_episode_steps: 1000 # Max episode length
