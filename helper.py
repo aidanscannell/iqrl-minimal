@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-import re
-from typing import List
-
 import numpy as np
 import torch
 import torch.nn as nn
