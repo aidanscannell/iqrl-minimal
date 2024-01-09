@@ -1,9 +1,11 @@
-# train_episode: 500
-# std_schedule: linear(1.0, 0.1, 50)
+num_episodes: 500
+
 agent:
   latent_dim: 64
-  # Reset stuff
-  reset_params_freq: 100000  # reset params after this many param updates
-  exploration_noise_start: 1.0
-  exploration_noise_end: 0.1
   exploration_noise_num_steps: 50  # number of episodes do decay noise
+  # # Reset stuff
+  # reset_params_freq: 100000  # reset params after this many param updates
+
+hydra:
+  launcher:
+    timeout_min: 240 # 4 hours
