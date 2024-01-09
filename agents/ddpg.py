@@ -213,26 +213,34 @@ class DDPG(Agent):
         info = {}
 
         # Form n-step samples
-        nstep_rewards = batch.rewards[: -(self.nstep - 1)]
-        dones = 1 - batch.dones[: -(self.nstep - 1)].clone()
-        for t in range(1, self.nstep - 1):
-            nstep_rewards += (
-                dones * self.discount**t * batch.rewards[t : -(self.nstep - 1 - t)]
+        if self.nstep > 1:
+            nstep_rewards = batch.rewards[: -(self.nstep - 1)]
+            dones = 1 - batch.dones[: -(self.nstep - 1)].clone()
+            for t in range(1, self.nstep - 1):
+                nstep_rewards += (
+                    dones
+                    * self.discount**t
+                    * batch.rewards[t : -(self.nstep - 1 - t)]
+                )
+                dones *= 1 - batch.dones[t : -(self.nstep - 1 - t)].clone()
+            dones *= 1 - batch.dones[t + 1 :].clone()
+            nstep_rewards += dones * self.discount ** (t + 1) * batch.rewards[t + 1 :]
+
+            batch_nstep = ReplayBufferSamples(
+                observations=batch.observations[: -(self.nstep - 1)],
+                actions=batch.actions[: -(self.nstep - 1)],
+                next_observations=batch.next_observations[self.nstep - 1 :],
+                dones=dones,
+                rewards=nstep_rewards,
             )
-            dones *= 1 - batch.dones[t : -(self.nstep - 1 - t)].clone()
-        dones *= 1 - batch.dones[t + 1 :].clone()
-        nstep_rewards += dones * self.discount ** (t + 1) * batch.rewards[t + 1 :]
+            # if torch.max(dones) > 0.8:
+            #     print(f"dones has True")
+            #     breakpoint()
 
-        batch_nstep = ReplayBufferSamples(
-            observations=batch.observations[: -(self.nstep - 1)],
-            actions=batch.actions[: -(self.nstep - 1)],
-            next_observations=batch.next_observations[self.nstep - 1 :],
-            dones=dones,
-            rewards=nstep_rewards,
-        )
-
-        # Update critic
-        info.update(self.critic_update_step(data=batch_nstep))
+            # Update critic
+            info.update(self.critic_update_step(data=batch_nstep))
+        else:
+            info.update(self.critic_update_step(data=batch))
 
         # Update actor less frequently than critic
         if self.critic_update_counter % self.actor_update_freq == 0:
