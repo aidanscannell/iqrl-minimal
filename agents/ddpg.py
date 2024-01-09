@@ -1,34 +1,22 @@
 #!/usr/bin/env python3
-import abc
 import logging
-from dataclasses import dataclass
-from functools import partial
-from typing import Any, Callable, List, Optional, Tuple, Union
+from typing import List, Optional, Tuple
 
-
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-import gymnasium as gym
 import helper as h
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import wandb
-from custom_types import (
-    Action,
-    BatchAction,
-    BatchObservation,
-    BatchValue,
-    EvalMode,
-    T0,
-    Agent,
-)
+from custom_types import Agent, BatchAction, BatchObservation, BatchValue, EvalMode, T0
 from gymnasium.spaces import Box, Space
-from helper import EarlyStopper, LinearSchedule, soft_update_params
+from helper import soft_update_params
 from stable_baselines3.common.buffers import ReplayBuffer
 from stable_baselines3.common.type_aliases import ReplayBufferSamples
+
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class Critic(nn.Module):
@@ -110,7 +98,6 @@ class Actor(nn.Module):
 
 
 class DDPG(Agent):
-    # class DDPG:
     def __init__(
         self,
         observation_space: Space,
@@ -235,15 +222,7 @@ class DDPG(Agent):
         return info
 
     def critic_update_step(self, data: ReplayBufferSamples) -> dict:
-        # Reset critic after a fixed number of parameter updates
         self.critic_update_counter += 1
-        # if self.critic_update_counter % self.reset_params_freq == 0:
-        #     logger.info("Resetting critic's params")
-        #     self.critic.reset()
-        #     self.target_critic.load_state_dict(self.critic.state_dict())
-        #     self.critic_opt = torch.optim.AdamW(
-        #         self.critic.parameters(), lr=self.learning_rate
-        #     )
 
         with torch.no_grad():
             clipped_noise = (
@@ -254,7 +233,7 @@ class DDPG(Agent):
                 self.target_actor(data.next_observations) + clipped_noise
             ).clamp(self.action_space.low[0], self.action_space.high[0])
             q1_next_target, q2_next_target = self.target_critic(
-                data.next_observations, next_state_actions, target=True
+                data.next_observations, next_state_actions
             )
             min_q_next_target = torch.min(q1_next_target, q2_next_target)
             next_q_value = data.rewards.flatten() + (
@@ -272,13 +251,6 @@ class DDPG(Agent):
         self.q_optimizer.step()
 
         # Update the target network
-        # with torch.no_grad():
-        #     for param, target_param in zip(
-        #         self.critic.parameters(), self.target_critic.parameters()
-        #     ):
-        #         target_param.data.copy_(
-        #             self.tau * param.data + (1 - self.tau) * target_param.data
-        #         )
         soft_update_params(self.critic, self.target_critic, tau=self.tau)
 
         info = {
@@ -301,13 +273,6 @@ class DDPG(Agent):
 
         # Update the target network
         soft_update_params(self.actor, self.target_actor, tau=self.tau)
-        # with torch.no_grad():
-        #     for param, target_param in zip(
-        #         self.actor.parameters(), self.target_actor.parameters()
-        #     ):
-        #         target_param.data.copy_(
-        #             self.tau * param.data + (1 - self.tau) * target_param.data
-        #         )
 
         info = {
             "actor_loss": actor_loss.item(),
