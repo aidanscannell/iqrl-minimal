@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import logging
+import os
 import pprint
 import random
 import time
+from functools import partial
 
 import hydra
 from cfgs.base import TrainConfig
@@ -23,11 +25,6 @@ def train(cfg: TrainConfig):
     from stable_baselines3.common.evaluation import evaluate_policy
     from utils.env import make_env
 
-    cfg_dict = omegaconf.OmegaConf.to_container(
-        cfg, resolve=False, throw_on_missing=False
-    )
-    pprint.pprint(cfg_dict)
-
     # Seeding
     random.seed(cfg.seed)
     np.random.seed(cfg.seed)
@@ -42,52 +39,22 @@ def train(cfg: TrainConfig):
     logger.info(f"Using device: {cfg.device}")
 
     # Setup vectorized environment for training/evaluation
+    make_env_fn = partial(
+        make_env,
+        env_id=cfg.env_id,
+        idx=0,
+        run_name=cfg.run_name,
+        max_episode_steps=cfg.max_episode_steps,
+        action_repeat=cfg.action_repeat,
+        dmc_task=cfg.dmc_task,
+    )
     envs = gym.vector.SyncVectorEnv(
-        [
-            make_env(
-                env_id=cfg.env_id,
-                # env_id=cfg.env.env_id,
-                seed=cfg.seed,
-                idx=0,
-                capture_video=cfg.capture_train_video,
-                run_name=cfg.run_name,
-                max_episode_steps=cfg.max_episode_steps,
-                action_repeat=cfg.action_repeat,
-                dmc_task=cfg.dmc_task,
-                # dmc_task=cfg.env.dmc_task,
-            )
-        ]
+        [make_env_fn(seed=cfg.seed, capture_video=cfg.capture_train_video)]
+    )
+    eval_envs = gym.vector.SyncVectorEnv(
+        [make_env_fn(seed=cfg.seed + 100, capture_video=cfg.capture_eval_video)]
     )
     envs.single_observation_space.dtype = np.float32
-    # if cfg.device == "cpu":
-    #     eval_envs = SubprocVecEnv(
-    #         make_env_list(
-    #             env_id=cfg.env_id,
-    #             num_envs=5,
-    #             seed=cfg.seed + 100,
-    #             capture_video=cfg.capture_eval_video,
-    #             run_name=cfg.run_name,
-    #             max_episode_steps=cfg.max_episode_steps,
-    #             action_repeat=cfg.action_repeat,
-    #         )
-    #     )
-    # else:
-    eval_envs = gym.vector.SyncVectorEnv(
-        [
-            make_env(
-                env_id=cfg.env_id,
-                # env_id=cfg.env.env_id,
-                seed=cfg.seed + 100,
-                idx=0,
-                capture_video=cfg.capture_eval_video,
-                run_name=cfg.run_name,
-                max_episode_steps=cfg.max_episode_steps,
-                action_repeat=cfg.action_repeat,
-                dmc_task=cfg.dmc_task,
-                # dmc_task=cfg.env.dmc_task,
-            )
-        ]
-    )
     assert isinstance(
         envs.single_action_space, gym.spaces.Box
     ), "only continuous action space is supported"
@@ -102,19 +69,18 @@ def train(cfg: TrainConfig):
 
         run = wandb.init(
             project=cfg.wandb_project_name,
-            # entity=cfg.wandb_entity,
-            group=cfg.wandb_group,
-            tags=cfg.wandb_tags,
+            group=f"{cfg.env_id}-{cfg.dmc_task}",
+            tags=[f"{cfg.env_id}-{cfg.dmc_task}", f"seed={str(cfg.seed)}"],
             # sync_tensorboard=True,
             config=cfg_dict,
             name=cfg.run_name,
             monitor_gym=cfg.monitor_gym,
             save_code=True,
-            dir=get_original_cwd(),  # don't nest wandb inside hydra dir
+            dir=os.path.join(get_original_cwd(), "output"),
         )
 
     rb = ReplayBuffer(
-        cfg.buffer_size,
+        int(cfg.buffer_size),
         envs.single_observation_space,
         envs.single_action_space,
         # "auto",
@@ -128,21 +94,22 @@ def train(cfg: TrainConfig):
         action_space=envs.single_action_space,
     )
 
-    # start_time = time.time()
-    # mean_reward, std_reward = evaluate_policy(agent, eval_envs, n_eval_episodes=10)
-    # print(f"eval time multiple envs {time.time()-start_time }")
+    # Convert episode stuff to global steps
+    total_timesteps = int(cfg.num_episodes * cfg.max_episode_steps / cfg.action_repeat)
+    eval_every_steps = int(
+        cfg.eval_every_episodes * cfg.max_episode_steps / cfg.action_repeat
+    )
+    learning_starts = int(
+        cfg.random_episodes * cfg.max_episode_steps / cfg.action_repeat
+    )
 
-    # start_time = time.time()
-    # mean_reward, std_reward = evaluate_policy(agent, eval_envs, n_eval_episodes=10)
-    # print(f"eval time multiple envs second time {time.time()-start_time }")
-
-    # TRY NOT TO MODIFY: start the game
+    episode_idx = 0
     first_update = True
     start_time = time.time()
     obs, _ = envs.reset(seed=cfg.seed)
-    for global_step in range(cfg.total_timesteps):
+    for global_step in range(total_timesteps):
         # ALGO LOGIC: put action logic here
-        if global_step < cfg.learning_starts:
+        if global_step < learning_starts:
             actions = np.array(
                 [envs.single_action_space.sample() for _ in range(envs.num_envs)]
             )
@@ -157,9 +124,10 @@ def train(cfg: TrainConfig):
         if "final_info" in infos:
             for info in infos["final_info"]:
                 logger.info(
-                    f"global_step={global_step}, episodic_return={info['episode']['r']}"
+                    f"Episode: {episode_idx} | Global step: {global_step} | Return: {info['episode']['r']}"
                 )
                 episode_length = info["episode"]["l"]
+                episode_idx += 1
 
                 if cfg.use_wandb:
                     wandb.log(
@@ -168,6 +136,7 @@ def train(cfg: TrainConfig):
                             "episodic_length": info["episode"]["l"],
                             "global_step": global_step,
                             "env_step": global_step * cfg.action_repeat,
+                            "episode": episode_idx,
                         }
                     )
                 break
@@ -183,20 +152,15 @@ def train(cfg: TrainConfig):
         obs = next_obs
 
         # ALGO LOGIC: training.
-        if global_step > cfg.learning_starts:
+        if global_step > learning_starts:
             if "final_info" in infos:  # Update after every episode
-                # print(f"episode_length {episode_length}")
                 if isinstance(episode_length, np.ndarray):
                     episode_length = episode_length[0]
                 # num_updates = cfg.utd_ratio * episode_length  # TODO inc. frame skip
-                if first_update:
-                    if cfg.pretrain_utd is not None:
-                        num_new_transitions = cfg.pretrain_utd * rb.size()
-                    else:
-                        num_new_transitions = episode_length
+                num_new_transitions = episode_length
+                if cfg.pretrain_utd is not None and first_update:  # more pretrain steps
+                    num_new_transitions = cfg.pretrain_utd * rb.size()
                     first_update = False
-                else:
-                    num_new_transitions = episode_length
                 logger.info(
                     f"Training agent w. {num_new_transitions} new data @ step {global_step}..."
                 )
@@ -218,16 +182,17 @@ def train(cfg: TrainConfig):
                     )
                     wandb.log({"train/": train_metrics})
 
-            if global_step % cfg.eval_every_steps == 0:
+            if global_step % eval_every_steps == 0:
                 mean_reward, std_reward = evaluate_policy(
-                    agent, eval_envs, n_eval_episodes=10
+                    agent, eval_envs, n_eval_episodes=cfg.num_eval_episodes
                 )
-                # logger.info(f"Reward {mean_reward} +/- {std_reward}")
+                logger.info(f"reward mean {mean_reward} std: {mean_reward}")
                 eval_metrics = {
                     "mean_reward": mean_reward,
                     "std_reward": std_reward,
                     "global_step": global_step,
                     "env_step": global_step * cfg.action_repeat,
+                    "episode": episode_idx,
                 }
                 if cfg.use_wandb:
                     wandb.log({"eval/": eval_metrics})

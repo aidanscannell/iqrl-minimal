@@ -1,44 +1,40 @@
 defaults:
+  - env: cartpole-swingup
   # - train_config
-  - agent: ae_ddpg # mppi or ddpg
-  # - agent: td3 # mppi or ddpg
+  - agent: ddpg_ae # mppi or ddpg
   # - override hydra/launcher: slurm # Use slurm (on cluster) for multirun
   - override hydra/launcher: lumi # Use slurm (on cluster) for multirun
   - _self_
 
-# Env config
+# Environment
 env_id: "cartpole"
 dmc_task: "swingup"
-max_episode_steps: 1000
-capture_train_video: False
-capture_eval_video: True
-action_repeat: 2
 
-# Experiment config
-buffer_size: 1000000
+# Experiment
+max_episode_steps: 1000 # Max episode length
+num_episodes: 500 # Number of training episodes
+random_episodes: 10 # Number of random episodes at start
 pretrain_utd: null # If not none pretrain on random data with utd
-learning_starts: 10000
-total_timesteps: 1000000
-logging_epoch_freq: 100
-eval_every_steps: 2500
+action_repeat: 2
+buffer_size: 1e6
 seed: 42
 device: "cuda"  # "cpu" or "cuda" etc
-debug: False
+
+# Evaluation
+eval_every_episodes: 5
+num_eval_episodes: 10
+capture_eval_video: True # Fails on AMD GPU so set to False
+capture_train_video: False
 
 # W&B config
-wandb_project_name: "world_models"
 use_wandb: True
-wandb_group: ${env_id}-${dmc_task}
-wandb_tags:
-  - ${env_id}-${dmc_task}
+wandb_project_name: "lifelong-tcrl"
 monitor_gym: True
-run_name: ${agent.name}__${seed}-${now:%Y-%m-%d_%H-%M-%S}
-# run_name: ${env_id}__${agent.name}__utd=${agent.utd_ratio}__${seed}-${now:%Y-%m-%d_%H-%M-%S}
-  # cfg.run_name = f"{cfg.env_id}__{cfg.exp_name}__{cfg.seed}__{int(time.time())}"  # TODO move to cfg
+run_name: ${agent.name}__${seed}__${now:%Y-%m-%d_%H-%M-%S}
 
 hydra:
   run:
-    dir: output/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
+    dir: output/hydra/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
   job:
     chdir: true
   sweep:
@@ -46,4 +42,5 @@ hydra:
     subdir: ${hydra.job.num}
   job_logging:
     root:
-      level: INFO # DEBUG
+      # level: INFO # DEBUG
+      level: DEBUG
