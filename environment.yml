@@ -3,6 +3,8 @@ channels:
   - nvidia
   - pytorch
   - conda-forge
+  - anaconda
+  - menpo
 dependencies:
   - python=3.9
   - pytorch=2.0
@@ -14,6 +16,11 @@ dependencies:
   - gymnasium
   - imageio  # For VideoRecorder in utils/video.py
   - moviepy  # For VideoRecorder in utils/video.py
+  # For mujoco
+  - glew
+  - mesalib
+  - mesa-libgl-cos6-x86_64
+  - glfw3
   - pip
   - pip:
       - jaxtyping==0.2.23  # Types with shapes for tensors
