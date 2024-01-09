@@ -214,19 +214,14 @@ class DDPG(Agent):
 
         # Form n-step samples
         nstep_rewards = batch.rewards[: -(self.nstep - 1)]
-        dones = batch.dones[: -(self.nstep - 1)].clone()
-        if torch.max(dones) > 0.8:
-            print(f"dones has True")
-            breakpoint()
+        dones = 1 - batch.dones[: -(self.nstep - 1)].clone()
         for t in range(1, self.nstep - 1):
             nstep_rewards += (
-                (1 - dones)
-                * self.discount**t
-                * batch.rewards[t : -(self.nstep - 1 - t)]
+                dones * self.discount**t * batch.rewards[t : -(self.nstep - 1 - t)]
             )
-            dones += batch.dones[t : -(self.nstep - 1 - t)].clone()
-        dones += batch.dones[t + 1 :].clone()
-        nstep_rewards += (1 - dones) * self.discount ** (t + 1) * batch.rewards[t + 1 :]
+            dones *= 1 - batch.dones[t : -(self.nstep - 1 - t)].clone()
+        dones *= 1 - batch.dones[t + 1 :].clone()
+        nstep_rewards += dones * self.discount ** (t + 1) * batch.rewards[t + 1 :]
 
         batch_nstep = ReplayBufferSamples(
             observations=batch.observations[: -(self.nstep - 1)],
