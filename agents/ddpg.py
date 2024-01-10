@@ -115,7 +115,7 @@ class DDPG(Agent):
         reset_params_freq: Optional[
             int
         ] = None,  # reset params after this many param updates
-        nstep: int = 3,
+        nstep: int = 1,
         discount: float = 0.99,
         tau: float = 0.005,
         device: str = "cuda",

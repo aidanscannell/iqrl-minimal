@@ -180,7 +180,7 @@ class DDPG_AE(Agent):
         batch_size: int = 128,
         utd_ratio: int = 1,  # DDPG parameter update-to-data ratio
         actor_update_freq: int = 1,  # update actor less frequently than critic
-        nstep: int = 3,
+        nstep: int = 1,
         discount: float = 0.99,
         tau: float = 0.005,
         # Reset stuff
