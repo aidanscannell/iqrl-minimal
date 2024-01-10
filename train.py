@@ -21,7 +21,7 @@ def train(cfg: TrainConfig):
     import omegaconf
     import torch
     from hydra.utils import get_original_cwd
-    from stable_baselines3.common.buffers import ReplayBuffer
+    from utils.buffers import ReplayBuffer
     from stable_baselines3.common.evaluation import evaluate_policy
     from utils.env import make_env
 
@@ -87,7 +87,9 @@ def train(cfg: TrainConfig):
         envs.single_action_space,
         # "auto",
         torch.device(cfg.device),
-        handle_timeout_termination=False,
+        nstep=cfg.agent.nstep,
+#        handle_timeout_termination=False,
+        discount=cfg.agent.discount,
     )
 
     ###### Init agent ######
@@ -151,7 +153,7 @@ def train(cfg: TrainConfig):
         for idx, d in enumerate(truncateds):
             if d:
                 real_next_obs[idx] = infos["final_observation"][idx]
-        rb.add(obs, real_next_obs, actions, rewards, terminateds, infos)
+        rb.add(obs, real_next_obs, actions, rewards, terminateds, truncateds, infos)
 
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs

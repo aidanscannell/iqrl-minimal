@@ -34,7 +34,7 @@ class DDPGConfig(AgentConfig):
     utd_ratio: int = 1  # parameter update-to-data ratio
     actor_update_freq: int = 2  # update actor less frequently than critic
     reset_params_freq: int = 40000  # reset params after this many param updates
-    # nstep: 3
+    nstep: int = 1
     discount: float = 0.99
     tau: float = 0.005
     device: str = "cuda"
@@ -65,6 +65,7 @@ class AEDDPGConfig(DDPGConfig):
     simplex_dim: int = 10
     # encoder_reset_params_freq: int = 10000  # reset enc params after X param updates
     name: str = "AEDDPG"
+    nstep: int = 1
 
 
 @dataclass

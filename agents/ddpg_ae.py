@@ -17,8 +17,7 @@ import wandb
 from custom_types import Action, Agent, EvalMode, T0
 from gymnasium.spaces import Box, Space
 from helper import SimNorm, soft_update_params
-from stable_baselines3.common.buffers import ReplayBuffer
-from stable_baselines3.common.type_aliases import ReplayBufferSamples
+from utils import ReplayBuffer, ReplayBufferSamples
 
 
 class Encoder(nn.Module):
@@ -387,6 +386,7 @@ class DDPG_AE(Agent):
                 next_observations=latent_next_obs.to(torch.float).detach(),
                 dones=batch.dones,
                 rewards=batch.rewards,
+                next_state_discounts=batch.next_state_discounts,
             )
 
             # DDPG on latent representation
@@ -460,6 +460,7 @@ class DDPG_AE(Agent):
                 next_observations=latent_next_obs.to(torch.float).detach(),
                 dones=batch.dones,
                 rewards=batch.rewards,
+                next_state_discounts=batch.next_state_discounts,
             )
 
             # DDPG on latent representation

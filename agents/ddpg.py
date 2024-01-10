@@ -11,8 +11,7 @@ import wandb
 from custom_types import Agent, BatchAction, BatchObservation, BatchValue, EvalMode, T0
 from gymnasium.spaces import Box, Space
 from helper import soft_update_params
-from stable_baselines3.common.buffers import ReplayBuffer
-from stable_baselines3.common.type_aliases import ReplayBufferSamples
+from utils import ReplayBuffer, ReplayBufferSamples
 
 
 logging.basicConfig(level=logging.INFO)
@@ -286,7 +285,8 @@ class DDPG(Agent):
             min_q_next_target = torch.min(q1_next_target, q2_next_target)
             next_q_value = data.rewards.flatten() + (
                 1 - data.dones.flatten()
-            ) * self.discount**self.nstep * (min_q_next_target).view(-1)
+            ) * data.next_state_discounts.flatten() * (min_q_next_target).view(-1)
+#            ) * self.discount**self.nstep * (min_q_next_target).view(-1)
 
         q1_values, q2_values = self.critic(data.observations, data.actions)
         q1_loss = F.mse_loss(q1_values.view(-1), next_q_value)
