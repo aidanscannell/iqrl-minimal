@@ -25,7 +25,7 @@ def train(cfg: TrainConfig):
     from stable_baselines3.common.evaluation import evaluate_policy
     from utils.env import make_env
 
-    # Seeding
+    ###### Fix seed for reproducibility ######
     random.seed(cfg.seed)
     np.random.seed(cfg.seed)
     torch.manual_seed(cfg.seed)
@@ -38,7 +38,7 @@ def train(cfg: TrainConfig):
     cfg.agent.device = cfg.device
     logger.info(f"Using device: {cfg.device}")
 
-    # Setup vectorized environment for training/evaluation
+    ###### Setup vectorized environment for training/evaluation ######
     make_env_fn = partial(
         make_env,
         env_id=cfg.env_id,
@@ -64,7 +64,8 @@ def train(cfg: TrainConfig):
     )
     pprint.pprint(cfg_dict)
 
-    if cfg.use_wandb:  # Initialise WandB
+    ###### Initialise W&B ######
+    if cfg.use_wandb:
         import wandb
 
         run = wandb.init(
@@ -79,6 +80,7 @@ def train(cfg: TrainConfig):
             dir=os.path.join(get_original_cwd(), "output"),
         )
 
+    ###### Prepare replay buffer ######
     rb = ReplayBuffer(
         int(cfg.buffer_size),
         envs.single_observation_space,
@@ -88,13 +90,14 @@ def train(cfg: TrainConfig):
         handle_timeout_termination=False,
     )
 
+    ###### Init agent ######
     agent = hydra.utils.instantiate(
         cfg.agent,
         observation_space=envs.single_observation_space,
         action_space=envs.single_action_space,
     )
 
-    # Convert episode stuff to global steps
+    ###### Convert episode stuff to global steps ######
     total_timesteps = int(cfg.num_episodes * cfg.max_episode_steps / cfg.action_repeat)
     eval_every_steps = int(
         cfg.eval_every_episodes * cfg.max_episode_steps / cfg.action_repeat
@@ -103,12 +106,14 @@ def train(cfg: TrainConfig):
         cfg.random_episodes * cfg.max_episode_steps / cfg.action_repeat
     )
 
-    episode_idx = 0
-    first_update = True
-    start_time = time.time()
+    ###########################
+    ###### Training loop ######
+    ###########################
+    episode_idx, start_time = 0, time.time()
     obs, _ = envs.reset(seed=cfg.seed)
+
     for global_step in range(total_timesteps):
-        # ALGO LOGIC: put action logic here
+        ###### Select action ######
         if global_step < learning_starts:
             actions = np.array(
                 [envs.single_action_space.sample() for _ in range(envs.num_envs)]
@@ -117,10 +122,10 @@ def train(cfg: TrainConfig):
             # TODO set t0 properly
             actions = agent.select_action(observation=obs, eval_mode=False, t0=False)
 
-        # Execute action in environments
+        ###### Execute action in environments ######
         next_obs, rewards, terminateds, truncateds, infos = envs.step(actions)
 
-        # Record training metrics
+        ###### Record training metrics ######
         if "final_info" in infos:
             for info in infos["final_info"]:
                 logger.info(
@@ -141,7 +146,7 @@ def train(cfg: TrainConfig):
                     )
                 break
 
-        # TRY NOT TO MODIFY: save data to reply buffer; handle `terminal_observation`
+        ###### Save data to reply buffer; handle `terminal_observation` ######
         real_next_obs = next_obs.copy()
         for idx, d in enumerate(truncateds):
             if d:
@@ -151,16 +156,13 @@ def train(cfg: TrainConfig):
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
 
-        # ALGO LOGIC: training.
+        ###### Training ######
         if global_step > learning_starts:
             if "final_info" in infos:  # Update after every episode
                 if isinstance(episode_length, np.ndarray):
                     episode_length = episode_length[0]
                 # num_updates = cfg.utd_ratio * episode_length  # TODO inc. frame skip
                 num_new_transitions = episode_length
-                if cfg.pretrain_utd is not None and first_update:  # more pretrain steps
-                    num_new_transitions = cfg.pretrain_utd * rb.size()
-                    first_update = False
                 logger.info(
                     f"Training agent w. {num_new_transitions} new data @ step {global_step}..."
                 )
@@ -182,6 +184,7 @@ def train(cfg: TrainConfig):
                     )
                     wandb.log({"train/": train_metrics})
 
+            ###### Evaluation ######
             if global_step % eval_every_steps == 0:
                 mean_reward, std_reward = evaluate_policy(
                     agent, eval_envs, n_eval_episodes=cfg.num_eval_episodes
