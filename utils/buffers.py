@@ -113,8 +113,12 @@ class BaseBuffer(ABC):
             to normalize the observations/rewards when sampling
         :return:
         """
-        upper_bound = self.buffer_size if self.full else (self.pos - nstep + 1)
-        batch_inds = np.random.randint(0, upper_bound, size=batch_size)
+        # We must ensure that the n-step samples are valid and from the same trajectory
+        if self.full and nstep > 2:
+            batch_inds = (np.random.randint(0, self.buffer_size - nstep + 1, size=batch_size) + self.pos) % self.buffer_size
+        else:
+            upper_bound = self.buffer_size if self.full else (self.pos - nstep + 1)
+            batch_inds = np.random.randint(0, upper_bound, size=batch_size)
         return self._get_samples(batch_inds, env=env)
 
     @abstractmethod
@@ -310,7 +314,7 @@ class ReplayBuffer(BaseBuffer):
         # Do not sample the element with index `self.pos` as the transitions is invalid
         # (we use only one array to store `obs` and `next_obs`)
         if self.full:
-            batch_inds = (np.random.randint(1, self.buffer_size, size=batch_size) + self.pos) % self.buffer_size
+            batch_inds = (np.random.randint(1, self.buffer_size - self.nstep + 1, size=batch_size) + self.pos) % self.buffer_size
         else:
             batch_inds = np.random.randint(0, self.pos - self.nstep + 1, size=batch_size)
         return self._get_samples(batch_inds, env=env)
