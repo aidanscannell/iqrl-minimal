@@ -1,5 +1,4 @@
 defaults:
-  - env: cartpole-swingup
   # - train_config
   - agent: ddpg_ae # mppi or ddpg
   # - override hydra/launcher: slurm # Use slurm (on cluster) for multirun
@@ -7,16 +6,13 @@ defaults:
   - _self_
 
 # Environment
-# env_id: ${env_id}
-# dmc_task: ${dmc_task}
-# env_id: "cartpole"
-# dmc_task: "swingup"
+env_id: "cartpole"
+dmc_task: "swingup"
 
 # Experiment
 max_episode_steps: 1000 # Max episode length
 num_episodes: 500 # Number of training episodes
 random_episodes: 10 # Number of random episodes at start
-pretrain_utd: null # If not none pretrain on random data with utd
 action_repeat: 2
 buffer_size: 1e6
 seed: 42

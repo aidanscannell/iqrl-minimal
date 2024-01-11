@@ -2,7 +2,7 @@ defaults:
   - submitit_slurm
 
 _target_: hydra_plugins.hydra_submitit_launcher.submitit_launcher.SlurmLauncher
-account: project_462000217
+account: project_462000462
 partition: small-g # Partition (queue) name
 timeout_min: 120
 # cpus_per_task: 6
