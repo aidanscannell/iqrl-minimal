@@ -1,17 +1,16 @@
-# World Models
-Train world model using lower bound on RL objective. 
+# Lifelong TCRL
 
 ## Install
 
 ### AMD GPU
 Install on LUMI with:
 ``` sh
-WORLD_MODELS_CONTAINER_DIR=/scratch/project_462000217/aidan/world-models/container
-mkdir  $WORLD_MODELS_CONTAINER_DIR
+LIFELONG_TCRL_CONTAINER_DIR=/scratch/project_462000217/aidan/lifelong-tcrl/container
+mkdir  $LIFELONG_TCRL_CONTAINER_DIR
 module load LUMI/22.08
 module load lumi-container-wrapper
-conda-containerize new --mamba --prefix $WORLD_MODELS_CONTAINER_DIR environment.yml
-conda-containerize update $WORLD_MODELS_CONTAINER_DIR --post-install post-install-amd.txt
+conda-containerize new --mamba --prefix $LIFELONG_TCRL_CONTAINER_DIR environment.yml
+conda-containerize update $LIFELONG_TCRL_CONTAINER_DIR --post-install post-install-amd.txt
 ```
 
 To run experiments add container to path with
