@@ -1,3 +1,4 @@
+# @package _global_
 num_episodes: 5000
 agent:
   latent_dim: 128
