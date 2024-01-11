@@ -367,8 +367,7 @@ class DDPG_AE(Agent):
 
     def update_1(self, replay_buffer: ReplayBuffer, num_new_transitions: int) -> dict:
         """Update representation and DDPG at same time"""
-        # TODO which utd to use here? Make clear to user
-        num_updates = num_new_transitions * self.ddpg.utd_ratio
+        num_updates = int(num_new_transitions * self.ddpg.utd_ratio)
         info = {}
 
         logger.info(f"Performing {num_updates} DDPG-AE updates...")
@@ -418,7 +417,8 @@ class DDPG_AE(Agent):
         if self.ae_early_stopper is not None:
             self.ae_early_stopper.reset()
 
-        num_ae_updates = num_new_transitions * self.ae_utd_ratio
+        num_ae_updates = int(num_new_transitions * self.ae_utd_ratio)
+
 
         info = {}
         logger.info("Training AE...")

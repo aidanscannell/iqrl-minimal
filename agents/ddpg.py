@@ -183,7 +183,7 @@ class DDPG(Agent):
 
     def update(self, replay_buffer: ReplayBuffer, num_new_transitions: int) -> dict:
         self.reset_flag = False
-        num_updates = num_new_transitions * self.utd_ratio
+        num_updates = int(num_new_transitions * self.utd_ratio)
         logger.info(f"Performing {num_updates} DDPG updates")
 
         for i in range(num_updates):
