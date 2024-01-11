@@ -120,12 +120,12 @@ class DDPG(Agent):
         tau: float = 0.005,
         device: str = "cuda",
         name: str = "DDPG",
+        nstep: int = 1,
         **kwargs,  # hack to let work with agent.latent_dim in env config
     ):
         super().__init__(
             observation_space=observation_space, action_space=action_space, name=name
         )
-        nstep: int = 1
         self.mlp_dims = mlp_dims
         self._exploration_noise = h.LinearSchedule(
             start=exploration_noise_start,
