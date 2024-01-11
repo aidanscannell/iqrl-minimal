@@ -181,7 +181,7 @@ class DDPG_AE(Agent):
         batch_size: int = 128,
         utd_ratio: int = 1,  # DDPG parameter update-to-data ratio
         actor_update_freq: int = 1,  # update actor less frequently than critic
-        nstep: int = 3,
+        # nstep: int = 1,
         discount: float = 0.99,
         tau: float = 0.005,
         # Reset stuff
@@ -300,7 +300,7 @@ class DDPG_AE(Agent):
             actor_update_freq=actor_update_freq,
             # reset_params_freq=reset_params_freq,
             reset_params_freq=None,  # handle resetting in this class
-            nstep=nstep,  # N-step returns for critic training
+            # nstep=nstep,  # N-step returns for critic training
             discount=discount,
             tau=tau,
             device=device,
