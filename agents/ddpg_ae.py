@@ -322,20 +322,27 @@ class DDPG_AE(Agent):
         # self.ddpg.train()
         # self.ddpg.reset_flag = False
 
-        update_memory = False
-        if self.reset_strategy == "latent-dist":
-            if self.old_replay_buffer is None:
-                logger.info("Building memory first time...")
-                update_memory = True
-                # self._update_memory(
-                #     replay_buffer=replay_buffer, memory_size=self.memory_size
-                # )
-            elif self.trigger_reset():
-                self.reset(full_reset=False)
-                update_memory = True
-                # Do more updates if reset
-                # TODO how many updates should be done when reset?
-                num_new_transitions = replay_buffer.size()
+        # if self.reset_strategy == "latent-dist":
+        #     if self.old_replay_buffer is None:
+        #         logger.info("Building memory first time...")
+        #         # logger.info("Updating memory...")
+        #         self._update_memory(
+        #             replay_buffer=replay_buffer, memory_size=self.memory_size
+        #         )
+        # update_memory = False
+        # if self.reset_strategy == "latent-dist":
+        #     if self.old_replay_buffer is None:
+        #         logger.info("Building memory first time...")
+        #         update_memory = True
+        #         # self._update_memory(
+        #         #     replay_buffer=replay_buffer, memory_size=self.memory_size
+        #         # )
+        #     elif self.trigger_reset():
+        #         self.reset(full_reset=False)
+        #         update_memory = True
+        #         # Do more updates if reset
+        #         # TODO how many updates should be done when reset?
+        #         num_new_transitions = replay_buffer.size()
 
         if self.train_strategy == "interleaved":
             info = self.update_1(
@@ -349,14 +356,6 @@ class DDPG_AE(Agent):
             raise NotImplementedError(
                 "train_strategy should be either 'interleaved' or 'representation-first'"
             )
-
-        if self.reset_strategy == "latent-dist":
-            if self.old_replay_buffer is None:
-                logger.info("Building memory first time...")
-                # logger.info("Updating memory...")
-                self._update_memory(
-                    replay_buffer=replay_buffer, memory_size=self.memory_size
-                )
 
         self.ddpg._exploration_noise.step()
         self.ae.eval()
@@ -400,7 +399,7 @@ class DDPG_AE(Agent):
                         self.reset(full_reset=False)
                         reset_flag = 1
             elif self.reset_strategy == "latent-dist":
-                if self.trigger_reset_latent_dist():
+                if self.trigger_reset_latent_dist(replay_buffer=replay_buffer):
                     reset_flag = 1
             else:
                 raise NotImplementedError(
@@ -434,7 +433,7 @@ class DDPG_AE(Agent):
 
         reset_flag = 0
         if self.reset_strategy == "latent-dist":
-            if self.trigger_reset_latent_dist():
+            if self.trigger_reset_latent_dist(replay_buffer=replay_buffer):
                 reset_flag = 1
 
         info = {}
@@ -443,7 +442,8 @@ class DDPG_AE(Agent):
             batch = replay_buffer.sample(self.ae_batch_size)
             info.update(self.update_representation_step(batch=batch))
 
-            if i % 100 == 0 or reset_flag == 1:
+            # if i % 100 == 0 or reset_flag == 1:
+            if i % 100 == 0:
                 logger.info(
                     f"Iteration {i} | loss {info['loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']}"
                 )
@@ -455,13 +455,19 @@ class DDPG_AE(Agent):
                         }
                     )
                     wandb.log(info)
-                reset_flag = 0
+                # reset_flag = 0
 
             if self.ae_early_stopper is not None:
                 # TODO this should use a validation loss
-                if self.ae_early_stopper(info["rec_loss"]):
+                if self.ae_early_stopper(info["loss"]):
                     logger.info("Early stopping criteria met, stopping AE training...")
                     break
+
+        if self.reset_strategy == "latent-dist" and reset_flag == 1:
+            logger.info("Updating memory...")
+            self._update_memory(
+                replay_buffer=replay_buffer, memory_size=self.memory_size
+            )
 
         logger.info("Finished training AE")
 
@@ -675,11 +681,19 @@ class DDPG_AE(Agent):
     #         )
     #     return {"reset": reset, "mem_dist": mem_dist}
 
-    def trigger_reset_latent_dist(self) -> bool:
+    def trigger_reset_latent_dist(self, replay_buffer) -> bool:
+        if self.old_replay_buffer is None:
+            logger.info("Building memory first time...")
+            # logger.info("Updating memory...")
+            self._update_memory(
+                replay_buffer=replay_buffer, memory_size=self.memory_size
+            )
+            return False
         z_mem_pred = self.ae.encoder(self.x_mem)
         # TODO make sure mean is over state dimensions
         mem_dist = (self.z_mem - z_mem_pred).abs().mean()
         logger.info(f"mem_dist {mem_dist}")
+        breakpoint()
         if wandb.run is not None:
             wandb.log({"mem_dist": mem_dist})
         if mem_dist > self.reset_threshold:
