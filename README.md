@@ -5,7 +5,7 @@
 ### AMD GPU
 Install on LUMI with:
 ``` sh
-LIFELONG_TCRL_CONTAINER_DIR=/scratch/project_462000217/aidan/lifelong-tcrl/container
+LIFELONG_TCRL_CONTAINER_DIR=/scratch/project_462000462/lifelong-tcrl/container
 mkdir  $LIFELONG_TCRL_CONTAINER_DIR
 module load LUMI/22.08
 module load lumi-container-wrapper
@@ -15,7 +15,7 @@ conda-containerize update $LIFELONG_TCRL_CONTAINER_DIR --post-install post-insta
 
 To run experiments add container to path with
 ```sh
-export PATH="/scratch/project_462000217/aidan/lifelong-tcrl/container/bin:$PATH"
+export PATH="/scratch/project_462000462/aidan/lifelong-tcrl/container/bin:$PATH"
 ```
 Then you can run experiments with 
 ``` sh
