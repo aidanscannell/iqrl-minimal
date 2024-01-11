@@ -652,6 +652,11 @@ class DDPG_AE(Agent):
         with torch.no_grad():
             self.z_mem = self.old_ae.encoder(self.x_mem)
         print(f"self.z_mem {self.z_mem.shape}")
+        self.z_mem_max = torch.max(self.z_mem, 0)[0]
+        self.z_mem_min = torch.min(self.z_mem, 0)[0]
+        self.z_mem_normalised = (self.z_mem - self.z_mem_min) / (
+            self.z_mem_max - self.z_mem_min
+        )
 
     # def trigger_reset(self) -> dict:
     #     """Returns 1 if it has reset and 0 otherwise"""
@@ -690,8 +695,12 @@ class DDPG_AE(Agent):
             )
             return False
         z_mem_pred = self.ae.encoder(self.x_mem)
+        z_mem_pred_normalised = (z_mem_pred - self.z_mem_min) / (
+            self.z_mem_max - self.z_mem_min
+        )
         # TODO make sure mean is over state dimensions
-        mem_dist = (self.z_mem - z_mem_pred).abs().mean()
+        mem_dist = (self.z_mem_normalised - z_mem_pred_normalised).abs().mean()
+        # mem_dist = (self.z_mem - z_mem_pred).abs().mean()
         logger.info(f"mem_dist {mem_dist}")
         breakpoint()
         if wandb.run is not None:
