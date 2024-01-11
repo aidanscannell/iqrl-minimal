@@ -179,32 +179,30 @@ class DDPG(Agent):
         self.critic_update_counter = 0
         self.actor_update_counter = 0
 
-        self.reset_flag = False
-
     def update(self, replay_buffer: ReplayBuffer, num_new_transitions: int) -> dict:
-        self.reset_flag = False
         num_updates = int(num_new_transitions * self.utd_ratio)
         logger.info(f"Performing {num_updates} DDPG updates")
 
+        reset_flag = 0
         for i in range(num_updates):
             batch = replay_buffer.sample(self.batch_size)
 
             info = self.update_step(batch=batch)
 
             # Reset actor/critic after a fixed number of parameter updates
-            if self.reset_params_freq is not None:
-                if self.critic_update_counter % self.reset_params_freq == 0:
-                    self.reset(full_reset=False)
+            if self.trigger_reset():
+                reset_flag = 1
 
-            if i % 100 == 0:
+            if i % 100 == 0 or reset_flag == 1:
                 if wandb.run is not None:
                     info.update(
                         {
-                            "reset_ddpg": int(self.reset_flag),
+                            "reset": reset_flag,
                             "exploration_noise": self.exploration_noise,
                         }
                     )
                     wandb.log(info)
+                reset_flag = 0
 
         self._exploration_noise.step()
 
@@ -329,6 +327,18 @@ class DDPG(Agent):
         }
         return info
 
+    def trigger_reset(self) -> bool:
+        """Returns True if it has reset and False otherwise"""
+        reset = False
+        if self.reset_params_freq is not None:
+            if self.critic_update_counter % self.reset_params_freq == 0:
+                logger.info(
+                    f"Resetting as step {self.critic_update_counter} % {self.reset_params_freq} == 0"
+                )
+                self.reset(full_reset=False)
+                reset = True
+        return reset
+
     @torch.no_grad()
     def select_action(self, observation, eval_mode: EvalMode = False, t0: T0 = None):
         actions = self.actor(torch.Tensor(observation).to(self.device))
@@ -354,7 +364,6 @@ class DDPG(Agent):
         self.actor_opt = torch.optim.AdamW(
             self.actor.parameters(), lr=self.learning_rate
         )
-        self.reset_flag = True
         # TODO more updates after resetting?
         # for j in range(replay_buffer.size() - num_updates):
         #     batch = replay_buffer.sample(self.batch_size)

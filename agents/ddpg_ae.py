@@ -210,12 +210,6 @@ class DDPG_AE(Agent):
         # super().__init__(
         #     observation_space=observation_space, action_space=action_space, name=name
         # )
-        if (
-            train_strategy == "representation-first"
-            and reset_strategy == "every-x-param-updates"
-        ):
-            raise NotImplementedError
-
         self.train_strategy = train_strategy
 
         self.temporal_consistency = temporal_consistency
@@ -232,6 +226,9 @@ class DDPG_AE(Agent):
         self.simplex_dim = simplex_dim
 
         self.device = device
+
+        if self.train_strategy == "interleaved":
+            assert utd_ratio == ae_utd_ratio
 
         if temporal_consistency:
             self.dynamics = MLPDynamics(
@@ -323,10 +320,10 @@ class DDPG_AE(Agent):
     def update(self, replay_buffer: ReplayBuffer, num_new_transitions: int) -> dict:
         self.ae.train()
         # self.ddpg.train()
-        self.ddpg.reset_flag = False
+        # self.ddpg.reset_flag = False
 
+        update_memory = False
         if self.reset_strategy == "latent-dist":
-            update_memory = False
             if self.old_replay_buffer is None:
                 logger.info("Building memory first time...")
                 update_memory = True
@@ -354,8 +351,9 @@ class DDPG_AE(Agent):
             )
 
         if self.reset_strategy == "latent-dist":
-            if update_memory:
-                logger.info("Updating memory...")
+            if self.old_replay_buffer is None:
+                logger.info("Building memory first time...")
+                # logger.info("Updating memory...")
                 self._update_memory(
                     replay_buffer=replay_buffer, memory_size=self.memory_size
                 )
@@ -371,6 +369,7 @@ class DDPG_AE(Agent):
         info = {}
 
         logger.info(f"Performing {num_updates} DDPG-AE updates...")
+        reset_flag = 0
         for i in range(num_updates):
             batch = replay_buffer.sample(self.ddpg.batch_size)
             info.update(self.update_representation_step(batch=batch))
@@ -391,22 +390,36 @@ class DDPG_AE(Agent):
             # DDPG on latent representation
             info.update(self.ddpg.update_step(batch=latent_batch))
 
-            # Reset ae/actor/critic after a fixed number of parameter updates
+            # Potentially reset ae/actor/critic NN params
             if self.reset_strategy == "every-x-param-updates":
                 if self.reset_params_freq is not None:
                     if self.ddpg.critic_update_counter % self.reset_params_freq == 0:
+                        logger.info(
+                            f"Resetting as step {self.ddpg.critic_update_counter} % {self.reset_params_freq} == 0"
+                        )
                         self.reset(full_reset=False)
+                        reset_flag = 1
+            elif self.reset_strategy == "latent-dist":
+                if self.trigger_reset_latent_dist():
+                    reset_flag = 1
+            else:
+                raise NotImplementedError(
+                    "reset_strategy should be either 'every-x-params-updates' or 'latent-dist'"
+                )
 
-            if i % 100 == 0:
-                logger.info(f"Iteration {i} rec_loss {info['rec_loss']}")
+            if i % 100 == 0 or reset_flag == 1:
+                logger.info(
+                    f"Iteration {i} | loss {info['loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']}"
+                )
                 if wandb.run is not None:
                     info.update(
                         {
-                            "reset_ddpg": int(self.ddpg.reset_flag),
+                            "reset": reset_flag,
                             "exploration_noise": self.ddpg.exploration_noise,
                         }
                     )
                     wandb.log(info)
+                reset_flag = 0
 
         logger.info("Finished training DDPG-AE")
 
@@ -419,6 +432,10 @@ class DDPG_AE(Agent):
 
         num_ae_updates = int(num_new_transitions * self.ae_utd_ratio)
 
+        reset_flag = 0
+        if self.reset_strategy == "latent-dist":
+            if self.trigger_reset_latent_dist():
+                reset_flag = 1
 
         info = {}
         logger.info("Training AE...")
@@ -426,18 +443,22 @@ class DDPG_AE(Agent):
             batch = replay_buffer.sample(self.ae_batch_size)
             info.update(self.update_representation_step(batch=batch))
 
-            if i % 100 == 0:
-                logger.info(f"Iteration {i} rec_loss {info['rec_loss']}")
+            if i % 100 == 0 or reset_flag == 1:
+                logger.info(
+                    f"Iteration {i} | loss {info['loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']}"
+                )
                 if wandb.run is not None:
                     info.update(
                         {
-                            "reset_ddpg": int(self.ddpg.reset_flag),
+                            "reset": reset_flag,
                             "exploration_noise": self.ddpg.exploration_noise,
                         }
                     )
                     wandb.log(info)
+                reset_flag = 0
 
             if self.ae_early_stopper is not None:
+                # TODO this should use a validation loss
                 if self.ae_early_stopper(info["rec_loss"]):
                     logger.info("Early stopping criteria met, stopping AE training...")
                     break
@@ -446,6 +467,7 @@ class DDPG_AE(Agent):
 
         num_updates = num_new_transitions * self.ddpg.utd_ratio
         logger.info(f"Performing {num_updates} DDPG updates...")
+        reset_flag = 0
         for i in range(num_updates):
             batch = replay_buffer.sample(self.ddpg.batch_size)
 
@@ -465,14 +487,26 @@ class DDPG_AE(Agent):
             # DDPG on latent representation
             info.update(self.ddpg.update_step(batch=latent_batch))
 
-            # Reset actor/critic after a fixed number of parameter updates
-            # TODO implement custom reset criterion
-            # if self.ddpg.critic_update_counter % self.ddpg.reset_params_freq == 0:
-            #     self.reset(full_reset=False)
+            # Potentially reset ae/actor/critic NN params
+            if self.reset_strategy == "every-x-param-updates":
+                if self.reset_params_freq is not None:
+                    if self.ddpg.critic_update_counter % self.reset_params_freq == 0:
+                        logger.info(
+                            f"Resetting as step {self.ddpg.critic_update_counter} % {self.reset_params_freq} == 0"
+                        )
+                        self.reset(full_reset=False)
+                        reset_flag = 1
 
-            if i % 100 == 0:
+            if i % 100 == 0 or reset_flag == 1:
                 if wandb.run is not None:
+                    info.update(
+                        {
+                            "reset": reset_flag,
+                            "exploration_noise": self.ddpg.exploration_noise,
+                        }
+                    )
                     wandb.log(info)
+                reset_flag = 0
 
         logger.info("Finished training DDPG")
 
@@ -613,14 +647,47 @@ class DDPG_AE(Agent):
             self.z_mem = self.old_ae.encoder(self.x_mem)
         print(f"self.z_mem {self.z_mem.shape}")
 
-    def trigger_reset(self) -> bool:
+    # def trigger_reset(self) -> dict:
+    #     """Returns 1 if it has reset and 0 otherwise"""
+    #     reset, mem_dist = 0, 0
+    #     if self.reset_strategy == "every-x-param-updates":
+    #         if self.reset_params_freq is not None:
+    #             if self.ddpg.critic_update_counter % self.reset_params_freq == 0:
+    #                 logger.info(
+    #                     f"Resetting as step {self.ddpg.critic_update_counter} % {self.reset_params_freq} == 0"
+    #                 )
+    #                 self.reset(full_reset=False)
+    #                 reset = 1
+    #     elif self.reset_strategy == "latent-dist":
+    #         z_mem_pred = self.ae.encoder(self.x_mem)
+    #         # TODO make sure mean is over state dimensions
+    #         mem_dist = (self.z_mem - z_mem_pred).abs().mean()
+    #         logger.info(f"mem_dist {mem_dist}")
+    #         if mem_dist > self.reset_threshold:
+    #             logger.info(
+    #                 f"Resetting as mem_dist {mem_dist} > reset_threshold {self.reset_threshold}"
+    #             )
+    #             self.reset(full_reset=False)
+    #             reset = 1
+    #     else:
+    #         raise NotImplementedError(
+    #             "reset_strategy should be either 'every-x-params-updates' or 'latent-dist'"
+    #         )
+    #     return {"reset": reset, "mem_dist": mem_dist}
+
+    def trigger_reset_latent_dist(self) -> bool:
         z_mem_pred = self.ae.encoder(self.x_mem)
+        # TODO make sure mean is over state dimensions
         mem_dist = (self.z_mem - z_mem_pred).abs().mean()
         logger.info(f"mem_dist {mem_dist}")
         if wandb.run is not None:
             wandb.log({"mem_dist": mem_dist})
         if mem_dist > self.reset_threshold:
             reset = True
+            logger.info(
+                f"Resetting as mem_dist {mem_dist} > reset_threshold {self.reset_threshold}"
+            )
+            self.reset(full_reset=False)
         else:
             reset = False
         return reset
