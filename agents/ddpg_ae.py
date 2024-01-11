@@ -702,7 +702,7 @@ class DDPG_AE(Agent):
         mem_dist = (self.z_mem_normalised - z_mem_pred_normalised).abs().mean()
         # mem_dist = (self.z_mem - z_mem_pred).abs().mean()
         logger.info(f"mem_dist {mem_dist}")
-        breakpoint()
+        # breakpoint()
         if wandb.run is not None:
             wandb.log({"mem_dist": mem_dist})
         if mem_dist > self.reset_threshold:
