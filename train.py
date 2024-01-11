@@ -162,7 +162,7 @@ def train(cfg: TrainConfig):
                 if isinstance(episode_length, np.ndarray):
                     episode_length = episode_length[0]
                 # num_updates = cfg.utd_ratio * episode_length  # TODO inc. frame skip
-                num_new_transitions = episode_length // cfg.action_repeat
+                num_new_transitions = episode_length
                 logger.info(
                     f"Training agent w. {num_new_transitions} new data @ step {global_step}..."
                 )
