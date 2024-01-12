@@ -183,6 +183,9 @@ class DDPG(Agent):
         num_updates = int(num_new_transitions * self.utd_ratio)
         logger.info(f"Performing {num_updates} DDPG updates")
 
+        if wandb.run is not None:
+            wandb.log({"exploration_noise": self.exploration_noise})
+
         reset_flag = 0
         for i in range(num_updates):
             batch = replay_buffer.sample(self.batch_size)
@@ -192,10 +195,12 @@ class DDPG(Agent):
             # Reset actor/critic after a fixed number of parameter updates
             if self.trigger_reset():
                 reset_flag = 1
-
-            if i % 100 == 0 or reset_flag == 1:
                 if wandb.run is not None:
-                    info.update({"exploration_noise": self.exploration_noise})
+                    wandb.log({"reset": reset_flag})
+
+            if i % 100 == 0:
+                if wandb.run is not None:
+                    # info.update({"exploration_noise": self.exploration_noise})
                     wandb.log(info)
                     wandb.log({"reset": reset_flag})
                 reset_flag = 0
@@ -297,10 +302,10 @@ class DDPG(Agent):
         soft_update_params(self.critic, self.target_critic, tau=self.tau)
 
         info = {
-            "q1_values": q1_values.mean().item(),
-            "q2_values": q2_values.mean().item(),
-            "q1_loss": q1_loss.item(),
-            "q2_loss": q2_loss.item(),
+            # "q1_values": q1_values.mean().item(),
+            # "q2_values": q2_values.mean().item(),
+            # "q1_loss": q1_loss.item(),
+            # "q2_loss": q2_loss.item(),
             "q_loss": q_loss.item() / 2,
             "critic_update_counter": self.critic_update_counter,
         }
