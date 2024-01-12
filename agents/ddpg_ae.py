@@ -196,7 +196,7 @@ class DDPG_AE(Agent):
         ae_learning_rate: float = 3e-4,
         ae_batch_size: int = 128,
         # ae_num_updates: int = 1000,
-        ae_utd_ratio: int = 1,
+        ae_utd_ratio: int = 1,  # used for representation first training
         ae_patience: int = 100,
         ae_min_delta: float = 0.0,
         latent_dim: int = 20,
@@ -226,9 +226,6 @@ class DDPG_AE(Agent):
         self.simplex_dim = simplex_dim
 
         self.device = device
-
-        if self.train_strategy == "interleaved":
-            assert utd_ratio == ae_utd_ratio
 
         if temporal_consistency:
             self.dynamics = MLPDynamics(
