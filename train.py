@@ -180,6 +180,8 @@ def train(cfg: TrainConfig):
                             "num_new_transitions": num_new_transitions,
                             "action_repeat": cfg.action_repeat,
                             "env_step": global_step * cfg.action_repeat,
+                            "episode": episode_idx,
+                            "elapsed_time": time.time() - start_time,
                         }
                     )
                     wandb.log({"train/": train_metrics})
@@ -196,6 +198,7 @@ def train(cfg: TrainConfig):
                     "global_step": global_step,
                     "env_step": global_step * cfg.action_repeat,
                     "episode": episode_idx,
+                    "elapsed_time": time.time() - start_time,
                 }
                 if cfg.use_wandb:
                     wandb.log({"eval/": eval_metrics})
