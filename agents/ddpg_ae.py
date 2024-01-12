@@ -364,6 +364,9 @@ class DDPG_AE(Agent):
         num_updates = int(num_new_transitions * self.ddpg.utd_ratio)
         info = {}
 
+        if wandb.run is not None:
+            wandb.log({"exploration_noise": self.ddpg.exploration_noise})
+
         logger.info(f"Performing {num_updates} DDPG-AE updates...")
         reset_flag = 0
         for i in range(num_updates):
@@ -403,12 +406,16 @@ class DDPG_AE(Agent):
                     "reset_strategy should be either 'every-x-params-updates' or 'latent-dist'"
                 )
 
-            if i % 100 == 0 or reset_flag == 1:
+            if reset_flag == 1:
+                if wandb.run is not None:
+                    wandb.log({"reset": reset_flag})
+
+            if i % 100 == 0:
                 logger.info(
                     f"Iteration {i} | loss {info['loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']}"
                 )
                 if wandb.run is not None:
-                    info.update({"exploration_noise": self.ddpg.exploration_noise})
+                    # info.update({"exploration_noise": self.ddpg.exploration_noise})
                     wandb.log(info)
                     wandb.log({"reset": reset_flag})
                 reset_flag = 0
@@ -429,19 +436,23 @@ class DDPG_AE(Agent):
             if self.trigger_reset_latent_dist(replay_buffer=replay_buffer):
                 reset_flag = 1
 
+        if wandb.run is not None:
+            wandb.log({"exploration_noise": self.ddpg.exploration_noise})
+            if reset_flag == 1:
+                wandb.log({"reset": reset_flag})
+
         info = {}
         logger.info("Training AE...")
         for i in range(num_ae_updates):
             batch = replay_buffer.sample(self.ae_batch_size)
             info.update(self.update_representation_step(batch=batch))
 
-            # if i % 100 == 0 or reset_flag == 1:
             if i % 100 == 0:
                 logger.info(
                     f"Iteration {i} | loss {info['loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']}"
                 )
                 if wandb.run is not None:
-                    info.update({"exploration_noise": self.ddpg.exploration_noise})
+                    # info.update({"exploration_noise": self.ddpg.exploration_noise})
                     wandb.log(info)
                     wandb.log({"reset": reset_flag})
                 # reset_flag = 0
@@ -491,12 +502,12 @@ class DDPG_AE(Agent):
                         )
                         self.reset(full_reset=False)
                         reset_flag = 1
+                        if wandb.run is not None:
+                            wandb.log({"reset": reset_flag})
 
-            if i % 100 == 0 or reset_flag == 1:
+            if i % 100 == 0:
                 if wandb.run is not None:
-                    info.update({"exploration_noise": self.ddpg.exploration_noise})
                     wandb.log(info)
-                    wandb.log({"reset": reset_flag})
                 reset_flag = 0
 
         logger.info("Finished training DDPG")
