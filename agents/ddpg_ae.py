@@ -239,6 +239,7 @@ class DDPG_AE(Agent):
         temporal_consistency: bool = False,  # if True include dynamic model for representation learning
         reward_loss: bool = False,  # if True include reward model for representation learning
         value_dynamics_loss: bool = False,  # if True include value prediction for representation learning
+        value_enc_loss: bool = False,  # if True include value prediction for representation learning
         reconstruction_loss: bool = True,  # if True use reconstruction loss with decoder
         ae_learning_rate: float = 3e-4,
         ae_batch_size: int = 128,
@@ -262,6 +263,7 @@ class DDPG_AE(Agent):
         self.temporal_consistency = temporal_consistency
         self.reward_loss = reward_loss
         self.value_dynamics_loss = value_dynamics_loss
+        self.value_enc_loss = value_enc_loss
         self.reconstruction_loss = reconstruction_loss
         self.ae_learning_rate = ae_learning_rate
         self.ae_batch_size = ae_batch_size
@@ -611,32 +613,8 @@ class DDPG_AE(Agent):
         else:
             reward_loss = torch.zeros(1).to(self.device)
 
-        # if self.value_encoder_loss:
-        #     q_pred = self.ddpg.critic(z, batch.actions)
-
-        #     if not self.temporal_consistency:
-        #         delta_z_dynamics = self.dynamics(x=z, a=batch.actions)
-        #         z_next_dynamics = z + delta_z_dynamics
-        #         with torch.no_grad():
-        #             z_next_enc_target = self.ae_target.encoder(batch.next_observations)
-        #     q_target_dynamics = (
-        #         batch.rewards
-        #         + self.ddpg.discount
-        #         * self.ddpg.target_critic(z_next_dynamics, batch.actions)
-        #     )
-        #     # q_target_enc = self.ddpg.target_critic(z_next_enc_target, batch.actions)
-        #     value_loss = torch.nn.functional.mse_loss(
-        #         input=q_pred, target=q_target_dynamics, reduction="mean"
-        #     )
-        # else:
-        #     value_loss = torch.zeros(1).to(self.device)
-
-        if self.value_dynamics_loss:
+        def value_loss_fn(z_next):
             q1_pred, q2_pred = self.ddpg.critic(z, batch.actions)
-
-            if not self.temporal_consistency:
-                delta_z_dynamics = self.dynamics(x=z, a=batch.actions)
-                z_next_dynamics = z + delta_z_dynamics
 
             # Policy smoothing actions for next state
             # TODO get this functionality from method in ddpg
@@ -647,11 +625,11 @@ class DDPG_AE(Agent):
                 -self.ddpg.noise_clip, self.ddpg.noise_clip
             ) * self.ddpg.target_actor.action_scale
 
-            next_state_actions = (
-                self.ddpg.target_actor(z_next_dynamics) + clipped_noise
-            ).clamp(self.ddpg.action_space.low[0], self.ddpg.action_space.high[0])
+            next_state_actions = (self.ddpg.target_actor(z_next) + clipped_noise).clamp(
+                self.ddpg.action_space.low[0], self.ddpg.action_space.high[0]
+            )
             q1_next_target, q2_next_target = self.ddpg.target_critic(
-                z_next_dynamics, next_state_actions
+                z_next, next_state_actions
             )
             # min_q_next_target = torch.min(q1_next_target, q2_next_target)
             # next_q_value = batch.rewards.flatten() + (
@@ -663,12 +641,6 @@ class DDPG_AE(Agent):
             next_q2_value = batch.rewards.flatten() + (
                 1 - batch.dones.flatten()
             ) * self.ddpg.discount**self.ddpg.nstep * (q2_next_target).view(-1)
-            # q_target_dynamics = (
-            #     batch.rewards
-            #     + self.ddpg.discount
-            #     * self.ddpg.target_critic(z_next_dynamics, batch.actions)
-            # )
-            # q_target_enc = self.ddpg.target_critic(z_next_enc_target, batch.actions)
             q1_loss = torch.nn.functional.mse_loss(
                 input=q1_pred, target=next_q1_value, reduction="mean"
             )
@@ -676,8 +648,25 @@ class DDPG_AE(Agent):
                 input=q2_pred, target=next_q2_value, reduction="mean"
             )
             value_loss = (q1_loss + q2_loss) / 2
+            return value_loss
+
+        if self.value_dynamics_loss:
+            if not self.temporal_consistency:
+                delta_z_dynamics = self.dynamics(x=z, a=batch.actions)
+                z_next_dynamics = z + delta_z_dynamics
+            value_dynamics_loss = value_loss_fn(z_next_dynamics)
         else:
-            value_loss = torch.zeros(1).to(self.device)
+            value_dynamics_loss = torch.zeros(1).to(self.device)
+
+        if self.value_enc_loss:
+            if not self.temporal_consistency:
+                delta_z_dynamics = self.dynamics(x=z, a=batch.actions)
+                z_next_dynamics = z + delta_z_dynamics
+                with torch.no_grad():
+                    z_next_enc_target = self.ae_target.encoder(batch.next_observations)
+            value_enc_loss = value_loss_fn(z_next_enc_target)
+        else:
+            value_enc_loss = torch.zeros(1).to(self.device)
 
         value_weight = self.ddpg.exploration_noise
 
@@ -685,11 +674,13 @@ class DDPG_AE(Agent):
             rec_loss
             + reward_loss
             + value_weight * temporal_consitency_loss
-            + (1 - value_weight) * value_loss
+            + (1 - value_weight) * value_dynamics_loss
+            + (1 - value_weight) * value_enc_loss
         )
         info = {
             "reward_loss": reward_loss.item(),
-            "value_loss": value_loss.item(),
+            "value_dynamics_loss": value_dynamics_loss.item(),
+            "value_enc_loss": value_enc_loss.item(),
             "value_weight": value_weight,
             "temporal_consitency_loss": temporal_consitency_loss.item(),
             "rec_loss": rec_loss.item(),
