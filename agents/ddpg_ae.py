@@ -645,9 +645,9 @@ class DDPG_AE(Agent):
                 -self.ddpg.noise_clip, self.ddpg.noise_clip
             ) * self.ddpg.target_actor.action_scale
 
-            next_state_actions = (self.ddpg.target_actor(z) + clipped_noise).clamp(
-                self.ddpg.action_space.low[0], self.ddpg.action_space.high[0]
-            )
+            next_state_actions = (
+                self.ddpg.target_actor(z_next_dynamics) + clipped_noise
+            ).clamp(self.ddpg.action_space.low[0], self.ddpg.action_space.high[0])
             q1_next_target, q2_next_target = self.ddpg.target_critic(
                 z_next_dynamics, next_state_actions
             )
