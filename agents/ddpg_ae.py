@@ -475,7 +475,7 @@ class DDPG_AE(Agent):
 
             if i % 100 == 0:
                 logger.info(
-                    f"Iteration {i} | loss {info['loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']} | reward loss {info['reward_loss']} | value loss {info['value_loss']}"
+                    f"Iteration {i} | loss {info['loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']} | reward loss {info['reward_loss']} | value dynamics loss {info['value_dynamics_loss']}"
                 )
                 if wandb.run is not None:
                     # info.update({"exploration_noise": self.ddpg.exploration_noise})
@@ -512,7 +512,7 @@ class DDPG_AE(Agent):
 
             if i % 100 == 0:
                 logger.info(
-                    f"Iteration {i} | loss {info['loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']} | reward loss {info['reward_loss']} | value loss {info['value_loss']}"
+                    f"Iteration {i} | loss {info['loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']} | reward loss {info['reward_loss']} | value dynamics loss {info['value_dynamics_loss']}"
                 )
                 if wandb.run is not None:
                     # info.update({"exploration_noise": self.ddpg.exploration_noise})
