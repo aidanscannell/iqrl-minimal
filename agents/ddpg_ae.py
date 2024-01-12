@@ -677,7 +677,7 @@ class DDPG_AE(Agent):
         else:
             value_loss = torch.zeros(1).to(self.device)
 
-        value_weight = self.ddpg.exploration_noise()
+        value_weight = self.ddpg.exploration_noise
 
         loss = (
             rec_loss
