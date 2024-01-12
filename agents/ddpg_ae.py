@@ -432,9 +432,9 @@ class DDPG_AE(Agent):
         reset_flag = 0
         for i in range(num_updates):
             batch = replay_buffer.sample(self.ddpg.batch_size)
-            num_encoder_updates = 2  # 2 encoder updates for one q update
-            for i in range(num_encoder_updates):
-                info.update(self.update_representation_step(batch=batch))
+            # num_encoder_updates = 2  # 2 encoder updates for one q update
+            # for i in range(num_encoder_updates):
+            info.update(self.update_representation_step(batch=batch))
 
             # Map observations to latent
             latent_obs = self.ae_target.encoder(batch.observations)
@@ -634,21 +634,15 @@ class DDPG_AE(Agent):
             q1_next_target, q2_next_target = self.ddpg.target_critic(
                 z_next, next_state_actions
             )
-            # min_q_next_target = torch.min(q1_next_target, q2_next_target)
-            # next_q_value = batch.rewards.flatten() + (
-            #     1 - batch.dones.flatten()
-            # ) * self.ddpg.discount**self.ddpg.nstep * (min_q_next_target).view(-1)
-            next_q1_value = batch.rewards.flatten() + (
+            min_q_next_target = torch.min(q1_next_target, q2_next_target)
+            next_q_value = batch.rewards.flatten() + (
                 1 - batch.dones.flatten()
-            ) * self.ddpg.discount**self.ddpg.nstep * (q1_next_target).view(-1)
-            next_q2_value = batch.rewards.flatten() + (
-                1 - batch.dones.flatten()
-            ) * self.ddpg.discount**self.ddpg.nstep * (q2_next_target).view(-1)
+            ) * self.ddpg.discount**self.ddpg.nstep * (min_q_next_target).view(-1)
             q1_loss = torch.nn.functional.mse_loss(
-                input=q1_pred, target=next_q1_value, reduction="mean"
+                input=q1_pred, target=next_q_value, reduction="mean"
             )
             q2_loss = torch.nn.functional.mse_loss(
-                input=q2_pred, target=next_q2_value, reduction="mean"
+                input=q2_pred, target=next_q_value, reduction="mean"
             )
             value_loss = (q1_loss + q2_loss) / 2
             return value_loss
