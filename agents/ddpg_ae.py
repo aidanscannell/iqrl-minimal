@@ -427,7 +427,9 @@ class DDPG_AE(Agent):
         reset_flag = 0
         for i in range(num_updates):
             batch = replay_buffer.sample(self.ddpg.batch_size)
-            info.update(self.update_representation_step(batch=batch))
+            num_encoder_updates = 2  # 2 encoder updates for one q update
+            for i in range(num_encoder_updates):
+                info.update(self.update_representation_step(batch=batch))
 
             # Map observations to latent
             latent_obs = self.ae_target.encoder(batch.observations)
