@@ -372,6 +372,9 @@ class DDPG_AE(Agent):
 
         self.old_replay_buffer = None
 
+        self.value_weight = 1
+        self.value_weight_discount = 0.97
+
     def update(self, replay_buffer: ReplayBuffer, num_new_transitions: int) -> dict:
         self.ae.train()
         # self.ddpg.train()
@@ -660,28 +663,30 @@ class DDPG_AE(Agent):
 
         if self.value_enc_loss:
             if not self.temporal_consistency:
-                delta_z_dynamics = self.dynamics(x=z, a=batch.actions)
-                z_next_dynamics = z + delta_z_dynamics
                 with torch.no_grad():
                     z_next_enc_target = self.ae_target.encoder(batch.next_observations)
             value_enc_loss = value_loss_fn(z_next_enc_target)
         else:
             value_enc_loss = torch.zeros(1).to(self.device)
 
-        value_weight = self.ddpg.exploration_noise
+        if (self.ddpg.critic_update_counter / 1000) > 5:
+            print(
+                f"(self.ddpg.critic_update_counter / 1000) {(self.ddpg.critic_update_counter / 1000)}"
+            )
+            self.value_weight *= self.value_weight_discount
 
         loss = (
             rec_loss
             + reward_loss
-            + value_weight * temporal_consitency_loss
-            + (1 - value_weight) * value_dynamics_loss
-            + (1 - value_weight) * value_enc_loss
+            + self.value_weight * temporal_consitency_loss
+            + (1 - self.value_weight) * value_dynamics_loss
+            + (1 - self.value_weight) * value_enc_loss
         )
         info = {
             "reward_loss": reward_loss.item(),
             "value_dynamics_loss": value_dynamics_loss.item(),
             "value_enc_loss": value_enc_loss.item(),
-            "value_weight": value_weight,
+            "value_weight": self.value_weight,
             "temporal_consitency_loss": temporal_consitency_loss.item(),
             "rec_loss": rec_loss.item(),
             "loss": loss.item(),
