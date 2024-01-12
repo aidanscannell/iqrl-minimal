@@ -51,8 +51,8 @@ class Encoder(nn.Module):
     def forward(self, x):
         z = self._mlp(x)
         # breakpoint()
-        if self.normalize:
-            z = h.simnorm(z, V=self.simplex_dim)
+        # if self.normalize:
+        # z = h.simnorm(z, V=self.simplex_dim)
         # print(f"min z {torch.min(z)}")
         # print(f"max z {torch.max(z)}")
         return z
@@ -617,17 +617,17 @@ class TD_MPC(Agent):
             next_q_value = batch.rewards.flatten() + (
                 1 - batch.dones.flatten()
             ) * self.ddpg.discount**self.ddpg.nstep * (min_q_next_target).view(-1)
-            next_q1_value = batch.rewards.flatten() + (
-                1 - batch.dones.flatten()
-            ) * self.ddpg.discount**self.ddpg.nstep * (min_q_next_target).view(-1)
-            next_q2_value = batch.rewards.flatten() + (
-                1 - batch.dones.flatten()
-            ) * self.ddpg.discount**self.ddpg.nstep * (min_q_next_target).view(-1)
+            # next_q1_value = batch.rewards.flatten() + (
+            #     1 - batch.dones.flatten()
+            # ) * self.ddpg.discount**self.ddpg.nstep * (min_q_next_target).view(-1)
+            # next_q2_value = batch.rewards.flatten() + (
+            #     1 - batch.dones.flatten()
+            # ) * self.ddpg.discount**self.ddpg.nstep * (min_q_next_target).view(-1)
             q1_loss = torch.nn.functional.mse_loss(
-                input=q1_pred, target=next_q1_value, reduction="mean"
+                input=q1_pred, target=next_q_value, reduction="mean"
             )
             q2_loss = torch.nn.functional.mse_loss(
-                input=q2_pred, target=next_q2_value, reduction="mean"
+                input=q2_pred, target=next_q_value, reduction="mean"
             )
             value_loss = (q1_loss + q2_loss) / 2
             return value_loss
