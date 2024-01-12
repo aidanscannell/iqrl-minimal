@@ -677,10 +677,18 @@ class DDPG_AE(Agent):
         else:
             value_loss = torch.zeros(1).to(self.device)
 
-        loss = rec_loss + temporal_consitency_loss + reward_loss + value_loss
+        value_weight = self.ddpg.exploration_noise()
+
+        loss = (
+            rec_loss
+            + reward_loss
+            + value_weight * temporal_consitency_loss
+            + (1 - value_weight) * value_loss
+        )
         info = {
             "reward_loss": reward_loss.item(),
             "value_loss": value_loss.item(),
+            "value_weight": value_weight,
             "temporal_consitency_loss": temporal_consitency_loss.item(),
             "rec_loss": rec_loss.item(),
             "loss": loss.item(),
