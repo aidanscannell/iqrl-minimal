@@ -123,6 +123,51 @@ class MLPDynamics(nn.Module):
         # r = z[..., -1:]
         # return z[..., :-1], r
 
+    def reset(self, full_reset: bool = False):
+        if full_reset:
+            self.apply(h.orthogonal_init)
+        else:
+            params = list(self.parameters())
+            h.orthogonal_init(params[-2:])
+
+
+class MLPReward(nn.Module):
+    def __init__(
+        self,
+        action_space: Space,
+        mlp_dims: List[int],
+        latent_dim: int = 20,
+        # normalize: bool = True,
+        # simplex_dim: int = 10,
+    ):
+        super().__init__()
+        self.latent_dim = latent_dim
+        in_dim = np.array(action_space.shape).prod() + latent_dim
+        # if normalize:
+        #     act_fn = SimNorm(dim=simplex_dim)
+        # else:
+        # act_fn = None
+        # TODO data should be normalized???
+        self._mlp = h.mlp(
+            in_dim=in_dim,
+            mlp_dims=mlp_dims,
+            out_dim=1,
+            act_fn=None,  # This will use Mish
+        )
+        self.apply(h.orthogonal_init)
+
+    def forward(self, z, a):
+        x = torch.cat([z, a], 1)
+        r = self._mlp(x)
+        return r
+
+    def reset(self, full_reset: bool = False):
+        if full_reset:
+            self.apply(h.orthogonal_init)
+        else:
+            params = list(self.parameters())
+            h.orthogonal_init(params[-2:])
+
 
 class AE(nn.Module):
     def __init__(
@@ -192,6 +237,7 @@ class DDPG_AE(Agent):
         # AE config
         train_strategy: str = "interleaved",  # "interleaved" or "representation-first"
         temporal_consistency: bool = False,  # if True include dynamic model for representation learning
+        reward_loss: bool = False,  # if True include reward model for representation learning
         reconstruction_loss: bool = True,  # if True use reconstruction loss with decoder
         ae_learning_rate: float = 3e-4,
         ae_batch_size: int = 128,
@@ -213,6 +259,7 @@ class DDPG_AE(Agent):
         self.train_strategy = train_strategy
 
         self.temporal_consistency = temporal_consistency
+        self.reward_loss = reward_loss
         self.reconstruction_loss = reconstruction_loss
         self.ae_learning_rate = ae_learning_rate
         self.ae_batch_size = ae_batch_size
@@ -235,6 +282,13 @@ class DDPG_AE(Agent):
                 normalize=ae_normalize,
                 simplex_dim=simplex_dim,
             ).to(device)
+        if self.reward_loss:
+            self.reward = MLPReward(
+                action_space=action_space,
+                mlp_dims=mlp_dims,
+                latent_dim=latent_dim,
+            ).to(device)
+
         self.ae = AE(
             observation_space=observation_space,
             mlp_dims=mlp_dims,
@@ -412,7 +466,7 @@ class DDPG_AE(Agent):
 
             if i % 100 == 0:
                 logger.info(
-                    f"Iteration {i} | loss {info['loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']}"
+                    f"Iteration {i} | loss {info['loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']} | reward loss {info['reward_loss']}"
                 )
                 if wandb.run is not None:
                     # info.update({"exploration_noise": self.ddpg.exploration_noise})
@@ -449,7 +503,7 @@ class DDPG_AE(Agent):
 
             if i % 100 == 0:
                 logger.info(
-                    f"Iteration {i} | loss {info['loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']}"
+                    f"Iteration {i} | loss {info['loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']} | reward loss {info['reward_loss']}"
                 )
                 if wandb.run is not None:
                     # info.update({"exploration_noise": self.ddpg.exploration_noise})
@@ -543,15 +597,20 @@ class DDPG_AE(Agent):
             temporal_consitency_loss = torch.nn.functional.mse_loss(
                 input=z_next_enc_target, target=z_next_dynamics, reduction="mean"
             )
-            # reward_loss = torch.nn.functional.mse_loss(
-            #     input=batch.rewards, target=reward_dynamics, reduction="mean"
-            # )
-            # loss += temporal_consitency_loss
         else:
             temporal_consitency_loss = torch.zeros(1).to(self.device)
 
-        loss = rec_loss + temporal_consitency_loss
+        if self.reward_loss:
+            reward_pred = self.reward(z=z, a=batch.actions)
+            reward_loss = torch.nn.functional.mse_loss(
+                input=batch.rewards, target=reward_pred, reduction="mean"
+            )
+        else:
+            reward_loss = torch.zeros(1).to(self.device)
+
+        loss = rec_loss + temporal_consitency_loss + reward_loss
         info = {
+            "reward_loss": reward_loss.item(),
             "temporal_consitency_loss": temporal_consitency_loss.item(),
             "rec_loss": rec_loss.item(),
             "loss": loss.item(),
@@ -721,6 +780,10 @@ class DDPG_AE(Agent):
     def reset(self, full_reset: bool = False):
         logger.info("Restting agent...")
         self.ae.reset(full_reset=full_reset)
+        if self.temporal_consistency:
+            self.dynamics.reset(full_reset=full_reset)
+        if self.reward_loss:
+            self.reward.reset(full_reset=full_reset)
         # self.ae_target.reset(full_reset=full_reset)
         self.ae_target.load_state_dict(self.ae.state_dict())
         self.ae_opt = torch.optim.AdamW(
