@@ -26,7 +26,8 @@ capture_train_video: False
 
 # W&B config
 use_wandb: True
-wandb_project_name: "lifelong-td3-tc"
+wandb_project_name: "lifelong-td3-tc-test"
+# wandb_project_name: "lifelong-td3-tc"
 monitor_gym: True
 run_name: ${agent.name}__${seed}__${now:%Y-%m-%d_%H-%M-%S}
 
