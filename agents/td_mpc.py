@@ -613,16 +613,16 @@ class TD_MPC(Agent):
             q1_next_target, q2_next_target = self.ddpg.target_critic(
                 z_next, next_state_actions
             )
-            # min_q_next_target = torch.min(q1_next_target, q2_next_target)
-            # next_q_value = batch.rewards.flatten() + (
-            #     1 - batch.dones.flatten()
-            # ) * self.ddpg.discount**self.ddpg.nstep * (min_q_next_target).view(-1)
+            min_q_next_target = torch.min(q1_next_target, q2_next_target)
+            next_q_value = batch.rewards.flatten() + (
+                1 - batch.dones.flatten()
+            ) * self.ddpg.discount**self.ddpg.nstep * (min_q_next_target).view(-1)
             next_q1_value = batch.rewards.flatten() + (
                 1 - batch.dones.flatten()
-            ) * self.ddpg.discount**self.ddpg.nstep * (q1_next_target).view(-1)
+            ) * self.ddpg.discount**self.ddpg.nstep * (min_q_next_target).view(-1)
             next_q2_value = batch.rewards.flatten() + (
                 1 - batch.dones.flatten()
-            ) * self.ddpg.discount**self.ddpg.nstep * (q2_next_target).view(-1)
+            ) * self.ddpg.discount**self.ddpg.nstep * (min_q_next_target).view(-1)
             q1_loss = torch.nn.functional.mse_loss(
                 input=q1_pred, target=next_q1_value, reduction="mean"
             )
