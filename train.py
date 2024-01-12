@@ -139,9 +139,9 @@ def train(cfg: TrainConfig):
                         {
                             "episodic_return": info["episode"]["r"],
                             "episodic_length": info["episode"]["l"],
-                            "global_step": global_step,
+                            # "global_step": global_step,
                             "env_step": global_step * cfg.action_repeat,
-                            "episode": episode_idx,
+                            # "episode": episode_idx,
                         }
                     )
                 break
@@ -176,11 +176,11 @@ def train(cfg: TrainConfig):
                     train_metrics.update(
                         {
                             "global_step": global_step,
-                            "SPS": int(global_step / (time.time() - start_time)),
+                            # "SPS": int(global_step / (time.time() - start_time)),
                             "num_new_transitions": num_new_transitions,
-                            "action_repeat": cfg.action_repeat,
+                            # "action_repeat": cfg.action_repeat,
                             "env_step": global_step * cfg.action_repeat,
-                            "episode": episode_idx,
+                            # "episode": episode_idx,
                             "elapsed_time": time.time() - start_time,
                         }
                     )
@@ -193,12 +193,14 @@ def train(cfg: TrainConfig):
                 )
                 logger.info(f"reward mean {mean_reward} std: {mean_reward}")
                 eval_metrics = {
-                    "mean_reward": mean_reward,
-                    "std_reward": std_reward,
-                    "global_step": global_step,
+                    "episodic_return": mean_reward,
+                    "episodic_return_std": std_reward,
+                    # "mean_reward": mean_reward,
+                    # "std_reward": std_reward,
+                    # "global_step": global_step,
                     "env_step": global_step * cfg.action_repeat,
-                    "episode": episode_idx,
-                    "elapsed_time": time.time() - start_time,
+                    # "episode": episode_idx,
+                    # "elapsed_time": time.time() - start_time,
                 }
                 if cfg.use_wandb:
                     wandb.log({"eval/": eval_metrics})
