@@ -51,8 +51,8 @@ class Encoder(nn.Module):
     def forward(self, x):
         z = self._mlp(x)
         # breakpoint()
-        if self.normalize:
-            z = h.simnorm(z, V=self.simplex_dim)
+        # if self.normalize:
+        # z = h.simnorm(z, V=self.simplex_dim)
         # print(f"min z {torch.min(z)}")
         # print(f"max z {torch.max(z)}")
         return z
