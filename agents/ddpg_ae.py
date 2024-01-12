@@ -373,7 +373,7 @@ class DDPG_AE(Agent):
         self.old_replay_buffer = None
 
         self.value_weight = 1
-        self.value_weight_discount = 0.97
+        self.value_weight_discount = 0.99999
 
     def update(self, replay_buffer: ReplayBuffer, num_new_transitions: int) -> dict:
         self.ae.train()
