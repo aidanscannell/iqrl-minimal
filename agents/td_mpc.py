@@ -633,12 +633,14 @@ class TD_MPC(Agent):
             return value_loss
 
         value_dynamics_loss = value_loss_fn(z_next_dynamics)
-        value_enc_loss = value_loss_fn(z_next_enc_target)
+        # value_enc_loss = value_loss_fn(z_next_enc_target)
+        value_enc_loss = 0
         loss = temporal_consitency_loss + value_dynamics_loss + value_enc_loss
         info = {
             # "reward_loss": reward_loss.item(),
             "value_dynamics_loss": value_dynamics_loss.item(),
-            "value_enc_loss": value_enc_loss.item(),
+            "value_enc_loss": value_enc_loss,
+            # "value_enc_loss": value_enc_loss.item(),
             # "value_weight": self.value_weight,
             "temporal_consitency_loss": temporal_consitency_loss.item(),
             # "rec_loss": rec_loss.item(),
