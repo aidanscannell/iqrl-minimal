@@ -663,18 +663,19 @@ class DDPG_AE(Agent):
         else:
             value_enc_loss = torch.zeros(1).to(self.device)
 
-        if (self.ddpg.critic_update_counter / 1000) > 5:
-            print(
-                f"(self.ddpg.critic_update_counter / 1000) {(self.ddpg.critic_update_counter / 1000)}"
-            )
-            self.value_weight *= self.value_weight_discount
+        # if (self.ddpg.critic_update_counter / 1000) > 5:
+        #     print(
+        #         f"(self.ddpg.critic_update_counter / 1000) {(self.ddpg.critic_update_counter / 1000)}"
+        #     )
+        #     self.value_weight *= self.value_weight_discount
 
         loss = (
             rec_loss
             + reward_loss
-            + self.value_weight * temporal_consitency_loss
-            + (1 - self.value_weight) * value_dynamics_loss
-            + (1 - self.value_weight) * value_enc_loss
+            + temporal_consitency_loss
+            # + self.value_weight * temporal_consitency_loss
+            # + (1 - self.value_weight) * value_dynamics_loss
+            # + (1 - self.value_weight) * value_enc_loss
         )
         info = {
             "reward_loss": reward_loss.item(),
