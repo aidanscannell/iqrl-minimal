@@ -411,13 +411,9 @@ class DDPG_AE(Agent):
                     f"Iteration {i} | loss {info['loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']}"
                 )
                 if wandb.run is not None:
-                    info.update(
-                        {
-                            "reset": reset_flag,
-                            "exploration_noise": self.ddpg.exploration_noise,
-                        }
-                    )
+                    info.update({"exploration_noise": self.ddpg.exploration_noise})
                     wandb.log(info)
+                    wandb.log({"reset": reset_flag})
                 reset_flag = 0
 
         logger.info("Finished training DDPG-AE")
@@ -448,13 +444,9 @@ class DDPG_AE(Agent):
                     f"Iteration {i} | loss {info['loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']}"
                 )
                 if wandb.run is not None:
-                    info.update(
-                        {
-                            "reset": reset_flag,
-                            "exploration_noise": self.ddpg.exploration_noise,
-                        }
-                    )
+                    info.update({"exploration_noise": self.ddpg.exploration_noise})
                     wandb.log(info)
+                    wandb.log({"reset": reset_flag})
                 # reset_flag = 0
 
             if self.ae_early_stopper is not None:
@@ -505,13 +497,9 @@ class DDPG_AE(Agent):
 
             if i % 100 == 0 or reset_flag == 1:
                 if wandb.run is not None:
-                    info.update(
-                        {
-                            "reset": reset_flag,
-                            "exploration_noise": self.ddpg.exploration_noise,
-                        }
-                    )
+                    info.update({"exploration_noise": self.ddpg.exploration_noise})
                     wandb.log(info)
+                    wandb.log({"reset": reset_flag})
                 reset_flag = 0
 
         logger.info("Finished training DDPG")
