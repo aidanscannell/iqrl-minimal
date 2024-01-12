@@ -676,12 +676,14 @@ class DDPG_AE(Agent):
             # + self.value_weight * temporal_consitency_loss
             # + (1 - self.value_weight) * value_dynamics_loss
             # + (1 - self.value_weight) * value_enc_loss
+            + value_dynamics_loss
+            + value_enc_loss
         )
         info = {
             "reward_loss": reward_loss.item(),
             "value_dynamics_loss": value_dynamics_loss.item(),
             "value_enc_loss": value_enc_loss.item(),
-            "value_weight": self.value_weight,
+            # "value_weight": self.value_weight,
             "temporal_consitency_loss": temporal_consitency_loss.item(),
             "rec_loss": rec_loss.item(),
             "loss": loss.item(),
