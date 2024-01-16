@@ -409,7 +409,7 @@ class DDPG_AE(Agent):
         #         #     replay_buffer=replay_buffer, memory_size=self.memory_size
         #         # )
         #     elif self.trigger_reset():
-        #         self.reset(full_reset=False)
+        #         self.reset()
         #         update_memory = True
         #         # Do more updates if reset
         #         # TODO how many updates should be done when reset?
@@ -472,7 +472,7 @@ class DDPG_AE(Agent):
                         logger.info(
                             f"Resetting as step {self.ddpg.critic_update_counter} % {self.reset_params_freq} == 0"
                         )
-                        self.reset(full_reset=False)
+                        self.reset()
                         reset_flag = 1
             elif self.reset_strategy == "latent-dist":
                 if self.trigger_reset_latent_dist(replay_buffer=replay_buffer):
@@ -576,7 +576,7 @@ class DDPG_AE(Agent):
                         logger.info(
                             f"Resetting as step {self.ddpg.critic_update_counter} % {self.reset_params_freq} == 0"
                         )
-                        self.reset(full_reset=False)
+                        self.reset()
                         reset_flag = 1
                         if wandb.run is not None:
                             wandb.log({"reset": reset_flag})
@@ -851,7 +851,7 @@ class DDPG_AE(Agent):
             logger.info(
                 f"Resetting as mem_dist {mem_dist} > reset_threshold {self.reset_threshold}"
             )
-            self.reset(full_reset=False)
+            self.reset()
         else:
             reset = False
         return reset
@@ -863,20 +863,22 @@ class DDPG_AE(Agent):
         z = z.to(torch.float)
         return self.ddpg.select_action(observation=z, eval_mode=eval_mode, t0=t0)
 
-    def reset(self, full_reset: bool = False):
+    def reset(self, reset_type: Optional[str] = None):
+        if reset_type is None:
+            reset_type = self.reset_type
         logger.info("Restting agent...")
-        self.ae.reset(reset_type=self.reset_type)
+        self.ae.reset(reset_type=reset_type)
         if self.temporal_consistency or self.value_dynamics_loss:
-            self.dynamics.reset(reset_type=self.reset_type)
+            self.dynamics.reset(reset_type=reset_type)
         if self.reward_loss:
-            self.reward.reset(reset_type=self.reset_type)
+            self.reward.reset(reset_type=reset_type)
         # self.ae_target.reset(full_reset=full_reset)
         self.ae_target.load_state_dict(self.ae.state_dict())
         self.ae_opt = torch.optim.AdamW(
             list(self.ae.parameters()), lr=self.ae_learning_rate
         )
 
-        self.ddpg.reset(reset_type=self.reset_type)
+        self.ddpg.reset(reset_type=reset_type)
 
         self.ae_early_stopper = h.EarlyStopper(
             patience=self.ae_patience, min_delta=self.ae_min_delta
