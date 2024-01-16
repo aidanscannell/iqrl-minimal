@@ -45,7 +45,8 @@ class Critic(nn.Module):
     def reset(self, reset_type: str = "last-layer"):
         for q in [self._q1, self._q2]:
             if reset_type in "full":
-                q.apply(h.orthogonal_init)
+                h.orthogonal_init(q.parameters())
+                # q.apply(h.orthogonal_init)
             elif reset_type in "last-layer":
                 params = list(q.parameters())
                 h.orthogonal_init(params[-2:])
@@ -93,7 +94,8 @@ class Actor(nn.Module):
 
     def reset(self, reset_type: str = "last-layer"):
         if reset_type in "full":
-            self.apply(h.orthogonal_init)
+            h.orthogonal_init(self.parameters())
+            # self.apply(h.orthogonal_init)
         elif reset_type in "last-layer":
             params = list(self.parameters())
             h.orthogonal_init(params[-2:])
