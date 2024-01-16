@@ -4,8 +4,8 @@ defaults:
   # - override hydra/launcher: slurm # Use slurm (on cluster) for multirun
   - override hydra/launcher: lumi # Use slurm (on cluster) for multirun
   - override hydra/job_logging: colorlog
-  - override hydra/hydra_logging: hydra_debug
-  # - override hydra/hydra_logging: colorlog
+  # - override hydra/hydra_logging: hydra_debug
+  - override hydra/hydra_logging: colorlog
   - _self_
 
 # Environment
