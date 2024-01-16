@@ -31,6 +31,7 @@ monitor_gym: True
 run_name: ${agent.name}__${seed}__${now:%Y-%m-%d_%H-%M-%S}
 
 hydra:
+  verbose: true
   run:
     dir: output/hydra/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
   job:
@@ -38,7 +39,7 @@ hydra:
   sweep:
     dir: ${hydra.run.dir}
     subdir: ${hydra.job.num}
-  job_logging:
-    root:
-      # level: INFO # DEBUG
-      level: DEBUG
+  # job_logging:
+  #   root:
+  #     # level: INFO # DEBUG
+  #     level: DEBUG
