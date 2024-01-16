@@ -18,4 +18,4 @@ device: ${device}
 reset_type: "full" # "full" or "last-layer"
 reset_params_freq: None # reset params after this many param updates
 # reset_params_freq: 100000  # reset params after this many param updates
-name: DDPG_reset-freq=${agent.reset_params_freq}_utd=${agent.utd_ratio}
+name: DDPG_reset-freq=${agent.reset_params_freq}_reset_type=${reset_type}_utd=${agent.utd_ratio}
