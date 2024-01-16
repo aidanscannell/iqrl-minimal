@@ -59,7 +59,7 @@ class Encoder(nn.Module):
 
     def reset(self, reset_type: str = "last-layer"):
         if reset_type in "full":
-            self.apply(h.orthogonal_init)
+            h.orthogonal_init(self.parameters())
         elif reset_type in "last-layer":
             params = list(self.parameters())
             h.orthogonal_init(params[-2:])
@@ -86,7 +86,8 @@ class Decoder(nn.Module):
 
     def reset(self, reset_type: str = "last-layer"):
         if reset_type in "full":
-            self.apply(h.orthogonal_init)
+            h.orthogonal_init(self.parameters())
+            # self.apply(h.orthogonal_init)
         elif reset_type in "last-layer":
             params = list(self.parameters())
             h.orthogonal_init(params[-2:])
@@ -129,7 +130,8 @@ class MLPDynamics(nn.Module):
 
     def reset(self, reset_type: str = "last-layer"):
         if reset_type in "full":
-            self.apply(h.orthogonal_init)
+            h.orthogonal_init(self.parameters())
+            # self.apply(h.orthogonal_init)
         elif reset_type in "last-layer":
             params = list(self.parameters())
             h.orthogonal_init(params[-2:])
@@ -169,7 +171,8 @@ class MLPReward(nn.Module):
 
     def reset(self, reset_type: str = "last-layer"):
         if reset_type in "full":
-            self.apply(h.orthogonal_init)
+            h.orthogonal_init(self.parameters())
+            # self.apply(h.orthogonal_init)
         elif reset_type in "last-layer":
             params = list(self.parameters())
             h.orthogonal_init(params[-2:])
@@ -236,7 +239,7 @@ class DDPG_AE(Agent):
         tau: float = 0.005,
         act_with_target: bool = False,  # if True act with target network
         # Reset stuff
-        reset_type: str = "last_layer",  #  "full" or "last-layer"
+        reset_type: str = "last_layer",  # "full" or "last-layer"
         reset_strategy: str = "latent-dist",  #  "latent-dist" or "every-x-param-updates"
         reset_params_freq: int = 100000,  # reset params after this many param updates
         reset_threshold: float = 0.01,
