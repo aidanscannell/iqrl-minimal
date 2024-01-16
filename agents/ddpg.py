@@ -32,7 +32,7 @@ class Critic(nn.Module):
         )
         self._q1 = h.mlp(in_dim=input_dim, mlp_dims=mlp_dims, out_dim=1)
         self._q2 = h.mlp(in_dim=input_dim, mlp_dims=mlp_dims, out_dim=1)
-        self.reset(full_reset=True)
+        self.reset(reset_type="full")
 
     def forward(
         self, observation: BatchObservation, action: BatchAction
@@ -42,13 +42,15 @@ class Critic(nn.Module):
         q2 = self._q2(x)
         return q1, q2
 
-    def reset(self, full_reset: bool = False):
-        if full_reset:
-            self.apply(h.orthogonal_init)
-        else:
-            for q in [self._q1, self._q2]:
+    def reset(self, reset_type: str = "last-layer"):
+        for q in [self._q1, self._q2]:
+            if reset_type in "full":
+                q.apply(h.orthogonal_init)
+            elif reset_type in "last-layer":
                 params = list(q.parameters())
                 h.orthogonal_init(params[-2:])
+            else:
+                raise NotImplementedError
 
 
 class Actor(nn.Module):
@@ -64,7 +66,7 @@ class Actor(nn.Module):
             mlp_dims=mlp_dims,
             out_dim=np.prod(action_space.shape),
         )
-        self.reset()
+        self.reset(reset_type="full")
 
         # Action rescaling
         self.register_buffer(
@@ -89,12 +91,14 @@ class Actor(nn.Module):
         return action
         # return util.TruncatedNormal(x, std)
 
-    def reset(self, full_reset: bool = False):
-        if full_reset:
+    def reset(self, reset_type: str = "last-layer"):
+        if reset_type in "full":
             self.apply(h.orthogonal_init)
-        else:
+        elif reset_type in "last-layer":
             params = list(self.parameters())
             h.orthogonal_init(params[-2:])
+        else:
+            raise NotImplementedError
 
 
 class DDPG(Agent):
@@ -116,6 +120,7 @@ class DDPG(Agent):
         reset_params_freq: Optional[
             int
         ] = None,  # reset params after this many param updates
+        reset_type: str = "last_layer",  #  "full" or "last-layer"
         # nstep: int = 1,
         discount: float = 0.99,
         tau: float = 0.005,
@@ -127,7 +132,6 @@ class DDPG(Agent):
         super().__init__(
             observation_space=observation_space, action_space=action_space, name=name
         )
-        nstep: int = 1
         self.mlp_dims = mlp_dims
         self._exploration_noise = h.LinearSchedule(
             start=exploration_noise_start,
@@ -141,7 +145,8 @@ class DDPG(Agent):
         self.utd_ratio = utd_ratio
         self.actor_update_freq = actor_update_freq  # Should be 1 for true DDPG
         self.reset_params_freq = reset_params_freq
-        self.nstep = nstep
+        self.reset_type = reset_type
+        self.nstep = 1
         self.discount = discount
         self.tau = tau
         self.act_with_target = act_with_target
@@ -338,7 +343,7 @@ class DDPG(Agent):
                 logger.info(
                     f"Resetting as step {self.critic_update_counter} % {self.reset_params_freq} == 0"
                 )
-                self.reset(full_reset=False)
+                self.reset(reset_type=self.reset_type)
                 reset = True
         return reset
 
@@ -358,10 +363,10 @@ class DDPG(Agent):
     def exploration_noise(self):
         return self._exploration_noise()
 
-    def reset(self, full_reset: bool = False):
+    def reset(self, reset_type: str = "last-layer"):
         logger.info("Resetting actor/critic params")
-        self.actor.reset(full_reset=full_reset)
-        self.critic.reset(full_reset=full_reset)
+        self.actor.reset(reset_type=reset_type)
+        self.critic.reset(reset_type=reset_type)
         self.target_actor.load_state_dict(self.actor.state_dict())
         self.target_critic.load_state_dict(self.critic.state_dict())
         self.critic_opt = torch.optim.AdamW(

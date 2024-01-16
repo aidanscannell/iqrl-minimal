@@ -46,7 +46,7 @@ class Encoder(nn.Module):
         )
         self.normalize = normalize
         self.simplex_dim = simplex_dim
-        self.reset(full_reset=True)
+        self.reset(reset_type="full")
 
     def forward(self, x):
         z = self._mlp(x)
@@ -57,12 +57,14 @@ class Encoder(nn.Module):
         # print(f"max z {torch.max(z)}")
         return z
 
-    def reset(self, full_reset: bool = False):
-        if full_reset:
+    def reset(self, reset_type: str = "last-layer"):
+        if reset_type in "full":
             self.apply(h.orthogonal_init)
-        else:
+        elif reset_type in "last-layer":
             params = list(self.parameters())
             h.orthogonal_init(params[-2:])
+        else:
+            raise NotImplementedError
 
 
 class Decoder(nn.Module):
@@ -76,18 +78,20 @@ class Decoder(nn.Module):
         self.latent_dim = latent_dim
         out_dim = np.array(observation_space.shape).prod()
         self._mlp = h.mlp(in_dim=latent_dim, mlp_dims=mlp_dims, out_dim=out_dim)
-        self.reset(full_reset=True)
+        self.reset(reset_type="full")
 
     def forward(self, z):
         x = self._mlp(z)
         return x
 
-    def reset(self, full_reset: bool = False):
-        if full_reset:
+    def reset(self, reset_type: str = "last-layer"):
+        if reset_type in "full":
             self.apply(h.orthogonal_init)
-        else:
+        elif reset_type in "last-layer":
             params = list(self.parameters())
             h.orthogonal_init(params[-2:])
+        else:
+            raise NotImplementedError
 
 
 class MLPDynamics(nn.Module):
@@ -114,7 +118,7 @@ class MLPDynamics(nn.Module):
             # out_dim=latent_dim + 1,
             act_fn=act_fn,
         )
-        self.apply(h.orthogonal_init)
+        self.reset(reset_type="full")
 
     def forward(self, x, a):
         x = torch.cat([x, a], 1)
@@ -123,12 +127,14 @@ class MLPDynamics(nn.Module):
         # r = z[..., -1:]
         # return z[..., :-1], r
 
-    def reset(self, full_reset: bool = False):
-        if full_reset:
+    def reset(self, reset_type: str = "last-layer"):
+        if reset_type in "full":
             self.apply(h.orthogonal_init)
-        else:
+        elif reset_type in "last-layer":
             params = list(self.parameters())
             h.orthogonal_init(params[-2:])
+        else:
+            raise NotImplementedError
 
 
 class MLPReward(nn.Module):
@@ -154,19 +160,21 @@ class MLPReward(nn.Module):
             out_dim=1,
             act_fn=None,  # This will use Mish
         )
-        self.apply(h.orthogonal_init)
+        self.reset(reset_type="full")
 
     def forward(self, z, a):
         x = torch.cat([z, a], 1)
         r = self._mlp(x)
         return r
 
-    def reset(self, full_reset: bool = False):
-        if full_reset:
+    def reset(self, reset_type: str = "last-layer"):
+        if reset_type in "full":
             self.apply(h.orthogonal_init)
-        else:
+        elif reset_type in "last-layer":
             params = list(self.parameters())
             h.orthogonal_init(params[-2:])
+        else:
+            raise NotImplementedError
 
 
 class AE(nn.Module):
@@ -200,13 +208,10 @@ class AE(nn.Module):
         x_rec = self.decoder(z)
         return x_rec, z
 
-    # def reset(self):
-    #     self.encoder.reset()
-    #     self.decoder.reset()
-    def reset(self, full_reset: bool = False):
+    def reset(self, reset_type: str = "last-layer"):
         logger.info("Resetting encoder/decoder params")
-        self.encoder.reset(full_reset=full_reset)
-        self.decoder.reset(full_reset=full_reset)
+        self.encoder.reset(reset_type=reset_type)
+        self.decoder.reset(reset_type=reset_type)
 
 
 class DDPG_AE(Agent):
@@ -231,6 +236,7 @@ class DDPG_AE(Agent):
         tau: float = 0.005,
         act_with_target: bool = False,  # if True act with target network
         # Reset stuff
+        reset_type: str = "last_layer",  #  "full" or "last-layer"
         reset_strategy: str = "latent-dist",  #  "latent-dist" or "every-x-param-updates"
         reset_params_freq: int = 100000,  # reset params after this many param updates
         reset_threshold: float = 0.01,
@@ -353,6 +359,7 @@ class DDPG_AE(Agent):
             actor_update_freq=actor_update_freq,
             # reset_params_freq=reset_params_freq,
             reset_params_freq=None,  # handle resetting in this class
+            reset_type=None,  # handle resetting in this class
             # nstep=nstep,  # N-step returns for critic training
             discount=discount,
             tau=tau,
@@ -366,6 +373,7 @@ class DDPG_AE(Agent):
 
         self.encoder_update_conter = 0
 
+        self.reset_type = reset_type
         self.reset_strategy = reset_strategy
         # self.encoder_reset_params_freq = encoder_reset_params_freq
         self.reset_params_freq = reset_params_freq
@@ -854,18 +862,18 @@ class DDPG_AE(Agent):
 
     def reset(self, full_reset: bool = False):
         logger.info("Restting agent...")
-        self.ae.reset(full_reset=full_reset)
+        self.ae.reset(reset_type=self.reset_type)
         if self.temporal_consistency or self.value_dynamics_loss:
-            self.dynamics.reset(full_reset=full_reset)
+            self.dynamics.reset(reset_type=self.reset_type)
         if self.reward_loss:
-            self.reward.reset(full_reset=full_reset)
+            self.reward.reset(reset_type=self.reset_type)
         # self.ae_target.reset(full_reset=full_reset)
         self.ae_target.load_state_dict(self.ae.state_dict())
         self.ae_opt = torch.optim.AdamW(
             list(self.ae.parameters()), lr=self.ae_learning_rate
         )
 
-        self.ddpg.reset(full_reset=full_reset)
+        self.ddpg.reset(reset_type=self.reset_type)
 
         self.ae_early_stopper = h.EarlyStopper(
             patience=self.ae_patience, min_delta=self.ae_min_delta
