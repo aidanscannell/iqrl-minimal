@@ -26,3 +26,4 @@ additional_parameters: {}
 array_parallelism: 256
 setup: null
 # constraint: "volta"
+stderr_to_stdout: true
