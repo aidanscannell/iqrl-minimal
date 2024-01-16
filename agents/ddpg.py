@@ -119,6 +119,7 @@ class DDPG(Agent):
         # nstep: int = 1,
         discount: float = 0.99,
         tau: float = 0.005,
+        act_with_target: bool = False,  # if True act with target network
         device: str = "cuda",
         name: str = "DDPG",
         **kwargs,  # hack to let work with agent.latent_dim in env config
@@ -143,6 +144,7 @@ class DDPG(Agent):
         self.nstep = nstep
         self.discount = discount
         self.tau = tau
+        self.act_with_target = act_with_target
         self.device = device
 
         # Init actor and it's target
@@ -342,7 +344,10 @@ class DDPG(Agent):
 
     @torch.no_grad()
     def select_action(self, observation, eval_mode: EvalMode = False, t0: T0 = None):
-        actions = self.actor(torch.Tensor(observation).to(self.device))
+        if self.act_with_target:
+            actions = self.target_actor(torch.Tensor(observation).to(self.device))
+        else:
+            actions = self.actor(torch.Tensor(observation).to(self.device))
         if not eval_mode:
             actions += torch.normal(0, self.actor.action_scale * self.exploration_noise)
         actions = actions.cpu().numpy()

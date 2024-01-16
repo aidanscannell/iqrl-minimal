@@ -229,6 +229,7 @@ class DDPG_AE(Agent):
         # nstep: int = 1,
         discount: float = 0.99,
         tau: float = 0.005,
+        act_with_target: bool = False,  # if True act with target network
         # Reset stuff
         reset_strategy: str = "latent-dist",  #  "latent-dist" or "every-x-param-updates"
         reset_params_freq: int = 100000,  # reset params after this many param updates
@@ -356,6 +357,7 @@ class DDPG_AE(Agent):
             discount=discount,
             tau=tau,
             device=device,
+            act_with_target=act_with_target,
             name=name,
         )
 
