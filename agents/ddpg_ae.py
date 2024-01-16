@@ -866,3 +866,7 @@ class DDPG_AE(Agent):
         )
 
         self.ddpg.reset(full_reset=full_reset)
+
+        self.ae_early_stopper = h.EarlyStopper(
+            patience=self.ae_patience, min_delta=self.ae_min_delta
+        )
