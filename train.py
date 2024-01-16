@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
-import logging
-import os
-import pprint
-import random
-import time
-from functools import partial
-
 import hydra
-from cfgs.base import TrainConfig
+
+# from cfgs.base import TrainConfig
 
 
 @hydra.main(version_base="1.3", config_path="./cfgs", config_name="train")
-def train(cfg: TrainConfig):
+def train(cfg):
+    # def train(cfg: TrainConfig):
+    import logging
+    import os
+    import pprint
+    import random
+    import time
+    from functools import partial
+
     import gymnasium as gym
     import numpy as np
     import omegaconf
