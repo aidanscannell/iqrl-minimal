@@ -23,6 +23,7 @@ def train(cfg):
     from stable_baselines3.common.evaluation import evaluate_policy
     from utils.env import make_env
 
+    logging.basicConfig(level=logging.DEBUG)
     logger = logging.getLogger(__name__)
 
     ###### Fix seed for reproducibility ######
