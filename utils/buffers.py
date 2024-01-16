@@ -106,7 +106,14 @@ class BaseBuffer(ABC):
         self.pos = 0
         self.full = False
 
-    def sample(self, batch_size: int, env: Optional[VecNormalize] = None, nstep: Optional[int] = 1):
+    def sample(self,
+               batch_size: int,
+               env: Optional[VecNormalize] = None,
+               nstep: Optional[int] = 1,
+               train_validation_split: Optional[float] = None,
+               val: Optional[bool] = False,
+               trains: Optional[np.ndarray] = None,
+    ):
         """
         :param batch_size: Number of element to sample
         :param env: associated gym VecEnv
@@ -114,7 +121,17 @@ class BaseBuffer(ABC):
         :return:
         """
         # We must ensure that the n-step samples are valid and from the same trajectory
-        if self.full and nstep > 2:
+        if train_validation_split is not None:
+            if self.full and nstep > 2:
+                idxs = (np.arange(0, self.buffer_size - nstep + 1) + self.pos) % self.buffer_size
+            else:
+                idxs = np.arange(0, self.buffer_size if self.full else (self.pos - nstep + 1))
+            if not val:
+                sample_idxs = idxs[trains[idxs]]
+            else:
+                sample_idxs = idxs[~trains[idxs]]
+            batch_inds = np.random.choice(sample_idxs, size=batch_size, replace=False)
+        elif self.full and nstep > 2:
             batch_inds = (np.random.randint(0, self.buffer_size - nstep + 1, size=batch_size) + self.pos) % self.buffer_size
         else:
             upper_bound = self.buffer_size if self.full else (self.pos - nstep + 1)
@@ -188,6 +205,7 @@ class ReplayBuffer(BaseBuffer):
     rewards: np.ndarray
     dones: np.ndarray
     timeouts: np.ndarray
+    trains: np.ndarray
 
     def __init__(
         self,
@@ -200,6 +218,7 @@ class ReplayBuffer(BaseBuffer):
         optimize_memory_usage: bool = False,
         handle_timeout_termination: bool = True,
         discount: Optional[float] = 1.0,
+        train_validation_split: Optional[float] = None,
     ):
         super().__init__(buffer_size, observation_space, action_space, device, n_envs=n_envs)
 
@@ -209,6 +228,7 @@ class ReplayBuffer(BaseBuffer):
         # Set n-step returns
         self.nstep = nstep
         self.discount = discount
+        self.train_validation_split = train_validation_split
 
         # Check that the replay buffer can fit into the memory
         if psutil is not None:
@@ -239,6 +259,7 @@ class ReplayBuffer(BaseBuffer):
         # see https://github.com/DLR-RM/stable-baselines3/issues/284
         self.handle_timeout_termination = handle_timeout_termination
         self.timeouts = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
+        self.trains = np.zeros((self.buffer_size), dtype=np.float32)
 
         if psutil is not None:
             total_memory_usage: float = (
@@ -257,6 +278,10 @@ class ReplayBuffer(BaseBuffer):
                     f"replay buffer {total_memory_usage:.2f}GB > {mem_available:.2f}GB"
                 )
 
+    def resample_val(self) -> None:
+        assert self.train_validation_split is not None
+        self.trains = np.random.rand(len(self.trains)) < self.train_validation_split
+
     def add(
         self,
         obs: np.ndarray,
@@ -266,6 +291,7 @@ class ReplayBuffer(BaseBuffer):
         done: np.ndarray,
         timeout: np.ndarray,
         infos: List[Dict[str, Any]],
+        trains: Optional[np.ndarray] = None,
     ) -> None:
         # Reshape needed when using multiple envs with discrete observations
         # as numpy cannot broadcast (n_discrete,) to (n_discrete, 1)
@@ -287,6 +313,12 @@ class ReplayBuffer(BaseBuffer):
         self.actions[self.pos] = np.array(action)
         self.rewards[self.pos] = np.array(reward)
         self.dones[self.pos] = np.array(done)
+        
+        if trains is not None and self.train_validation_split is not None:
+            self.trains[self.pos] = np.array(trains)
+        elif self.train_validation_split is not None:
+            # If multiple environment, all get same trains value
+            self.trains[self.pos] = np.random.rand() < self.train_validation_split 
 
         if self.handle_timeout_termination:
             self.timeouts[self.pos] = timeout
@@ -297,7 +329,7 @@ class ReplayBuffer(BaseBuffer):
             self.full = True
             self.pos = 0
 
-    def sample(self, batch_size: int, env: Optional[VecNormalize] = None) -> ReplayBufferSamples:
+    def sample(self, batch_size: int, env: Optional[VecNormalize] = None, val: Optional[bool] = False) -> ReplayBufferSamples:
         """
         Sample elements from the replay buffer.
         Custom sampling when using memory efficient variant,
@@ -310,10 +342,20 @@ class ReplayBuffer(BaseBuffer):
         :return:
         """
         if not self.optimize_memory_usage:
-            return super().sample(batch_size=batch_size, env=env, nstep=self.nstep)
+            return super().sample(batch_size=batch_size, env=env, nstep=self.nstep, train_validation_split=self.train_validation_split, val=val, trains=self.trains)
         # Do not sample the element with index `self.pos` as the transitions is invalid
         # (we use only one array to store `obs` and `next_obs`)
-        if self.full:
+        if self.train_validation_split is not None:
+            if self.full:
+                idxs = (np.arange(1, self.buffer_size - self.nstep + 1) + self.pos) % self.buffer_size
+            else:
+                idxs = np.arange(0, self.pos - self.nstep + 1)
+            if not val:
+                sample_idxs = idxs[self.trains[idxs]]
+            else:
+                sample_idxs = idxs[~self.trains[idxs]]
+            batch_inds = np.random.choice(sample_idxs, size=batch_size, replace=False)
+        elif self.full:
             batch_inds = (np.random.randint(1, self.buffer_size - self.nstep + 1, size=batch_size) + self.pos) % self.buffer_size
         else:
             batch_inds = np.random.randint(0, self.pos - self.nstep + 1, size=batch_size)
