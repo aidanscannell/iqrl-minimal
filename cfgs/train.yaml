@@ -39,7 +39,3 @@ hydra:
   sweep:
     dir: ${hydra.run.dir}
     subdir: ${hydra.job.num}
-  # job_logging:
-  #   root:
-  #     # level: INFO # DEBUG
-  #     level: DEBUG
