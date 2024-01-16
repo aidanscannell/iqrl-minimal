@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
+import os
+
 import hydra
+import omegaconf
+from hydra.utils import get_original_cwd
+
 
 # from cfgs.base import TrainConfig
 
@@ -8,7 +13,6 @@ import hydra
 def train(cfg):
     # def train(cfg: TrainConfig):
     import logging
-    import os
     import pprint
     import random
     import time
@@ -16,9 +20,7 @@ def train(cfg):
 
     import gymnasium as gym
     import numpy as np
-    import omegaconf
     import torch
-    from hydra.utils import get_original_cwd
     from stable_baselines3.common.buffers import ReplayBuffer
     from stable_baselines3.common.evaluation import evaluate_policy
     from utils.env import make_env
