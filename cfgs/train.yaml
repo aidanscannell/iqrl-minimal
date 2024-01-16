@@ -3,6 +3,9 @@ defaults:
   - agent: ddpg_ae # mppi or ddpg
   # - override hydra/launcher: slurm # Use slurm (on cluster) for multirun
   - override hydra/launcher: lumi # Use slurm (on cluster) for multirun
+  - override hydra/job_logging: colorlog
+  # - override hydra/hydra_logging: hydra_debug
+  - override hydra/hydra_logging: colorlog
   - _self_
 
 # Environment
@@ -26,11 +29,12 @@ capture_train_video: False
 
 # W&B config
 use_wandb: True
-wandb_project_name: "lifelong-tcrl"
+wandb_project_name: "lifelong-td3-tc"
 monitor_gym: True
 run_name: ${agent.name}__${seed}__${now:%Y-%m-%d_%H-%M-%S}
 
 hydra:
+  verbose: true
   run:
     dir: output/hydra/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
   job:
@@ -38,7 +42,7 @@ hydra:
   sweep:
     dir: ${hydra.run.dir}
     subdir: ${hydra.job.num}
-  job_logging:
-    root:
-      # level: INFO # DEBUG
-      level: DEBUG
+  # job_logging:
+  #   root:
+  #     # level: INFO # DEBUG
+  #     level: DEBUG

@@ -1,5 +1,5 @@
 # @package _global_
-num_episodes: 5000
+num_episodes: 15000
 agent:
   latent_dim: 128
   exploration_noise_num_steps: 500  # number of episodes do decay noise
@@ -8,4 +8,5 @@ agent:
 
 hydra:
   launcher:
-    timeout_min: 1440 # 24 hours
+    # timeout_min: 1440 # 24 hours
+    timeout_min: 2100 # 35 hours

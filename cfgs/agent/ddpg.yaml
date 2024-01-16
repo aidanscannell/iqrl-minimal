@@ -15,6 +15,7 @@ discount: 0.99
 tau: 0.005
 device: ${device}
 # Reset stuff
+reset_type: "full" # "full" or "last-layer"
 reset_params_freq: None # reset params after this many param updates
 # reset_params_freq: 100000  # reset params after this many param updates
-name: DDPG_reset-freq=${agent.reset_params_freq}_utd=${agent.utd_ratio}
+name: DDPG_reset-freq=${agent.reset_params_freq}_reset_type=${agent.reset_type}_utd=${agent.utd_ratio}

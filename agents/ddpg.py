@@ -31,7 +31,7 @@ class Critic(nn.Module):
         )
         self._q1 = h.mlp(in_dim=input_dim, mlp_dims=mlp_dims, out_dim=1)
         self._q2 = h.mlp(in_dim=input_dim, mlp_dims=mlp_dims, out_dim=1)
-        self.reset(full_reset=True)
+        self.reset(reset_type="full")
 
     def forward(
         self, observation: BatchObservation, action: BatchAction
@@ -41,13 +41,16 @@ class Critic(nn.Module):
         q2 = self._q2(x)
         return q1, q2
 
-    def reset(self, full_reset: bool = False):
-        if full_reset:
-            self.apply(h.orthogonal_init)
-        else:
-            for q in [self._q1, self._q2]:
+    def reset(self, reset_type: str = "last-layer"):
+        for q in [self._q1, self._q2]:
+            if reset_type in "full":
+                h.orthogonal_init(q.parameters())
+                # q.apply(h.orthogonal_init)
+            elif reset_type in "last-layer":
                 params = list(q.parameters())
                 h.orthogonal_init(params[-2:])
+            else:
+                raise NotImplementedError
 
 
 class Actor(nn.Module):
@@ -63,7 +66,7 @@ class Actor(nn.Module):
             mlp_dims=mlp_dims,
             out_dim=np.prod(action_space.shape),
         )
-        self.reset()
+        self.reset(reset_type="full")
 
         # Action rescaling
         self.register_buffer(
@@ -88,12 +91,15 @@ class Actor(nn.Module):
         return action
         # return util.TruncatedNormal(x, std)
 
-    def reset(self, full_reset: bool = False):
-        if full_reset:
-            self.apply(h.orthogonal_init)
-        else:
+    def reset(self, reset_type: str = "last-layer"):
+        if reset_type in "full":
+            h.orthogonal_init(self.parameters())
+            # self.apply(h.orthogonal_init)
+        elif reset_type in "last-layer":
             params = list(self.parameters())
             h.orthogonal_init(params[-2:])
+        else:
+            raise NotImplementedError
 
 
 class DDPG(Agent):
@@ -115,9 +121,11 @@ class DDPG(Agent):
         reset_params_freq: Optional[
             int
         ] = None,  # reset params after this many param updates
+        reset_type: str = "last_layer",  #  "full" or "last-layer"
         # nstep: int = 1,
         discount: float = 0.99,
         tau: float = 0.005,
+        act_with_target: bool = False,  # if True act with target network
         device: str = "cuda",
         name: str = "DDPG",
         nstep: int = 1,
@@ -139,9 +147,11 @@ class DDPG(Agent):
         self.utd_ratio = utd_ratio
         self.actor_update_freq = actor_update_freq  # Should be 1 for true DDPG
         self.reset_params_freq = reset_params_freq
-        self.nstep = nstep
+        self.reset_type = reset_type
+        self.nstep = 1
         self.discount = discount
         self.tau = tau
+        self.act_with_target = act_with_target
         self.device = device
 
         # Init actor and it's target
@@ -178,32 +188,31 @@ class DDPG(Agent):
         self.critic_update_counter = 0
         self.actor_update_counter = 0
 
-        self.reset_flag = False
-
     def update(self, replay_buffer: ReplayBuffer, num_new_transitions: int) -> dict:
-        self.reset_flag = False
-        num_updates = num_new_transitions * self.utd_ratio
+        num_updates = int(num_new_transitions * self.utd_ratio)
         logger.info(f"Performing {num_updates} DDPG updates")
 
+        if wandb.run is not None:
+            wandb.log({"exploration_noise": self.exploration_noise})
+
+        reset_flag = 0
         for i in range(num_updates):
             batch = replay_buffer.sample(self.batch_size)
 
             info = self.update_step(batch=batch)
 
             # Reset actor/critic after a fixed number of parameter updates
-            if self.reset_params_freq is not None:
-                if self.critic_update_counter % self.reset_params_freq == 0:
-                    self.reset(full_reset=False)
+            if self.trigger_reset():
+                reset_flag = 1
+                if wandb.run is not None:
+                    wandb.log({"reset": reset_flag})
 
             if i % 100 == 0:
                 if wandb.run is not None:
-                    info.update(
-                        {
-                            "reset_ddpg": int(self.reset_flag),
-                            "exploration_noise": self.exploration_noise,
-                        }
-                    )
+                    # info.update({"exploration_noise": self.exploration_noise})
                     wandb.log(info)
+                    wandb.log({"reset": reset_flag})
+                reset_flag = 0
 
         self._exploration_noise.step()
 
@@ -303,10 +312,10 @@ class DDPG(Agent):
         soft_update_params(self.critic, self.target_critic, tau=self.tau)
 
         info = {
-            "q1_values": q1_values.mean().item(),
-            "q2_values": q2_values.mean().item(),
-            "q1_loss": q1_loss.item(),
-            "q2_loss": q2_loss.item(),
+            # "q1_values": q1_values.mean().item(),
+            # "q2_values": q2_values.mean().item(),
+            # "q1_loss": q1_loss.item(),
+            # "q2_loss": q2_loss.item(),
             "q_loss": q_loss.item() / 2,
             "critic_update_counter": self.critic_update_counter,
         }
@@ -329,9 +338,24 @@ class DDPG(Agent):
         }
         return info
 
+    def trigger_reset(self) -> bool:
+        """Returns True if it has reset and False otherwise"""
+        reset = False
+        if self.reset_params_freq is not None:
+            if self.critic_update_counter % self.reset_params_freq == 0:
+                logger.info(
+                    f"Resetting as step {self.critic_update_counter} % {self.reset_params_freq} == 0"
+                )
+                self.reset(reset_type=self.reset_type)
+                reset = True
+        return reset
+
     @torch.no_grad()
     def select_action(self, observation, eval_mode: EvalMode = False, t0: T0 = None):
-        actions = self.actor(torch.Tensor(observation).to(self.device))
+        if self.act_with_target:
+            actions = self.target_actor(torch.Tensor(observation).to(self.device))
+        else:
+            actions = self.actor(torch.Tensor(observation).to(self.device))
         if not eval_mode:
             actions += torch.normal(0, self.actor.action_scale * self.exploration_noise)
         actions = actions.cpu().numpy()
@@ -342,10 +366,10 @@ class DDPG(Agent):
     def exploration_noise(self):
         return self._exploration_noise()
 
-    def reset(self, full_reset: bool = False):
+    def reset(self, reset_type: str = "last-layer"):
         logger.info("Resetting actor/critic params")
-        self.actor.reset(full_reset=full_reset)
-        self.critic.reset(full_reset=full_reset)
+        self.actor.reset(reset_type=reset_type)
+        self.critic.reset(reset_type=reset_type)
         self.target_actor.load_state_dict(self.actor.state_dict())
         self.target_critic.load_state_dict(self.critic.state_dict())
         self.critic_opt = torch.optim.AdamW(
@@ -354,7 +378,6 @@ class DDPG(Agent):
         self.actor_opt = torch.optim.AdamW(
             self.actor.parameters(), lr=self.learning_rate
         )
-        self.reset_flag = True
         # TODO more updates after resetting?
         # for j in range(replay_buffer.size() - num_updates):
         #     batch = replay_buffer.sample(self.batch_size)

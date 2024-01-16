@@ -1,4 +1,4 @@
-_target_: "agents.DDPG_AE"
+_target_: "agents.TD_MPC"
 # DDPG stuff
 mlp_dims: [512, 512]
 # exploration_noise: 1.0
@@ -11,12 +11,11 @@ learning_rate: 3e-4
 batch_size: 256
 utd_ratio: 1  # parameter update-to-data ratio
 actor_update_freq: 2  # update actor less frequently than critic
-nstep: 1
+# nstep: 3
 discount: 0.99
 tau: 0.005
 device: ${device}
 # Reset stuff
-reset_type: "full" # "full" or "last-layer"
 reset_strategy: "latent-dist"  #  "latent-dist" or "every-x-param-updates"
 reset_params_freq: 100000  # reset params after this many param updates
 reset_threshold: 0.01  # reset latent (z) when changed by more than this
@@ -24,7 +23,7 @@ memory_size: 10000  # mem size for calculating ||z_{mem} - e_{\phi}(x_mem)||
 # AE config
 train_strategy: "interleaved"  # "interleaved" or "representation-first"
 temporal_consistency: False  # if True include dynamic model in encoder
-ae_learning_rate: 1e-4
+ae_learning_rate: 3e-4
 ae_batch_size: 256
 ae_utd_ratio: 1  # encoder parameter update-to-data ratio
 ae_patience: 100
@@ -34,4 +33,4 @@ ae_tau: 0.005
 ae_normalize: True
 simplex_dim: 8
 # encoder_reset_params_freq: int = 10000  # reset enc params after X param updates
-name: DDPG-AE_${agent.reset_strategy}-${agent.reset_type}_${agent.train_strategy}-${agent.reset_params_freq}_norm-${agent.ae_normalize}_temp-${agent.temporal_consistency}_utd=${agent.utd_ratio}
+name: TD-MPC_${agent.reset_strategy}_${agent.train_strategy}_norm-${agent.ae_normalize}_temp-${agent.temporal_consistency}_utd=${agent.utd_ratio}
