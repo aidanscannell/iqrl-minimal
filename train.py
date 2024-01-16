@@ -10,10 +10,6 @@ import hydra
 from cfgs.base import TrainConfig
 
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
-
 @hydra.main(version_base="1.3", config_path="./cfgs", config_name="train")
 def train(cfg: TrainConfig):
     import gymnasium as gym
@@ -24,6 +20,9 @@ def train(cfg: TrainConfig):
     from stable_baselines3.common.buffers import ReplayBuffer
     from stable_baselines3.common.evaluation import evaluate_policy
     from utils.env import make_env
+
+    logging.basicConfig(level=logging.INFO)
+    logger = logging.getLogger(__name__)
 
     ###### Fix seed for reproducibility ######
     random.seed(cfg.seed)
