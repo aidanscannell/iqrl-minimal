@@ -34,4 +34,4 @@ ae_tau: 0.005
 ae_normalize: True
 simplex_dim: 8
 # encoder_reset_params_freq: int = 10000  # reset enc params after X param updates
-name: DDPG-AE_${agent.reset_strategy}-${agent.reset_type}_${agent.train_strategy}-${reset_params_freq}_norm-${agent.ae_normalize}_temp-${agent.temporal_consistency}_utd=${agent.utd_ratio}
+name: DDPG-AE_${agent.reset_strategy}-${agent.reset_type}_${agent.train_strategy}-${agent.reset_params_freq}_norm-${agent.ae_normalize}_temp-${agent.temporal_consistency}_utd=${agent.utd_ratio}
