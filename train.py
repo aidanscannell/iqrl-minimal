@@ -3,6 +3,7 @@ import os
 
 import hydra
 import omegaconf
+from hydra.core.hydra_config import HydraConfig
 from hydra.utils import get_original_cwd
 
 
@@ -82,6 +83,8 @@ def train(cfg):
             dir=os.path.join(get_original_cwd(), "output"),
         )
     pprint.pprint(cfg_dict)
+    pprint.pprint(HydraConfig.get().launcher)
+    breakpoint()
 
     ###### Prepare replay buffer ######
     rb = ReplayBuffer(
