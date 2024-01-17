@@ -28,5 +28,5 @@ setup: null
 # constraint: "volta"
 stderr_to_stdout: true
 # time=00:10:00
-srun_args:
-  time: "00:10:00"
+# srun_args:
+#   time: "00:10:00"
