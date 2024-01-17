@@ -93,6 +93,7 @@ def train(cfg):
         nstep=cfg.agent.nstep,
 #        handle_timeout_termination=False,
         discount=cfg.agent.discount,
+#        train_validation_split=0.7,
     )
 
     ###### Init agent ######
