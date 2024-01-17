@@ -1,8 +1,4 @@
 # @package _global_
-# defaults:
-#   # - hard
-#   - override /agent: ddpg_ae
-#   - _self_
 num_episodes: 15000
 
 agent:
