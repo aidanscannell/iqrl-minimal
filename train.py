@@ -84,7 +84,6 @@ def train(cfg):
         )
     pprint.pprint(cfg_dict)
     pprint.pprint(HydraConfig.get().launcher)
-    breakpoint()
 
     ###### Prepare replay buffer ######
     rb = ReplayBuffer(
