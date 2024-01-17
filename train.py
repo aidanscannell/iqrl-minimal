@@ -3,6 +3,7 @@ import os
 
 import hydra
 import omegaconf
+from hydra.core.hydra_config import HydraConfig
 from hydra.utils import get_original_cwd
 
 
@@ -65,7 +66,6 @@ def train(cfg):
     cfg_dict = omegaconf.OmegaConf.to_container(
         cfg, resolve=True, throw_on_missing=True
     )
-    pprint.pprint(cfg_dict)
 
     ###### Initialise W&B ######
     if cfg.use_wandb:
@@ -82,6 +82,9 @@ def train(cfg):
             save_code=True,
             dir=os.path.join(get_original_cwd(), "output"),
         )
+        wandb.run.summary["timeout_min"] = HydraConfig.get().launcher.timeout_min
+    pprint.pprint(cfg_dict)
+    pprint.pprint(HydraConfig.get().launcher)
 
     ###### Prepare replay buffer ######
     rb = ReplayBuffer(

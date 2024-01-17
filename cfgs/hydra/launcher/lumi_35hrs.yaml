@@ -4,7 +4,7 @@ defaults:
 _target_: hydra_plugins.hydra_submitit_launcher.submitit_launcher.SlurmLauncher
 account: project_462000462
 partition: small-g # Partition (queue) name
-timeout_min: 120
+timeout_min: 2100 # 35 hours
 # cpus_per_task: 6
 # gpus_per_node: 1
 tasks_per_node: 1
@@ -28,6 +28,3 @@ array_parallelism: 256
 setup: null
 # constraint: "volta"
 stderr_to_stdout: true
-# time=00:10:00
-# srun_args:
-#   time: "00:10:00"
