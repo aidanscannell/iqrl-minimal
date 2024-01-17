@@ -136,7 +136,7 @@ class BaseBuffer(ABC):
         else:
             upper_bound = self.buffer_size if self.full else (self.pos - nstep + 1)
             batch_inds = np.random.randint(0, upper_bound, size=batch_size)
-        return self._get_samples(batch_inds, env=env)
+        return self._get_samples(batch_inds, env=env, nstep=nstep)
 
     @abstractmethod
     def _get_samples(
@@ -329,7 +329,7 @@ class ReplayBuffer(BaseBuffer):
             self.full = True
             self.pos = 0
 
-    def sample(self, batch_size: int, env: Optional[VecNormalize] = None, val: Optional[bool] = False) -> ReplayBufferSamples:
+    def sample(self, batch_size: int, env: Optional[VecNormalize] = None, val: Optional[bool] = False, nstep: Optional[int] = None) -> ReplayBufferSamples:
         """
         Sample elements from the replay buffer.
         Custom sampling when using memory efficient variant,
@@ -344,27 +344,34 @@ class ReplayBuffer(BaseBuffer):
         if val:
             assert self.train_validation_split is not None and 0 < self.train_validation_split < 1
 
+        if nstep is None:
+            nstep = self.nstep
+
         if not self.optimize_memory_usage:
-            return super().sample(batch_size=batch_size, env=env, nstep=self.nstep, train_validation_split=self.train_validation_split, val=val, train_samples=self.train_samples)
+            return super().sample(batch_size=batch_size, env=env, nstep=nstep, train_validation_split=self.train_validation_split, val=val, train_samples=self.train_samples)
         # Do not sample the element with index `self.pos` as the transitions is invalid
         # (we use only one array to store `obs` and `next_obs`)
         if self.train_validation_split is not None:
             if self.full:
-                idxs = (np.arange(1, self.buffer_size - self.nstep + 1) + self.pos) % self.buffer_size
+                idxs = (np.arange(1, self.buffer_size - nstep + 1) + self.pos) % self.buffer_size
             else:
-                idxs = np.arange(0, self.pos - self.nstep + 1)
+                idxs = np.arange(0, self.pos - nstep + 1)
             if not val:
                 sample_idxs = idxs[self.train_samples[idxs]]
             else:
                 sample_idxs = idxs[~self.train_samples[idxs]]
             batch_inds = np.random.choice(sample_idxs, size=batch_size, replace=False)
         elif self.full:
-            batch_inds = (np.random.randint(1, self.buffer_size - self.nstep + 1, size=batch_size) + self.pos) % self.buffer_size
+            batch_inds = (np.random.randint(1, self.buffer_size - nstep + 1, size=batch_size) + self.pos) % self.buffer_size
         else:
-            batch_inds = np.random.randint(0, self.pos - self.nstep + 1, size=batch_size)
-        return self._get_samples(batch_inds, env=env)
+            batch_inds = np.random.randint(0, self.pos - nstep + 1, size=batch_size)
+        return self._get_samples(batch_inds, env=env, nstep=nstep)
 
-    def _get_samples(self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None) -> ReplayBufferSamples:
+    def _get_samples(self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None, nstep: Optional[int] = None) -> ReplayBufferSamples:
+
+        if nstep is None:
+            nstep = self.nstep
+
         # Sample randomly the env idx
         env_indices = np.random.randint(0, high=self.n_envs, size=(len(batch_inds),))
 
@@ -376,7 +383,7 @@ class ReplayBuffer(BaseBuffer):
         rewards = np.zeros_like(dones)
         next_state_discounts = np.ones_like(dones)
 
-        for n in range(self.nstep):
+        for n in range(nstep):
             idxs = (batch_inds + n) % self.buffer_size
 
             if self.optimize_memory_usage:
