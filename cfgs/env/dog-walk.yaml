@@ -1,8 +1,8 @@
 # @package _global_
 defaults:
-  - hard
+  # - hard
   - override /env: cheetah-run
-#   - _self_
+  - _self_
 
 env_id: "dog"
 dmc_task: "walk"
