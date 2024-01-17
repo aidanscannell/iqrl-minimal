@@ -65,7 +65,6 @@ def train(cfg):
     cfg_dict = omegaconf.OmegaConf.to_container(
         cfg, resolve=True, throw_on_missing=True
     )
-    pprint.pprint(cfg_dict)
 
     ###### Initialise W&B ######
     if cfg.use_wandb:
@@ -82,6 +81,7 @@ def train(cfg):
             save_code=True,
             dir=os.path.join(get_original_cwd(), "output"),
         )
+    pprint.pprint(cfg_dict)
 
     ###### Prepare replay buffer ######
     rb = ReplayBuffer(
