@@ -543,7 +543,6 @@ class DDPG_AE(Agent):
         """Update actor/critic"""
         # TODO This could use ddpg.update()
         logger.info(f"Performing {num_updates} DDPG updates...")
-        reset_flag = 0
         info = {}
         for i in range(num_updates):
             batch = replay_buffer.sample(self.ddpg.batch_size)
@@ -572,15 +571,13 @@ class DDPG_AE(Agent):
                         logger.info(
                             f"Resetting as step {self.ddpg.critic_update_counter} % {self.reset_params_freq} == 0"
                         )
-                        self.reset()
-                        reset_flag = 1
-                        if wandb.run is not None:
-                            wandb.log({"reset": reset_flag})
+                        self.reset(replay_buffer=replay_buffer)
+                        wandb.log({"reset": 1})
 
             if i % 100 == 0:
                 if wandb.run is not None:
                     wandb.log(info)
-                reset_flag = 0
+                    wandb.log({"reset": 0})
 
         logger.info("Finished training DDPG")
 
