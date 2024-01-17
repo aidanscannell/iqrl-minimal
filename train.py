@@ -94,9 +94,9 @@ def train(cfg):
         # "auto",
         torch.device(cfg.device),
         nstep=cfg.agent.nstep,
-#        handle_timeout_termination=False,
+        #        handle_timeout_termination=False,
         discount=cfg.agent.discount,
-#        train_validation_split=0.7,
+        train_validation_split=cfg.train_validation_split,
     )
 
     ###### Init agent ######

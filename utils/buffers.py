@@ -1,3 +1,4 @@
+# Code adapted from https://github.com/DLR-RM/stable-baselines3/blob/master/stable_baselines3/common/buffers.py
 import warnings
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Generator, List, NamedTuple, Optional, Tuple, Union
@@ -5,11 +6,11 @@ from typing import Any, Dict, Generator, List, NamedTuple, Optional, Tuple, Unio
 import numpy as np
 import torch as th
 from gymnasium import spaces
-
-from stable_baselines3.common.type_aliases import RolloutBufferSamples
 from stable_baselines3.common.preprocessing import get_action_dim, get_obs_shape
+from stable_baselines3.common.type_aliases import RolloutBufferSamples
 from stable_baselines3.common.utils import get_device
 from stable_baselines3.common.vec_env import VecNormalize
+
 
 try:
     # Check memory used by replay buffer when possible
@@ -106,13 +107,14 @@ class BaseBuffer(ABC):
         self.pos = 0
         self.full = False
 
-    def sample(self,
-               batch_size: int,
-               env: Optional[VecNormalize] = None,
-               nstep: Optional[int] = 1,
-               train_validation_split: Optional[float] = None,
-               val: Optional[bool] = False,
-               train_samples: Optional[np.ndarray] = None,
+    def sample(
+        self,
+        batch_size: int,
+        env: Optional[VecNormalize] = None,
+        nstep: Optional[int] = 1,
+        train_validation_split: Optional[float] = None,
+        val: Optional[bool] = False,
+        train_samples: Optional[np.ndarray] = None,
     ):
         """
         :param batch_size: Number of element to sample
@@ -123,16 +125,23 @@ class BaseBuffer(ABC):
         # We must ensure that the n-step samples are valid and from the same trajectory
         if train_validation_split is not None:
             if self.full and nstep > 2:
-                idxs = (np.arange(0, self.buffer_size - nstep + 1) + self.pos) % self.buffer_size
+                idxs = (
+                    np.arange(0, self.buffer_size - nstep + 1) + self.pos
+                ) % self.buffer_size
             else:
-                idxs = np.arange(0, self.buffer_size if self.full else (self.pos - nstep + 1))
+                idxs = np.arange(
+                    0, self.buffer_size if self.full else (self.pos - nstep + 1)
+                )
             if not val:
                 sample_idxs = idxs[train_samples[idxs]]
             else:
                 sample_idxs = idxs[~train_samples[idxs]]
             batch_inds = np.random.choice(sample_idxs, size=batch_size, replace=False)
         elif self.full and nstep > 2:
-            batch_inds = (np.random.randint(0, self.buffer_size - nstep + 1, size=batch_size) + self.pos) % self.buffer_size
+            batch_inds = (
+                np.random.randint(0, self.buffer_size - nstep + 1, size=batch_size)
+                + self.pos
+            ) % self.buffer_size
         else:
             upper_bound = self.buffer_size if self.full else (self.pos - nstep + 1)
             batch_inds = np.random.randint(0, upper_bound, size=batch_size)
@@ -173,7 +182,9 @@ class BaseBuffer(ABC):
         return obs
 
     @staticmethod
-    def _normalize_reward(reward: np.ndarray, env: Optional[VecNormalize] = None) -> np.ndarray:
+    def _normalize_reward(
+        reward: np.ndarray, env: Optional[VecNormalize] = None
+    ) -> np.ndarray:
         if env is not None:
             return env.normalize_reward(reward).astype(np.float32)
         return reward
@@ -220,7 +231,9 @@ class ReplayBuffer(BaseBuffer):
         discount: Optional[float] = 1.0,
         train_validation_split: Optional[float] = None,
     ):
-        super().__init__(buffer_size, observation_space, action_space, device, n_envs=n_envs)
+        super().__init__(
+            buffer_size, observation_space, action_space, device, n_envs=n_envs
+        )
 
         # Adjust buffer size
         self.buffer_size = max(buffer_size // n_envs, 1)
@@ -243,14 +256,21 @@ class ReplayBuffer(BaseBuffer):
             )
         self.optimize_memory_usage = optimize_memory_usage
 
-        self.observations = np.zeros((self.buffer_size, self.n_envs, *self.obs_shape), dtype=observation_space.dtype)
+        self.observations = np.zeros(
+            (self.buffer_size, self.n_envs, *self.obs_shape),
+            dtype=observation_space.dtype,
+        )
 
         if not optimize_memory_usage:
             # When optimizing memory, `observations` contains also the next observation
-            self.next_observations = np.zeros((self.buffer_size, self.n_envs, *self.obs_shape), dtype=observation_space.dtype)
+            self.next_observations = np.zeros(
+                (self.buffer_size, self.n_envs, *self.obs_shape),
+                dtype=observation_space.dtype,
+            )
 
         self.actions = np.zeros(
-            (self.buffer_size, self.n_envs, self.action_dim), dtype=self._maybe_cast_dtype(action_space.dtype)
+            (self.buffer_size, self.n_envs, self.action_dim),
+            dtype=self._maybe_cast_dtype(action_space.dtype),
         )
 
         self.rewards = np.zeros((self.buffer_size, self.n_envs), dtype=np.float32)
@@ -263,7 +283,10 @@ class ReplayBuffer(BaseBuffer):
 
         if psutil is not None:
             total_memory_usage: float = (
-                self.observations.nbytes + self.actions.nbytes + self.rewards.nbytes + self.dones.nbytes
+                self.observations.nbytes
+                + self.actions.nbytes
+                + self.rewards.nbytes
+                + self.dones.nbytes
             )
 
             if not optimize_memory_usage:
@@ -280,7 +303,9 @@ class ReplayBuffer(BaseBuffer):
 
     def resample_val(self) -> None:
         assert self.train_validation_split is not None
-        self.train_samples = np.random.rand(len(self.train_samples)) < self.train_validation_split
+        self.train_samples = (
+            np.random.rand(len(self.train_samples)) < self.train_validation_split
+        )
 
     def add(
         self,
@@ -313,23 +338,31 @@ class ReplayBuffer(BaseBuffer):
         self.actions[self.pos] = np.array(action)
         self.rewards[self.pos] = np.array(reward)
         self.dones[self.pos] = np.array(done)
-        
+
         if train_samples is not None and self.train_validation_split is not None:
             self.train_samples[self.pos] = np.array(train_samples)
         elif self.train_validation_split is not None:
             # If multiple environment, all get same train_samples value
-            self.train_samples[self.pos] = np.random.rand() < self.train_validation_split
+            self.train_samples[self.pos] = (
+                np.random.rand() < self.train_validation_split
+            )
 
         if self.handle_timeout_termination:
             self.timeouts[self.pos] = timeout
-#            self.timeouts[self.pos] = np.array([info.get("TimeLimit.truncated", False) for info in infos])
+        #            self.timeouts[self.pos] = np.array([info.get("TimeLimit.truncated", False) for info in infos])
 
         self.pos += 1
         if self.pos == self.buffer_size:
             self.full = True
             self.pos = 0
 
-    def sample(self, batch_size: int, env: Optional[VecNormalize] = None, val: Optional[bool] = False, nstep: Optional[int] = None) -> ReplayBufferSamples:
+    def sample(
+        self,
+        batch_size: int,
+        env: Optional[VecNormalize] = None,
+        val: Optional[bool] = False,
+        nstep: Optional[int] = None,
+    ) -> ReplayBufferSamples:
         """
         Sample elements from the replay buffer.
         Custom sampling when using memory efficient variant,
@@ -342,18 +375,30 @@ class ReplayBuffer(BaseBuffer):
         :return:
         """
         if val:
-            assert self.train_validation_split is not None and 0 < self.train_validation_split < 1
+            assert (
+                self.train_validation_split is not None
+                and 0 < self.train_validation_split < 1
+            )
 
         if nstep is None:
             nstep = self.nstep
 
         if not self.optimize_memory_usage:
-            return super().sample(batch_size=batch_size, env=env, nstep=nstep, train_validation_split=self.train_validation_split, val=val, train_samples=self.train_samples)
+            return super().sample(
+                batch_size=batch_size,
+                env=env,
+                nstep=nstep,
+                train_validation_split=self.train_validation_split,
+                val=val,
+                train_samples=self.train_samples,
+            )
         # Do not sample the element with index `self.pos` as the transitions is invalid
         # (we use only one array to store `obs` and `next_obs`)
         if self.train_validation_split is not None:
             if self.full:
-                idxs = (np.arange(1, self.buffer_size - nstep + 1) + self.pos) % self.buffer_size
+                idxs = (
+                    np.arange(1, self.buffer_size - nstep + 1) + self.pos
+                ) % self.buffer_size
             else:
                 idxs = np.arange(0, self.pos - nstep + 1)
             if not val:
@@ -362,13 +407,20 @@ class ReplayBuffer(BaseBuffer):
                 sample_idxs = idxs[~self.train_samples[idxs]]
             batch_inds = np.random.choice(sample_idxs, size=batch_size, replace=False)
         elif self.full:
-            batch_inds = (np.random.randint(1, self.buffer_size - nstep + 1, size=batch_size) + self.pos) % self.buffer_size
+            batch_inds = (
+                np.random.randint(1, self.buffer_size - nstep + 1, size=batch_size)
+                + self.pos
+            ) % self.buffer_size
         else:
             batch_inds = np.random.randint(0, self.pos - nstep + 1, size=batch_size)
         return self._get_samples(batch_inds, env=env, nstep=nstep)
 
-    def _get_samples(self, batch_inds: np.ndarray, env: Optional[VecNormalize] = None, nstep: Optional[int] = None) -> ReplayBufferSamples:
-
+    def _get_samples(
+        self,
+        batch_inds: np.ndarray,
+        env: Optional[VecNormalize] = None,
+        nstep: Optional[int] = None,
+    ) -> ReplayBufferSamples:
         if nstep is None:
             nstep = self.nstep
 
@@ -387,46 +439,80 @@ class ReplayBuffer(BaseBuffer):
             idxs = (batch_inds + n) % self.buffer_size
 
             if self.optimize_memory_usage:
-                next_obs = np.where(timeout_or_dones, next_obs, self._normalize_obs(self.observations[(idxs + 1) % self.buffer_size, env_indices, :], env))
+                next_obs = np.where(
+                    timeout_or_dones,
+                    next_obs,
+                    self._normalize_obs(
+                        self.observations[
+                            (idxs + 1) % self.buffer_size, env_indices, :
+                        ],
+                        env,
+                    ),
+                )
             else:
-                next_obs = np.where(timeout_or_dones, next_obs, self._normalize_obs(self.next_observations[idxs, env_indices, :], env))
+                next_obs = np.where(
+                    timeout_or_dones,
+                    next_obs,
+                    self._normalize_obs(
+                        self.next_observations[idxs, env_indices, :], env
+                    ),
+                )
 
             next_state_discounts *= np.where(timeout_or_dones, 1, self.discount)
-            dones = np.where(timeout_or_dones, dones, self.dones[idxs, env_indices].reshape(-1, 1))
-            rewards += np.where(timeout_or_dones, 0, self.discount**n * self._normalize_reward(self.rewards[idxs, env_indices].reshape(-1, 1), env))
-            timeout_or_dones = np.logical_or(timeout_or_dones, np.logical_or(dones, self.timeouts[idxs, env_indices].reshape(-1, 1)))
+            dones = np.where(
+                timeout_or_dones, dones, self.dones[idxs, env_indices].reshape(-1, 1)
+            )
+            rewards += np.where(
+                timeout_or_dones,
+                0,
+                self.discount**n
+                * self._normalize_reward(
+                    self.rewards[idxs, env_indices].reshape(-1, 1), env
+                ),
+            )
+            timeout_or_dones = np.logical_or(
+                timeout_or_dones,
+                np.logical_or(dones, self.timeouts[idxs, env_indices].reshape(-1, 1)),
+            )
 
-        data = (obs, acts, next_obs, dones.astype(np.float32), rewards.astype(np.float32), next_state_discounts.astype(np.float32))
+        data = (
+            obs,
+            acts,
+            next_obs,
+            dones.astype(np.float32),
+            rewards.astype(np.float32),
+            next_state_discounts.astype(np.float32),
+        )
 
-#        obs_new = obs
-#        acts_new = acts
-#        dones_new = dones
-#        next_obs_new = next_obs
-#        rewards_new = rewards
-#        if self.optimize_memory_usage:
-#            next_obs = self._normalize_obs(self.observations[(batch_inds + 1) % self.buffer_size, env_indices, :], env)
-#        else:
-#            next_obs = self._normalize_obs(self.next_observations[batch_inds, env_indices, :], env)
-#        data_old = (
-#            self._normalize_obs(self.observations[batch_inds, env_indices, :], env),
-#            self.actions[batch_inds, env_indices, :],
-#            next_obs,
-#            # Only use dones that are not due to timeouts
-#            # deactivated by default (timeouts is initialized as an array of False)
-#            (self.dones[batch_inds, env_indices] * (1 - self.timeouts[batch_inds, env_indices])).reshape(-1, 1),
-#            self._normalize_reward(self.rewards[batch_inds, env_indices].reshape(-1, 1), env),
-#        )
-#        obs = data_old[0]
-#        acts = data_old[1]
-#        next_obs = data_old[2]
-#        dones = data_old[3]
-#        rewards = data_old[4]
-#        print(np.allclose(obs, obs_new))
-#        print(np.allclose(acts, acts_new))
-#        print(np.allclose(next_obs, next_obs_new))
-#        print(np.allclose(dones, dones_new))
-#        print(np.allclose(rewards, rewards_new))
-#        exit(0)
+        #        obs_new = obs
+        #        acts_new = acts
+        #        dones_new = dones
+        #        next_obs_new = next_obs
+        #        rewards_new = rewards
+        #        if self.optimize_memory_usage:
+        #            next_obs = self._normalize_obs(self.observations[(batch_inds + 1) % self.buffer_size, env_indices, :], env)
+        #        else:
+        #            next_obs = self._normalize_obs(self.next_observations[batch_inds, env_indices, :], env)
+        #        data_old = (
+        #            self._normalize_obs(self.observations[batch_inds, env_indices, :], env),
+        #            self.actions[batch_inds, env_indices, :],
+        #            next_obs,
+        #            # Only use dones that are not due to timeouts
+        #            # deactivated by default (timeouts is initialized as an array of False)
+        #            (self.dones[batch_inds, env_indices] * (1 - self.timeouts[batch_inds, env_indices])).reshape(-1, 1),
+        #            self._normalize_reward(self.rewards[batch_inds, env_indices].reshape(-1, 1), env),
+        #        )
+        #        obs = data_old[0]
+        #        acts = data_old[1]
+        #        next_obs = data_old[2]
+        #        dones = data_old[3]
+        #        rewards = data_old[4]
+        #        print(np.allclose(obs, obs_new))
+        #        print(np.allclose(acts, acts_new))
+        #        print(np.allclose(next_obs, next_obs_new))
+        #        print(np.allclose(dones, dones_new))
+        #        print(np.allclose(rewards, rewards_new))
+        #        exit(0)
 
         return ReplayBufferSamples(*tuple(map(self.to_torch, data)))
 

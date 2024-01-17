@@ -13,6 +13,7 @@ env_id: "cartpole"
 dmc_task: "swingup"
 
 # Experiment
+train_validation_split: 0.7 # Fraction of data to use for training
 max_episode_steps: 1000 # Max episode length
 num_episodes: 500 # Number of training episodes
 random_episodes: 10 # Number of random episodes at start
