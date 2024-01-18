@@ -750,9 +750,6 @@ class TC_TD3(Agent):
         logger.info("Resetting actor/critic")
         self.ddpg.reset(reset_type=reset_type)
 
-        self.ae_early_stopper = h.EarlyStopper(
-            patience=self.ae_patience, min_delta=self.ae_min_delta
-        )
         if replay_buffer is not None:
             # Set large num encoder updates as will be stopped early using val loss
             num_ae_updates = replay_buffer.size() * self.ae_utd_ratio
