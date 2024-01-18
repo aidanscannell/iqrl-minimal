@@ -695,7 +695,6 @@ class TC_TD3(Agent):
             # TODO make sure mean is over state dimensions
             # z_dist = (self.z_mem - z_mem_pred).abs().mean()
             z_dist = ((self.z_mem - z_mem_pred) ** 2).mean()
-            breakpoint()
             if wandb.run is not None:
                 wandb.log({"z_euclidian_distance": z_dist})
         return z_dist
