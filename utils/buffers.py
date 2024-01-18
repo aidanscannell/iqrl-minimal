@@ -530,3 +530,9 @@ class ReplayBuffer(BaseBuffer):
         if dtype == np.float64:
             return np.float32
         return dtype
+
+    def train_size(self) -> float:
+        if self.train_validation_split is None:
+            return self.size()
+        else:
+            return int(self.size() * self.train_validation_split)

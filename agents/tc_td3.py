@@ -426,8 +426,8 @@ class TC_TD3(Agent):
                     # info.update({"exploration_noise": self.ddpg.exploration_noise})
                     wandb.log(info)
                     wandb.log({"reset": reset_flag})
-                    z_dist = self.latent_euclidian_dist()
-                    wandb.log({"z_dist": z_dist})
+                    # z_dist = self.latent_euclidian_dist()
+                    # wandb.log({"z_dist": z_dist})
                 reset_flag = 0
 
         logger.info("Finished training DDPG-AE")
@@ -471,8 +471,8 @@ class TC_TD3(Agent):
                 )
                 if wandb.run is not None:
                     wandb.log(info)
-                    z_dist = self.latent_euclidian_dist()
-                    wandb.log({"z_dist": z_dist})
+                    # z_dist = self.latent_euclidian_dist()
+                    # wandb.log({"z_dist": z_dist})
                     # wandb.log({"reset": reset_flag})
                 # reset_flag = 0
 
@@ -656,15 +656,6 @@ class TC_TD3(Agent):
         }
         return loss, info
 
-    def _update_memory(self, replay_buffer: ReplayBuffer, memory_size: int = 10000):
-        # Sample memory set from replay buffer
-        memory_batch = replay_buffer.sample(memory_size)
-
-        # Store obs and (old) latents in class
-        self.x_mem = memory_batch.observations
-        with torch.no_grad():
-            self.z_mem = self.encoder(self.x_mem)
-
     def trigger_reset_latent_dist(self, replay_buffer) -> bool:
         if self.x_mem is None:
             # if self.old_replay_buffer is None:
@@ -686,14 +677,27 @@ class TC_TD3(Agent):
             reset = False
         return reset
 
-    def latent_euclidian_dist(self) -> bool:
-        z_mem_pred = self.encoder(self.x_mem)
-        # TODO make sure mean is over state dimensions
-        # z_dist = (self.z_mem - z_mem_pred).abs().mean()
-        z_dist = ((self.z_mem - z_mem_pred) ** 2).mean()
-        breakpoint()
-        # if wandb.run is not None:
-        #     wandb.log({"z_euclidian_distance": z_dist})
+    def _update_memory(self, replay_buffer: ReplayBuffer, memory_size: int = 10000):
+        # Sample memory set from replay buffer
+        if memory_size > replay_buffer.train_size():
+            memory_size = replay_buffer.train_size()
+        memory_batch = replay_buffer.sample(memory_size)
+
+        # Store obs and (old) latents in class
+        self.x_mem = memory_batch.observations
+        with torch.no_grad():
+            self.z_mem = self.encoder(self.x_mem)
+
+    def latent_euclidian_dist(self) -> float:
+        z_dist = 0.0
+        if self.x_mem is not None:
+            z_mem_pred = self.encoder(self.x_mem)
+            # TODO make sure mean is over state dimensions
+            # z_dist = (self.z_mem - z_mem_pred).abs().mean()
+            z_dist = ((self.z_mem - z_mem_pred) ** 2).mean()
+            breakpoint()
+            if wandb.run is not None:
+                wandb.log({"z_euclidian_distance": z_dist})
         return z_dist
 
     @torch.no_grad()
