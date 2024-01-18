@@ -181,6 +181,7 @@ class TC_TD3(Agent):
         value_dynamics_loss: bool = False,  # if True include value prediction for representation learning
         value_enc_loss: bool = False,  # if True include value prediction for representation learning
         reconstruction_loss: bool = True,  # if True use reconstruction loss with decoder
+        encoder_mlp_dims: List[int] = [256],
         ae_learning_rate: float = 3e-4,
         ae_batch_size: int = 128,
         # ae_num_updates: int = 1000,
@@ -228,7 +229,7 @@ class TC_TD3(Agent):
         # Init representation learning (encoder/decoder/dynamics/reward)
         self.encoder = Encoder(
             observation_space=observation_space,
-            mlp_dims=mlp_dims,
+            mlp_dims=encoder_mlp_dims,
             latent_dim=latent_dim,
             normalize=ae_normalize,
             simplex_dim=simplex_dim,
@@ -260,7 +261,7 @@ class TC_TD3(Agent):
 
         self.encoder_target = Encoder(
             observation_space=observation_space,
-            mlp_dims=mlp_dims,
+            mlp_dims=encoder_mlp_dims,
             latent_dim=latent_dim,
             normalize=ae_normalize,
             simplex_dim=simplex_dim,

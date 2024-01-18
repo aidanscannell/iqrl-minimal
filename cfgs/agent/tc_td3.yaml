@@ -24,6 +24,7 @@ memory_size: 10000  # mem size for calculating ||z_{mem} - e_{\phi}(x_mem)||
 # AE config
 train_strategy: "interleaved"  # "interleaved" or "representation-first"
 temporal_consistency: False  # if True include dynamic model in encoder
+encoder_mlp_dims: [256]
 ae_learning_rate: 1e-4
 ae_batch_size: 256
 ae_utd_ratio: 1  # encoder parameter update-to-data ratio
