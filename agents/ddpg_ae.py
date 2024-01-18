@@ -795,8 +795,7 @@ class DDPG_AE(Agent):
     @torch.no_grad()
     def select_action(self, observation, eval_mode: EvalMode = False, t0: T0 = None):
         observation = torch.Tensor(observation).to(self.device)
-        _, z = self.ae(observation)
-        z = z.to(torch.float)
+        z = self.ae.encoder(observation).to(torch.float)
         return self.ddpg.select_action(observation=z, eval_mode=eval_mode, t0=t0)
 
     def reset(
