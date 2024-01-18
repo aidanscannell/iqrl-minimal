@@ -334,7 +334,10 @@ class TC_TD3(Agent):
         self.reset_threshold = reset_threshold
         self.memory_size = memory_size
 
-        self.old_replay_buffer = None
+        # Init memory
+        # self.old_replay_buffer = None
+        self.x_mem = None
+        self.z_mem = None
 
         self.value_weight = 1
         self.value_weight_discount = 0.99999
@@ -423,6 +426,8 @@ class TC_TD3(Agent):
                     # info.update({"exploration_noise": self.ddpg.exploration_noise})
                     wandb.log(info)
                     wandb.log({"reset": reset_flag})
+                    z_dist = self.latent_euclidian_dist()
+                    wandb.log({"z_dist": z_dist})
                 reset_flag = 0
 
         logger.info("Finished training DDPG-AE")
@@ -466,6 +471,8 @@ class TC_TD3(Agent):
                 )
                 if wandb.run is not None:
                     wandb.log(info)
+                    z_dist = self.latent_euclidian_dist()
+                    wandb.log({"z_dist": z_dist})
                     # wandb.log({"reset": reset_flag})
                 # reset_flag = 0
 
@@ -658,69 +665,36 @@ class TC_TD3(Agent):
         with torch.no_grad():
             self.z_mem = self.encoder(self.x_mem)
 
-        # Calculate normalisation constants
-        self.z_mem_max = torch.max(self.z_mem, 0)[0]
-        self.z_mem_min = torch.min(self.z_mem, 0)[0]
-        self.z_mem_normalised = (self.z_mem - self.z_mem_min) / (
-            self.z_mem_max - self.z_mem_min
-        )
-
-    # def trigger_reset(self) -> dict:
-    #     """Returns 1 if it has reset and 0 otherwise"""
-    #     reset, mem_dist = 0, 0
-    #     if self.reset_strategy == "every-x-param-updates":
-    #         if self.reset_params_freq is not None:
-    #             if self.ddpg.critic_update_counter % self.reset_params_freq == 0:
-    #                 logger.info(
-    #                     f"Resetting as step {self.ddpg.critic_update_counter} % {self.reset_params_freq} == 0"
-    #                 )
-    #                 self.reset(full_reset=False)
-    #                 reset = 1
-    #     elif self.reset_strategy == "latent-dist":
-    #         z_mem_pred = self.ae.encoder(self.x_mem)
-    #         # TODO make sure mean is over state dimensions
-    #         mem_dist = (self.z_mem - z_mem_pred).abs().mean()
-    #         logger.info(f"mem_dist {mem_dist}")
-    #         if mem_dist > self.reset_threshold:
-    #             logger.info(
-    #                 f"Resetting as mem_dist {mem_dist} > reset_threshold {self.reset_threshold}"
-    #             )
-    #             self.reset(full_reset=False)
-    #             reset = 1
-    #     else:
-    #         raise NotImplementedError(
-    #             "reset_strategy should be either 'every-x-params-updates' or 'latent-dist'"
-    #         )
-    #     return {"reset": reset, "mem_dist": mem_dist}
-
     def trigger_reset_latent_dist(self, replay_buffer) -> bool:
-        if self.old_replay_buffer is None:
+        if self.x_mem is None:
+            # if self.old_replay_buffer is None:
             logger.info("Building memory first time...")
             # logger.info("Updating memory...")
             self._update_memory(
                 replay_buffer=replay_buffer, memory_size=self.memory_size
             )
             return False
-        z_mem_pred = self.encoder(self.x_mem)
-        z_mem_pred_normalised = (z_mem_pred - self.z_mem_min) / (
-            self.z_mem_max - self.z_mem_min
-        )
-        # TODO make sure mean is over state dimensions
-        mem_dist = (self.z_mem_normalised - z_mem_pred_normalised).abs().mean()
-        # mem_dist = (self.z_mem - z_mem_pred).abs().mean()
-        logger.info(f"mem_dist {mem_dist}")
-        # breakpoint()
-        if wandb.run is not None:
-            wandb.log({"mem_dist": mem_dist})
-        if mem_dist > self.reset_threshold:
+
+        z_dist = self.latent_euclidian_dist()
+        if z_dist > self.reset_threshold:
             reset = True
             logger.info(
-                f"Resetting as mem_dist {mem_dist} > reset_threshold {self.reset_threshold}"
+                f"Resetting as z_dist {z_dist} > reset_threshold {self.reset_threshold}"
             )
             self.reset(replay_buffer=replay_buffer)
         else:
             reset = False
         return reset
+
+    def latent_euclidian_dist(self) -> bool:
+        z_mem_pred = self.encoder(self.x_mem)
+        # TODO make sure mean is over state dimensions
+        # z_dist = (self.z_mem - z_mem_pred).abs().mean()
+        z_dist = ((self.z_mem - z_mem_pred) ** 2).mean()
+        breakpoint()
+        # if wandb.run is not None:
+        #     wandb.log({"z_euclidian_distance": z_dist})
+        return z_dist
 
     @torch.no_grad()
     def select_action(self, observation, eval_mode: EvalMode = False, t0: T0 = None):
