@@ -3,6 +3,7 @@ import abc
 from dataclasses import dataclass
 from typing import Any, Callable, List, NamedTuple, Optional, Tuple
 
+import torch.nn as nn
 from gymnasium.spaces import Box, Space
 from jaxtyping import Float
 from stable_baselines3.common.buffers import ReplayBuffer
@@ -53,10 +54,18 @@ T0 = bool
 
 
 @dataclass
-class Agent(abc.ABC):
+class Agent(abc.ABC, nn.Module):
     observation_space: Space
     action_space: Box
     name: str = "BaseAgent"
+
+    def __init__(
+        self, observation_space: Space, action_space: Box, name: str = "BaseAgent"
+    ):
+        super().__init__()
+        self.observation_space = observation_space
+        self.action_space = action_space
+        self.name = name
 
     @abc.abstractmethod
     def select_action(
