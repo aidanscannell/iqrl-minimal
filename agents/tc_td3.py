@@ -186,8 +186,10 @@ class TC_TD3(Agent):
         ae_batch_size: int = 128,
         # ae_num_updates: int = 1000,
         ae_utd_ratio: int = 1,  # used for representation first training
-        ae_patience: int = 100,
-        ae_min_delta: float = 0.0,
+        ae_patience: Optional[int] = None,
+        ae_min_delta: Optional[float] = None,
+        # ae_patience: int = 100,
+        # ae_min_delta: float = 0.0,
         latent_dim: int = 20,
         ae_tau: float = 0.005,
         ae_normalize: bool = True,
@@ -268,9 +270,12 @@ class TC_TD3(Agent):
 
         self.ae_opt = torch.optim.AdamW(encoder_params, lr=ae_learning_rate)
 
-        self.ae_early_stopper = h.EarlyStopper(
-            patience=ae_patience, min_delta=ae_min_delta
-        )
+        if ae_patience is not None and ae_min_delta is not None:
+            self.ae_early_stopper = h.EarlyStopper(
+                patience=ae_patience, min_delta=ae_min_delta
+            )
+        else:
+            self.ae_early_stopper = None
 
         # TODO make a space for latent states
         # latent_observation_space = observation_space
