@@ -135,7 +135,7 @@ class DDPG(Agent):
             observation_space=observation_space, action_space=action_space, name=name
         )
         self.mlp_dims = mlp_dims
-        self._exploration_noise = h.LinearSchedule(
+        self.exploration_noise_schedule = h.LinearSchedule(
             start=exploration_noise_start,
             end=exploration_noise_end,
             num_steps=exploration_noise_num_steps,
@@ -214,7 +214,7 @@ class DDPG(Agent):
                     wandb.log({"reset": reset_flag})
                 reset_flag = 0
 
-        self._exploration_noise.step()
+        self.exploration_noise_schedule.step()
 
         return info
 
@@ -364,7 +364,7 @@ class DDPG(Agent):
 
     @property
     def exploration_noise(self):
-        return self._exploration_noise()
+        return self.exploration_noise_schedule()
 
     def reset(self, reset_type: str = "last-layer"):
         logger.info("Resetting actor/critic params")

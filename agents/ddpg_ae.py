@@ -414,7 +414,7 @@ class DDPG_AE(Agent):
         if wandb.run is not None:
             wandb.log({"exploration_noise": self.ddpg.exploration_noise})
 
-        self.ddpg._exploration_noise.step()
+        self.ddpg.exploration_noise_schedule.step()
         self.ae.eval()
         # self.ddpg.eval()
         return info
