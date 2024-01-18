@@ -261,8 +261,8 @@ class TC_TD3(Agent):
             observation_space=observation_space,
             mlp_dims=mlp_dims,
             latent_dim=latent_dim,
-            normalize=ae_normalize,
-            simplex_dim=simplex_dim,
+            # normalize=ae_normalize,
+            # simplex_dim=simplex_dim,
         ).to(device)
         self.encoder_target.load_state_dict(self.encoder.state_dict())
 
