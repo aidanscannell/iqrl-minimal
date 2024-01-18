@@ -14,7 +14,6 @@ from helper import soft_update_params
 from utils import ReplayBuffer, ReplayBufferSamples
 
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -296,7 +295,7 @@ class DDPG(Agent):
             next_q_value = data.rewards.flatten() + (
                 1 - data.dones.flatten()
             ) * data.next_state_discounts.flatten() * (min_q_next_target).view(-1)
-#            ) * self.discount**self.nstep * (min_q_next_target).view(-1)
+        #            ) * self.discount**self.nstep * (min_q_next_target).view(-1)
 
         q1_values, q2_values = self.critic(data.observations, data.actions)
         q1_loss = F.mse_loss(q1_values.view(-1), next_q_value)
