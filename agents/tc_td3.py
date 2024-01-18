@@ -43,28 +43,29 @@ class Encoder(MLPResettable):
         observation_space: Space,
         mlp_dims: List[int],
         latent_dim: int = 20,
-        normalize: bool = True,
-        simplex_dim: int = 10,
+        # normalize: bool = True,
+        # simplex_dim: int = 10,
     ):
         in_dim = np.array(observation_space.shape).prod()
         # TODO data should be normalized???
-        if normalize:
-            act_fn = SimNorm(dim=simplex_dim)
-        else:
-            act_fn = None
+        # if normalize:
+        #     act_fn = SimNorm(dim=simplex_dim)
+        # else:
+        #     act_fn = None
         self.latent_dim = latent_dim
         mlp = MLPResettable(
             h.mlp(
                 in_dim=in_dim,
                 mlp_dims=mlp_dims,
                 out_dim=latent_dim,
-                act_fn=act_fn,
+                act_fn=None,
+                # act_fn=act_fn,
             )
         )
         super().__init__(mlp=mlp)
 
-        self.normalize = normalize
-        self.simplex_dim = simplex_dim
+        # self.normalize = normalize
+        # self.simplex_dim = simplex_dim
         self.reset(reset_type="full")
 
     def forward(self, x):
@@ -228,8 +229,8 @@ class TC_TD3(Agent):
             observation_space=observation_space,
             mlp_dims=mlp_dims,
             latent_dim=latent_dim,
-            normalize=ae_normalize,
-            simplex_dim=simplex_dim,
+            # normalize=ae_normalize,
+            # simplex_dim=simplex_dim,
         ).to(device)
         encoder_params = list(self.encoder.parameters())
         if reconstruction_loss:
