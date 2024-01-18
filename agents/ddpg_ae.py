@@ -841,5 +841,5 @@ class DDPG_AE(Agent):
             # Train actor/critic
             logger.info(f"Retraining actor/critic...")
             # TODO calculate number of actor/critic updates from num_ae_updates
-            num_ddpg_updates = info["num_ae_updates"] * self.eta_ratio
+            num_ddpg_updates = int(info["num_ae_updates"] * self.eta_ratio)
             info = self.update_actor_critic(replay_buffer, num_updates=num_ddpg_updates)
