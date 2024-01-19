@@ -460,7 +460,7 @@ class TC_TD3(Agent):
 
         info = {}
         logger.info("Training AE...")
-        i = 0
+        best_val_loss, i = float("inf"), 0
         for i in range(num_updates):
             batch = replay_buffer.sample(self.ae_batch_size, val=False)
             info.update(self.update_representation_step(batch=batch))
@@ -485,6 +485,28 @@ class TC_TD3(Agent):
                 if self.ae_early_stopper(val_loss):
                     logger.info("Early stopping criteria met, stopping AE training...")
                     break
+
+                if val_loss < best_val_loss:
+                    best_val_loss = val_loss
+                    state = {
+                        "encoder": self.encoder.state_dict(),
+                        "ae_opt": self.ae_opt.state_dict(),
+                    }
+                    if self.reward_loss:
+                        state.update({"reward": self.reward.state_dict()})
+                    if self.temporal_consistency:
+                        state.update({"dynamics": self.dynamics.state_dict()})
+                    torch.save(state, "./best_ckpt_dict.pt")
+                    # logger.info("Finished saving encoder+opt best ckpt")
+
+        # Load best checkpoints
+        self.encoder.load_state_dict(torch.load("./best_ckpt_dict.pt")["encoder"])
+        self.ae_opt.load_state_dict(torch.load("./best_ckpt_dict.pt")["ae_opt"])
+        if self.reward_loss:
+            self.reward.load_state_dict(torch.load("./best_ckpt_dict.pt")["reward"])
+        if self.temporal_consistency:
+            self.dynamics.load_state_dict(torch.load("./best_ckpt_dict.pt")["dynamics"])
+
         logger.info(f"Finished training AE for {i} update steps")
         info.update({"num_ae_updates": i})
         return info
