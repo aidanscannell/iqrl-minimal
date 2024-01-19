@@ -166,7 +166,7 @@ class TC_TD3(Agent):
         nstep: int = 1,
         discount: float = 0.99,
         tau: float = 0.005,
-        act_with_target: bool = False,  # if True act with target network
+        act_with_target: bool = False,  # if True act with target actor network
         # Reset stuff
         reset_type: str = "last_layer",  # "full" or "last-layer"
         reset_strategy: str = "latent-dist",  #  "latent-dist" or "every-x-param-updates"
@@ -192,6 +192,7 @@ class TC_TD3(Agent):
         # ae_min_delta: float = 0.0,
         latent_dim: int = 20,
         ae_tau: float = 0.005,
+        act_with_target_enc: bool = False,  # if True act with target encoder network
         ae_normalize: bool = True,
         simplex_dim: int = 10,
         # encoder_reset_params_freq: int = 10000,  # reset enc params after X param updates
@@ -220,6 +221,7 @@ class TC_TD3(Agent):
 
         self.latent_dim = latent_dim
         self.ae_tau = ae_tau
+        self.act_with_target_enc = act_with_target_enc
         self.ae_normalize = ae_normalize
         self.simplex_dim = simplex_dim
         self.nstep = nstep
@@ -727,7 +729,10 @@ class TC_TD3(Agent):
     @torch.no_grad()
     def select_action(self, observation, eval_mode: EvalMode = False, t0: T0 = None):
         observation = torch.Tensor(observation).to(self.device)
-        z = self.encoder(observation).to(torch.float)
+        if self.act_with_target_enc:
+            z = self.encoder_target(observation).to(torch.float)
+        else:
+            z = self.encoder(observation).to(torch.float)
         return self.ddpg.select_action(observation=z, eval_mode=eval_mode, t0=t0)
 
     def reset(
