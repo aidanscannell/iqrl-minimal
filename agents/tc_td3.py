@@ -675,6 +675,9 @@ class TC_TD3(Agent):
             "temporal_consitency_loss": temporal_consitency_loss.item(),
             "rec_loss": rec_loss.item(),
             "encoder_loss": loss.item(),
+            "z_min": torch.min(z).item(),
+            "z_max": torch.max(z).item(),
+            "z_mean": torch.mean(z).item(),
         }
         return loss, info
 
