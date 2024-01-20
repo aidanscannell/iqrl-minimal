@@ -193,6 +193,7 @@ class TC_TD3(Agent):
         # ae_min_delta: float = 0.0,
         latent_dim: int = 20,
         ae_tau: float = 0.005,
+        use_target_encoder: bool = True,
         act_with_target_enc: bool = False,  # if True act with target encoder network
         ae_normalize: bool = True,
         simplex_dim: int = 10,
@@ -223,6 +224,7 @@ class TC_TD3(Agent):
 
         self.latent_dim = latent_dim
         self.ae_tau = ae_tau
+        self.use_target_encoder = use_target_encoder
         self.act_with_target_enc = act_with_target_enc
         self.ae_normalize = ae_normalize
         self.simplex_dim = simplex_dim
@@ -263,14 +265,15 @@ class TC_TD3(Agent):
             ).to(device)
             encoder_params += list(self.reward.parameters())
 
-        self.encoder_target = Encoder(
-            observation_space=observation_space,
-            mlp_dims=encoder_mlp_dims,
-            latent_dim=latent_dim,
-            normalize=ae_normalize,
-            simplex_dim=simplex_dim,
-        ).to(device)
-        self.encoder_target.load_state_dict(self.encoder.state_dict())
+        if self.use_target_encoder:
+            self.encoder_target = Encoder(
+                observation_space=observation_space,
+                mlp_dims=encoder_mlp_dims,
+                latent_dim=latent_dim,
+                normalize=ae_normalize,
+                simplex_dim=simplex_dim,
+            ).to(device)
+            self.encoder_target.load_state_dict(self.encoder.state_dict())
 
         self.ae_opt = torch.optim.AdamW(encoder_params, lr=ae_learning_rate)
 
@@ -387,8 +390,12 @@ class TC_TD3(Agent):
                 info.update(self.update_representation_step(batch=batch))
 
             # Map observations to latent
-            latent_obs = self.encoder_target(batch.observations)
-            latent_next_obs = self.encoder_target(batch.next_observations)
+            if self.use_target_encoder:
+                latent_obs = self.encoder_target(batch.observations)
+                latent_next_obs = self.encoder_target(batch.next_observations)
+            else:
+                latent_obs = self.encoder(batch.observations)
+                latent_next_obs = self.encoder(batch.next_observations)
             # batch.observation = latent_obs.to(torch.float).detach()
             # batch.next_observation = latent_next_obs.to(torch.float).detach()
             latent_batch = ReplayBufferSamples(
@@ -528,8 +535,12 @@ class TC_TD3(Agent):
             batch = replay_buffer.sample(self.ddpg.batch_size)
 
             ###### Map observations to latent ######
-            latent_obs = self.encoder_target(batch.observations)
-            latent_next_obs = self.encoder_target(batch.next_observations)
+            if self.use_target_encoder:
+                latent_obs = self.encoder_target(batch.observations)
+                latent_next_obs = self.encoder_target(batch.next_observations)
+            else:
+                latent_obs = self.encoder(batch.observations)
+                latent_next_obs = self.encoder(batch.next_observations)
             # batch.observation = latent_obs.to(torch.float).detach()
             # batch.next_observation = latent_next_obs.to(torch.float).detach()
             latent_batch = ReplayBufferSamples(
@@ -574,7 +585,8 @@ class TC_TD3(Agent):
         self.ae_opt.step()
 
         # Update the target network
-        soft_update_params(self.encoder, self.encoder_target, tau=self.ae_tau)
+        if self.use_target_encoder:
+            soft_update_params(self.encoder, self.encoder_target, tau=self.ae_tau)
 
         return info
 
@@ -595,7 +607,10 @@ class TC_TD3(Agent):
             delta_z_dynamics = self.dynamics(x=z, a=batch.actions)
             z_next_dynamics = z + delta_z_dynamics
             with torch.no_grad():
-                z_next_enc_target = self.encoder_target(batch.next_observations)
+                if self.use_target_encoder:
+                    z_next_enc_target = self.encoder_target(batch.next_observations)
+                else:
+                    z_next_enc_target = self.encoder(batch.next_observations)
             temporal_consitency_loss = torch.nn.functional.mse_loss(
                 input=z_next_enc_target, target=z_next_dynamics, reduction="mean"
             )
@@ -652,7 +667,10 @@ class TC_TD3(Agent):
         if self.value_enc_loss:
             if not self.temporal_consistency:
                 with torch.no_grad():
-                    z_next_enc_target = self.encoder_target(batch.next_observations)
+                    if self.use_target_encoder:
+                        z_next_enc_target = self.encoder_target(batch.next_observations)
+                    else:
+                        z_next_enc_target = self.encoder(batch.next_observations)
             value_enc_loss = value_loss_fn(z_next_enc_target)
         else:
             value_enc_loss = torch.zeros(1).to(self.device)
@@ -733,7 +751,7 @@ class TC_TD3(Agent):
     @torch.no_grad()
     def select_action(self, observation, eval_mode: EvalMode = False, t0: T0 = None):
         observation = torch.Tensor(observation).to(self.device)
-        if self.act_with_target_enc:
+        if self.use_target_encoder and self.act_with_target_enc:
             z = self.encoder_target(observation).to(torch.float)
         else:
             z = self.encoder(observation).to(torch.float)
@@ -761,7 +779,8 @@ class TC_TD3(Agent):
             self.reward.reset(reset_type=reset_type)
             encoder_params += list(self.reward.parameters())
         # self.ae_target.reset(full_reset=full_reset)
-        self.encoder_target.load_state_dict(self.encoder.state_dict())
+        if self.use_target_encoder:
+            self.encoder_target.load_state_dict(self.encoder.state_dict())
         self.ae_opt = torch.optim.AdamW(encoder_params, lr=self.ae_learning_rate)
 
         logger.info("Resetting actor/critic")
