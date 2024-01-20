@@ -186,6 +186,7 @@ class TC_TD3(Agent):
         ae_batch_size: int = 128,
         # ae_num_updates: int = 1000,
         ae_utd_ratio: int = 1,  # used for representation first training
+        ae_update_freq: int = 1,  # update encoder less frequently than actor/critic
         ae_patience: Optional[int] = None,
         ae_min_delta: Optional[float] = None,
         # ae_patience: int = 100,
@@ -213,6 +214,7 @@ class TC_TD3(Agent):
         self.ae_batch_size = ae_batch_size
         # self.ae_num_updates = ae_num_updates
         self.ae_utd_ratio = ae_utd_ratio
+        self.encoder_update_freq = ae_update_freq
 
         self.early_stopper_freq = 10
         # self.ae_patience = int(ae_patience / self.early_stopper_freq)
@@ -380,7 +382,9 @@ class TC_TD3(Agent):
             batch = replay_buffer.sample(self.ddpg.batch_size)
             # num_encoder_updates = 2  # 2 encoder updates for one q update
             # for i in range(num_encoder_updates):
-            info.update(self.update_representation_step(batch=batch))
+            # Update encoder less frequently than actor/critic
+            if i % self.encoder_update_freq == 0:
+                info.update(self.update_representation_step(batch=batch))
 
             # Map observations to latent
             latent_obs = self.encoder_target(batch.observations)
