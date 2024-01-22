@@ -755,9 +755,9 @@ class TC_TD3(Agent):
             "z_mean": torch.mean(z).item(),
         }
         if isinstance(self.encoder.act_fn, ScaledSigmoid):
-            info.update({"sigmoid_scale_encoder": self.encoder.act_fn.scale})
+            info.update({"sigmoid_scale_encoder": self.encoder.act_fn.scale.item()})
         if isinstance(self.dynamics.act_fn, ScaledSigmoid):
-            info.update({"sigmoid_scale_dynamics": self.dynamics.act_fn.scale})
+            info.update({"sigmoid_scale_dynamics": self.dynamics.act_fn.scale.item()})
         return loss, info
 
     def trigger_reset_latent_dist(self, replay_buffer) -> bool:
