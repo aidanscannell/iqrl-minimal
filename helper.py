@@ -61,7 +61,8 @@ def soft_update_params(model, model_target, tau: float):
 class SimNorm(nn.Module):
     """
     Simplicial normalization.
-    Adapted from https://arxiv.org/abs/2204.00616.
+
+    Adapted from https://github.com/tdmpc2/tdmpc2-eval/blob/main/helper.py
     """
 
     def __init__(self, dim):
@@ -81,6 +82,8 @@ class SimNorm(nn.Module):
 class NormedLinear(nn.Linear):
     """
     Linear layer with LayerNorm, Mish activation, and optionally dropout.
+
+    Adapted from https://github.com/tdmpc2/tdmpc2-eval/blob/main/helper.py
     """
 
     def __init__(self, *args, dropout=0.0, act=nn.Mish(inplace=True), **kwargs):
