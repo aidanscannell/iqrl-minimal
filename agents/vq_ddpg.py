@@ -466,5 +466,12 @@ class VectorQuantizedDDPG(Agent):
         # indices = torch.flatten(indices, -2, -1)
         # z = torch.flatten(z, -2, -1)
         # print(f"z {z.shape}")
-        return self.ddpg.select_action(observation=indices, eval_mode=eval_mode, t0=t0)
+        action = self.ddpg.select_action(
+            observation=indices, eval_mode=eval_mode, t0=t0
+        )
+        if observation.ndim > 2:
+            if observation.shape[0] == 1:
+                return action[None, ...]
+            else:
+                raise NotImplementedError
         # return self.ddpg.select_action(observation=z, eval_mode=eval_mode, t0=t0)
