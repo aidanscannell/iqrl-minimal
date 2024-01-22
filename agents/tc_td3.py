@@ -181,6 +181,8 @@ class TC_TD3(Agent):
         value_dynamics_loss: bool = False,  # if True include value prediction for representation learning
         value_enc_loss: bool = False,  # if True include value prediction for representation learning
         reconstruction_loss: bool = True,  # if True use reconstruction loss with decoder
+        use_cosine_similarity_dynamics: bool = False,
+        use_cosine_similarity_reward: bool = False,
         encoder_mlp_dims: List[int] = [256],
         ae_learning_rate: float = 3e-4,
         ae_batch_size: int = 128,
@@ -211,6 +213,8 @@ class TC_TD3(Agent):
         self.value_dynamics_loss = value_dynamics_loss
         self.value_enc_loss = value_enc_loss
         self.reconstruction_loss = reconstruction_loss
+        self.use_cosine_similarity_dynamics = use_cosine_similarity_dynamics
+        self.use_cosine_similarity_reward = use_cosine_similarity_reward
         self.ae_learning_rate = ae_learning_rate
         self.ae_batch_size = ae_batch_size
         # self.ae_num_updates = ae_num_updates
@@ -611,17 +615,29 @@ class TC_TD3(Agent):
                     z_next_enc_target = self.encoder_target(batch.next_observations)
                 else:
                     z_next_enc_target = self.encoder(batch.next_observations)
-            temporal_consitency_loss = torch.nn.functional.mse_loss(
-                input=z_next_enc_target, target=z_next_dynamics, reduction="mean"
-            )
+            if self.use_cosine_similarity_dynamics:
+                temporal_consitency_loss = nn.CosineSimilarity(dim=1, eps=1e-6)(
+                    z_next_enc_target, z_next_dynamics
+                )
+                breakpoint()
+            else:
+                temporal_consitency_loss = torch.nn.functional.mse_loss(
+                    input=z_next_enc_target, target=z_next_dynamics, reduction="mean"
+                )
         else:
             temporal_consitency_loss = torch.zeros(1).to(self.device)
 
         if self.reward_loss:
             reward_pred = self.reward(z=z, a=batch.actions)
-            reward_loss = torch.nn.functional.mse_loss(
-                input=batch.rewards, target=reward_pred, reduction="mean"
-            )
+            if self.use_cosine_similarity_reward:
+                temporal_consitency_loss = nn.CosineSimilarity(dim=1, eps=1e-6)(
+                    batch.rewards, reward_pred
+                )
+                breakpoint()
+            else:
+                reward_loss = torch.nn.functional.mse_loss(
+                    input=batch.rewards, target=reward_pred, reduction="mean"
+                )
         else:
             reward_loss = torch.zeros(1).to(self.device)
 
