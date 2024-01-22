@@ -19,13 +19,14 @@ from utils import ReplayBuffer, ReplayBufferSamples
 logger = logging.getLogger(__name__)
 
 
-def ScaledSigmoid(scale: float = 1.0):
-    sig = nn.Sigmoid()
+class ScaledSigmoid(nn.Module):
+    def __init__(self, init_scale: float = 1.0):
+        super().__init__()
+        self.sigmoid_fn = nn.Sigmoid()
+        self.scale = nn.Parameter(data=torch.Tensor(1) * init_scale, requires_grad=True)
 
-    def thunk(x):
-        return sig(x * scale)
-
-    return thunk
+    def forward(self, x):
+        return self.sigmoid_fn(x * self.scale)
 
 
 class MLPResettable(nn.Module):
@@ -63,7 +64,7 @@ class Encoder(MLPResettable):
             act_fn = SimNorm(dim=simplex_dim)
             if use_sigmoid:
                 # act_fn = nn.Sigmoid()
-                act_fn = ScaledSigmoid(scale=sigmoid_scale)
+                act_fn = ScaledSigmoid(init_scale=sigmoid_scale)
         else:
             act_fn = None
         self.latent_dim = latent_dim
@@ -76,6 +77,7 @@ class Encoder(MLPResettable):
             )
         )
         super().__init__(mlp=mlp)
+        self.act_fn = act_fn
 
         self.normalize = normalize
         self.simplex_dim = simplex_dim
@@ -123,7 +125,8 @@ class MLPDynamics(MLPResettable):
             act_fn = SimNorm(dim=simplex_dim)
             if use_sigmoid:
                 # act_fn = nn.Sigmoid()
-                act_fn = ScaledSigmoid(scale=sigmoid_scale)
+                # act_fn = ScaledSigmoid(scale=sigmoid_scale)
+                act_fn = ScaledSigmoid(init_scale=sigmoid_scale)
         else:
             act_fn = None
         # TODO data should be normalized???
@@ -136,6 +139,9 @@ class MLPDynamics(MLPResettable):
             )
         )
         super().__init__(mlp=mlp)
+
+        self.act_fn = act_fn
+
         self.reset(reset_type="full")
 
     def forward(self, x, a):
@@ -748,6 +754,10 @@ class TC_TD3(Agent):
             "z_max": torch.max(z).item(),
             "z_mean": torch.mean(z).item(),
         }
+        if isinstance(self.encoder.act_fn, ScaledSigmoid):
+            info.update({"sigmoid_scale_encoder": self.encoder.act_fn.scale})
+        if isinstance(self.dynamics.act_fn, ScaledSigmoid):
+            info.update({"sigmoid_scale_dynamics": self.dynamics.act_fn.scale})
         return loss, info
 
     def trigger_reset_latent_dist(self, replay_buffer) -> bool:
