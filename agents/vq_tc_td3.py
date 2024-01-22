@@ -72,11 +72,6 @@ class FSQEncoder(MLPResettable):
         self.apply(h.orthogonal_init)
 
     def forward(self, x):
-        if x.ndim > 2:
-            if x.shape[0] == 1:
-                x = x[0]
-            else:
-                raise NotImplementedError
         # print("inside encoder")
         # print(f"x {x.shape}")
         z = self.mlp(x)
@@ -990,6 +985,13 @@ class VQ_TC_TD3(Agent):
 
     @torch.no_grad()
     def select_action(self, observation, eval_mode: EvalMode = False, t0: T0 = None):
+        flag = False
+        if observation.ndim > 2:
+            if observation.shape[0] == 1:
+                observation = observation[0, ...]
+                flag = True
+            else:
+                raise NotImplementedError
         observation = torch.Tensor(observation).to(self.device)
         if self.use_target_encoder and self.act_with_target_enc:
             z = self.encoder_target(observation)
@@ -999,7 +1001,10 @@ class VQ_TC_TD3(Agent):
             # TODO do we want to use z or indices for actor/critic?
             z = z[1]
         z = z.to(torch.float)
-        return self.ddpg.select_action(observation=z, eval_mode=eval_mode, t0=t0)
+        action = self.ddpg.select_action(observation=z, eval_mode=eval_mode, t0=t0)
+        if flag:
+            action = action[None, ...]
+        return action
 
     def reset(
         self, reset_type: Optional[str] = None, replay_buffer: ReplayBuffer = None
