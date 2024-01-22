@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import logging
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple, Callable
 
 import agents
 import gymnasium as gym
@@ -53,20 +53,14 @@ class Encoder(MLPResettable):
         observation_space: Space,
         mlp_dims: List[int],
         latent_dim: int = 20,
-        normalize: bool = True,
-        simplex_dim: int = 10,
-        use_sigmoid: bool = False,
-        sigmoid_scale: float = 1.0,
+        act_fn: Callable = None,
+        # normalize: bool = True,
+        # simplex_dim: int = 10,
+        # use_sigmoid: bool = False,
+        # sigmoid_scale: float = 1.0,
     ):
         in_dim = np.array(observation_space.shape).prod()
         # TODO data should be normalized???
-        if normalize:
-            act_fn = SimNorm(dim=simplex_dim)
-            if use_sigmoid:
-                # act_fn = nn.Sigmoid()
-                act_fn = ScaledSigmoid(init_scale=sigmoid_scale)
-        else:
-            act_fn = None
         self.latent_dim = latent_dim
         mlp = MLPResettable(
             h.mlp(
@@ -79,8 +73,8 @@ class Encoder(MLPResettable):
         super().__init__(mlp=mlp)
         self.act_fn = act_fn
 
-        self.normalize = normalize
-        self.simplex_dim = simplex_dim
+        # self.normalize = normalize
+        # self.simplex_dim = simplex_dim
         self.reset(reset_type="full")
 
     def forward(self, x):
@@ -114,21 +108,22 @@ class MLPDynamics(MLPResettable):
         action_space: Space,
         mlp_dims: List[int],
         latent_dim: int = 20,
-        normalize: bool = True,
-        simplex_dim: int = 10,
-        use_sigmoid: bool = False,
-        sigmoid_scale: float = 1.0,
+        act_fn: Callable = None
+        # normalize: bool = True,
+        # simplex_dim: int = 10,
+        # use_sigmoid: bool = False,
+        # sigmoid_scale: float = 1.0,
     ):
         self.latent_dim = latent_dim
         in_dim = np.array(action_space.shape).prod() + latent_dim
-        if normalize:
-            act_fn = SimNorm(dim=simplex_dim)
-            if use_sigmoid:
-                # act_fn = nn.Sigmoid()
-                # act_fn = ScaledSigmoid(scale=sigmoid_scale)
-                act_fn = ScaledSigmoid(init_scale=sigmoid_scale)
-        else:
-            act_fn = None
+        # if normalize:
+        #     act_fn = SimNorm(dim=simplex_dim)
+        #     if use_sigmoid:
+        #         # act_fn = nn.Sigmoid()
+        #         # act_fn = ScaledSigmoid(scale=sigmoid_scale)
+        #         act_fn = ScaledSigmoid(init_scale=sigmoid_scale)
+        # else:
+        #     act_fn = None
         # TODO data should be normalized???
         mlp = MLPResettable(
             h.mlp(
@@ -264,15 +259,26 @@ class TC_TD3(Agent):
 
         self.device = device
 
+        if ae_normalize:
+            act_fn = SimNorm(dim=simplex_dim)
+            target_act_fn = SimNorm(dim=simplex_dim)
+            if ae_use_sigmoid:
+                # act_fn = nn.Sigmoid()
+                act_fn = ScaledSigmoid(init_scale=ae_sigmoid_scale)
+                target_act_fn = ScaledSigmoid(init_scale=ae_sigmoid_scale)
+        else:
+            act_fn = None
+            target_act_fn = None
         # Init representation learning (encoder/decoder/dynamics/reward)
         self.encoder = Encoder(
             observation_space=observation_space,
             mlp_dims=encoder_mlp_dims,
             latent_dim=latent_dim,
-            normalize=ae_normalize,
-            simplex_dim=simplex_dim,
-            use_sigmoid=ae_use_sigmoid,
-            sigmoid_scale=ae_sigmoid_scale,
+            act_fn=act_fn,
+            # normalize=ae_normalize,
+            # simplex_dim=simplex_dim,
+            # use_sigmoid=ae_use_sigmoid,
+            # sigmoid_scale=ae_sigmoid_scale,
         ).to(device)
         encoder_params = list(self.encoder.parameters())
         if reconstruction_loss:
@@ -287,10 +293,11 @@ class TC_TD3(Agent):
                 action_space=action_space,
                 mlp_dims=mlp_dims,
                 latent_dim=latent_dim,
-                normalize=ae_normalize,
-                simplex_dim=simplex_dim,
-                use_sigmoid=ae_use_sigmoid,
-                sigmoid_scale=ae_sigmoid_scale,
+                act_fn=act_fn,
+                # normalize=ae_normalize,
+                # simplex_dim=simplex_dim,
+                # use_sigmoid=ae_use_sigmoid,
+                # sigmoid_scale=ae_sigmoid_scale,
             ).to(device)
             encoder_params += list(self.dynamics.parameters())
         if self.reward_loss:
@@ -306,10 +313,11 @@ class TC_TD3(Agent):
                 observation_space=observation_space,
                 mlp_dims=encoder_mlp_dims,
                 latent_dim=latent_dim,
-                normalize=ae_normalize,
-                simplex_dim=simplex_dim,
-                use_sigmoid=ae_use_sigmoid,
-                sigmoid_scale=ae_sigmoid_scale,
+                act_fn=target_act_fn,
+                # normalize=ae_normalize,
+                # simplex_dim=simplex_dim,
+                # use_sigmoid=ae_use_sigmoid,
+                # sigmoid_scale=ae_sigmoid_scale,
             ).to(device)
             self.encoder_target.load_state_dict(self.encoder.state_dict())
 
