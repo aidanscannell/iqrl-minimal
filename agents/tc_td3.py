@@ -19,6 +19,15 @@ from utils import ReplayBuffer, ReplayBufferSamples
 logger = logging.getLogger(__name__)
 
 
+def ScaledSigmoid(scale: float = 1.0):
+    sig = nn.Sigmoid()
+
+    def thunk(x):
+        return sig * (x * scale)
+
+    return thunk
+
+
 class MLPResettable(nn.Module):
     def __init__(self, mlp):
         super().__init__()
@@ -46,13 +55,15 @@ class Encoder(MLPResettable):
         normalize: bool = True,
         simplex_dim: int = 10,
         use_sigmoid: bool = False,
+        sigmoid_scale: float = 1.0,
     ):
         in_dim = np.array(observation_space.shape).prod()
         # TODO data should be normalized???
         if normalize:
             act_fn = SimNorm(dim=simplex_dim)
             if use_sigmoid:
-                act_fn = nn.Sigmoid()
+                # act_fn = nn.Sigmoid()
+                act_fn = ScaledSigmoid(scale=sigmoid_scale)
         else:
             act_fn = None
         self.latent_dim = latent_dim
@@ -104,13 +115,15 @@ class MLPDynamics(MLPResettable):
         normalize: bool = True,
         simplex_dim: int = 10,
         use_sigmoid: bool = False,
+        sigmoid_scale: float = 1.0,
     ):
         self.latent_dim = latent_dim
         in_dim = np.array(action_space.shape).prod() + latent_dim
         if normalize:
             act_fn = SimNorm(dim=simplex_dim)
             if use_sigmoid:
-                act_fn = nn.Sigmoid()
+                # act_fn = nn.Sigmoid()
+                act_fn = ScaledSigmoid(scale=sigmoid_scale)
         else:
             act_fn = None
         # TODO data should be normalized???
@@ -205,6 +218,7 @@ class TC_TD3(Agent):
         act_with_target_enc: bool = False,  # if True act with target encoder network
         ae_normalize: bool = True,
         ae_use_sigmoid: bool = False,
+        ae_sigmoid_scale: float = 1.0,
         simplex_dim: int = 10,
         # encoder_reset_params_freq: int = 10000,  # reset enc params after X param updates
         device: str = "cuda",
@@ -252,6 +266,7 @@ class TC_TD3(Agent):
             normalize=ae_normalize,
             simplex_dim=simplex_dim,
             use_sigmoid=ae_use_sigmoid,
+            sigmoid_scale=ae_sigmoid_scale,
         ).to(device)
         encoder_params = list(self.encoder.parameters())
         if reconstruction_loss:
@@ -269,6 +284,7 @@ class TC_TD3(Agent):
                 normalize=ae_normalize,
                 simplex_dim=simplex_dim,
                 use_sigmoid=ae_use_sigmoid,
+                sigmoid_scale=ae_sigmoid_scale,
             ).to(device)
             encoder_params += list(self.dynamics.parameters())
         if self.reward_loss:
@@ -287,6 +303,7 @@ class TC_TD3(Agent):
                 normalize=ae_normalize,
                 simplex_dim=simplex_dim,
                 use_sigmoid=ae_use_sigmoid,
+                sigmoid_scale=ae_sigmoid_scale,
             ).to(device)
             self.encoder_target.load_state_dict(self.encoder.state_dict())
 
