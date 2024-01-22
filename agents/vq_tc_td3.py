@@ -740,11 +740,11 @@ class VQ_TC_TD3(Agent):
 
             ###### Map observations to latent ######
             if self.use_target_encoder:
-                latent_obs = self.encoder_target(batch.observations)
-                latent_next_obs = self.encoder_target(batch.next_observations)
+                latent_obs = self.encoder_target(batch.observations)[1]
+                latent_next_obs = self.encoder_target(batch.next_observations)[1]
             else:
-                latent_obs = self.encoder(batch.observations)
-                latent_next_obs = self.encoder(batch.next_observations)
+                latent_obs = self.encoder(batch.observations)[1]
+                latent_next_obs = self.encoder(batch.next_observations)[1]
             # batch.observation = latent_obs.to(torch.float).detach()
             # batch.next_observation = latent_next_obs.to(torch.float).detach()
             latent_batch = ReplayBufferSamples(
