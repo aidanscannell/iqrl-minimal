@@ -8,3 +8,4 @@ from .ddpg import DDPG
 from .ddpg_ae import DDPG_AE
 from .td_mpc import TD_MPC
 from .tc_td3 import TC_TD3
+from .vq_ddpg import VectorQuantizedDDPG
