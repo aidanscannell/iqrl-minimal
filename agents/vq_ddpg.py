@@ -454,8 +454,6 @@ class VectorQuantizedDDPG(Agent):
                 observation = observation[0, ...]
             else:
                 raise NotImplementedError
-        else:
-            raise NotImplementedError
         observation = torch.Tensor(observation).to(self.device)
         _, indices, z = self.vq(observation)
         # print("inside selct action")
