@@ -449,6 +449,13 @@ class VectorQuantizedDDPG(Agent):
 
     @torch.no_grad()
     def select_action(self, observation, eval_mode: EvalMode = False, t0: T0 = None):
+        if observation.ndim > 2:
+            if observation.shape[0] == 1:
+                observation = observation[0, ...]
+            else:
+                raise NotImplementedError
+        else:
+            raise NotImplementedError
         observation = torch.Tensor(observation).to(self.device)
         _, indices, z = self.vq(observation)
         # print("inside selct action")
