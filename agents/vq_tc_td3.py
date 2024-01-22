@@ -72,6 +72,11 @@ class FSQEncoder(MLPResettable):
         self.apply(h.orthogonal_init)
 
     def forward(self, x):
+        if x.ndim > 2:
+            if x.shape[0] == 1:
+                x = x[0]
+            else:
+                raise NotImplementedError
         # print("inside encoder")
         # print(f"x {x.shape}")
         z = self.mlp(x)
