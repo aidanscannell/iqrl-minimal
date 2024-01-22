@@ -132,7 +132,7 @@ class FSQMLPDynamics(MLPResettable):
         self.latent_dim = (num_codes, len(levels))
         self.act_fn = None
         # in_dim = np.array(self.latent_dim).prod()
-        in_dim = np.array(action_space.shape).prod() + num_codes
+        in_dim = np.array(action_space.shape).prod() + np.array(self.latent_dim).prod()
         out_dim = np.array(self.latent_dim).prod()
         mlp = h.mlp(in_dim=in_dim, mlp_dims=mlp_dims, out_dim=out_dim, act_fn=None)
 
@@ -142,6 +142,9 @@ class FSQMLPDynamics(MLPResettable):
         self.reset(reset_type="full")
 
     def forward(self, x, a):
+        if x.ndim > 2:
+            x = torch.flatten(x, -2, -1)
+        # breakpoint()
         x = torch.cat([x, a], 1)
         z = self.mlp(x)
         # print(f"z {z.shape}")
@@ -151,7 +154,6 @@ class FSQMLPDynamics(MLPResettable):
         z, indices = self._fsq(z)
         # print(f"z {z.shape}")
         # print(f"indices {indices.shape}")
-        # breakpoint()
         # return indices
         return z, indices
         # z = self.mlp(x)
