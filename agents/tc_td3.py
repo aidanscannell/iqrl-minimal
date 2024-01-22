@@ -23,7 +23,7 @@ def ScaledSigmoid(scale: float = 1.0):
     sig = nn.Sigmoid()
 
     def thunk(x):
-        return sig * (x * scale)
+        return sig(x * scale)
 
     return thunk
 
