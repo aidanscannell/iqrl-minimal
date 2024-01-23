@@ -131,8 +131,10 @@ class FSQMLPDynamics(MLPResettable):
         self.levels = levels
         self.latent_dim = (num_codes, len(levels))
         self.act_fn = None
-        # in_dim = np.array(self.latent_dim).prod()
+
         in_dim = np.array(action_space.shape).prod() + np.array(self.latent_dim).prod()
+        # in_dim = np.array(self.latent_dim).prod()
+        # in_dim = np.array(action_space.shape).prod() + np.array(self.latent_dim).prod()
         out_dim = np.array(self.latent_dim).prod()
         mlp = h.mlp(in_dim=in_dim, mlp_dims=mlp_dims, out_dim=out_dim, act_fn=None)
 
@@ -337,6 +339,7 @@ class VQ_TC_TD3(Agent):
         use_fsq: bool = False,
         fsq_num_codes: int = 1024,
         fsq_levels: List[int] = [8, 6, 5],
+        fsq_idx: int = 0,  # 0 uses z and 1 uses indices for actor/critic
         # encoder_reset_params_freq: int = 10000,  # reset enc params after X param updates
         device: str = "cuda",
         name: str = "TC_TD3",
@@ -374,6 +377,7 @@ class VQ_TC_TD3(Agent):
         self.use_fsq = use_fsq
         self.fsq_num_codes = fsq_num_codes
         self.fsq_levels = fsq_levels
+        self.fsq_idx = fsq_idx
 
         self.nstep = nstep
 
@@ -501,8 +505,14 @@ class VQ_TC_TD3(Agent):
             )
         if use_fsq:
             high = np.array(fsq_levels).prod()
+
+            if self.fsq_idx == 0:
+                shape = (fsq_num_codes * len(fsq_levels),)
+                # shape = (fsq_num_codes, len(fsq_levels))
+            else:
+                shape = (fsq_num_codes,)
             self.latent_observation_space = gym.spaces.Box(
-                low=0, high=high, shape=(fsq_num_codes,)
+                low=0, high=high, shape=shape
             )
 
         print(f"latent_observation_space {self.latent_observation_space}")
@@ -596,11 +606,16 @@ class VQ_TC_TD3(Agent):
 
             # Map observations to latent
             if self.use_target_encoder:
-                latent_obs = self.encoder_target(batch.observations)[1]
-                latent_next_obs = self.encoder_target(batch.next_observations)[1]
+                latent_obs = self.encoder_target(batch.observations)[self.fsq_idx]
+                latent_next_obs = self.encoder_target(batch.next_observations)[
+                    self.fsq_idx
+                ]
             else:
-                latent_obs = self.encoder(batch.observations)[1]
-                latent_next_obs = self.encoder(batch.next_observations)[1]
+                latent_obs = self.encoder(batch.observations)[self.fsq_idx]
+                latent_next_obs = self.encoder(batch.next_observations)[self.fsq_idx]
+            if self.fsq_idx == 0:
+                latent_obs = torch.flatten(latent_obs, -2, -1)
+                latent_next_obs = torch.flatten(latent_next_obs, -2, -1)
             # batch.observation = latent_obs.to(torch.float).detach()
             # batch.next_observation = latent_next_obs.to(torch.float).detach()
             latent_batch = ReplayBufferSamples(
@@ -637,6 +652,7 @@ class VQ_TC_TD3(Agent):
                     wandb.log({"reset": reset_flag})
 
             if i % 100 == 0:
+                logger.info(f"latent_obs {latent_obs.shape}")
                 logger.info(
                     f"Iteration {i} | loss {info['encoder_loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']} | reward loss {info['reward_loss']} | value dynamics loss {info['value_dynamics_loss']}"
                 )
@@ -742,11 +758,16 @@ class VQ_TC_TD3(Agent):
 
             ###### Map observations to latent ######
             if self.use_target_encoder:
-                latent_obs = self.encoder_target(batch.observations)[1]
-                latent_next_obs = self.encoder_target(batch.next_observations)[1]
+                latent_obs = self.encoder_target(batch.observations)[self.fsq_idx]
+                latent_next_obs = self.encoder_target(batch.next_observations)[
+                    self.fsq_idx
+                ]
             else:
-                latent_obs = self.encoder(batch.observations)[1]
-                latent_next_obs = self.encoder(batch.next_observations)[1]
+                latent_obs = self.encoder(batch.observations)[self.fsq_idx]
+                latent_next_obs = self.encoder(batch.next_observations)[self.fsq_idx]
+            if self.fsq_idx == 0:
+                latent_obs = torch.flatten(latent_obs, -2, -1)
+                latent_next_obs = torch.flatten(latent_next_obs, -2, -1)
             # batch.observation = latent_obs.to(torch.float).detach()
             # batch.next_observation = latent_next_obs.to(torch.float).detach()
             latent_batch = ReplayBufferSamples(
@@ -988,12 +1009,20 @@ class VQ_TC_TD3(Agent):
     @torch.no_grad()
     def select_action(self, observation, eval_mode: EvalMode = False, t0: T0 = None):
         flag = False
-        if observation.ndim > 2:
-            if observation.shape[0] == 1:
-                observation = observation[0, ...]
-                flag = True
-            else:
-                raise NotImplementedError
+        if self.fsq_idx == 0:
+            if observation.ndim > 3:
+                if observation.shape[0] == 1:
+                    observation = observation[0, ...]
+                    flag = True
+                else:
+                    raise NotImplementedError
+        else:
+            if observation.ndim > 2:
+                if observation.shape[0] == 1:
+                    observation = observation[0, ...]
+                    flag = True
+                else:
+                    raise NotImplementedError
         observation = torch.Tensor(observation).to(self.device)
         if self.use_target_encoder and self.act_with_target_enc:
             z = self.encoder_target(observation)
@@ -1001,8 +1030,11 @@ class VQ_TC_TD3(Agent):
             z = self.encoder(observation)
         if self.use_fsq:
             # TODO do we want to use z or indices for actor/critic?
-            z = z[1]
+            z = z[self.fsq_idx]
         z = z.to(torch.float)
+
+        if self.fsq_idx == 0:
+            z = torch.flatten(z, -2, -1)
         action = self.ddpg.select_action(observation=z, eval_mode=eval_mode, t0=t0)
         if flag:
             action = action[None, ...]
