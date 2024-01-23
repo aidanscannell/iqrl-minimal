@@ -994,11 +994,17 @@ class VQ_TC_TD3(Agent):
         self.x_mem = memory_batch.observations
         with torch.no_grad():
             self.z_mem = self.encoder(self.x_mem)
+            if self.use_fsq:
+                # TODO do we want to use z or indices for actor/critic?
+                self.z_mem = self.z_mem[self.fsq_idx]
 
     def latent_euclidian_dist(self) -> float:
         z_dist = 0.0
         if self.x_mem is not None:
             z_mem_pred = self.encoder(self.x_mem)
+            if self.use_fsq:
+                # TODO do we want to use z or indices for actor/critic?
+                z_mem_pred = z_mem_pred[self.fsq_idx]
             # TODO make sure mean is over state dimensions
             # z_dist = (self.z_mem - z_mem_pred).abs().mean()
             z_dist = ((self.z_mem - z_mem_pred) ** 2).mean()
