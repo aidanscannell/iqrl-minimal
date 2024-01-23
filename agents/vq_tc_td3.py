@@ -307,6 +307,7 @@ class VQ_TC_TD3(Agent):
         reset_strategy: str = "latent-dist",  #  "latent-dist" or "every-x-param-updates"
         reset_params_freq: int = 100000,  # reset params after this many param updates
         reset_threshold: float = 0.01,
+        retrain_after_reset: bool = True,
         eta_ratio: float = 1.0,  # encoder-to-agent parameter update ratio (agent updates from early stopping)
         memory_size: int = 10000,
         # AE config
@@ -554,6 +555,8 @@ class VQ_TC_TD3(Agent):
         self.reset_params_freq = reset_params_freq
         self.eta_ratio = eta_ratio
         self.reset_threshold = reset_threshold
+
+        self.retrain_after_reset = retrain_after_reset
         self.memory_size = memory_size
 
         # Init memory
@@ -1067,27 +1070,28 @@ class VQ_TC_TD3(Agent):
         logger.info("Resetting actor/critic")
         self.ddpg.reset(reset_type=reset_type)
 
-        if replay_buffer is not None:
-            # Set large num encoder updates as will be stopped early using val loss
-            num_ae_updates = replay_buffer.size() * self.ae_utd_ratio
+        if self.retrain_after_reset:
+            if replay_buffer is not None:
+                # Set large num encoder updates as will be stopped early using val loss
+                num_ae_updates = replay_buffer.size() * self.ae_utd_ratio
 
-            # Train the representation
-            logger.info(f"Finished resetting encoder/actor/critic")
-            logger.info(f"Retraining encoder...")
-            info = self.update_encoder(replay_buffer, num_updates=num_ae_updates)
-            logger.info(f"Finished retraining encoder")
+                # Train the representation
+                logger.info(f"Finished resetting encoder/actor/critic")
+                logger.info(f"Retraining encoder...")
+                info = self.update_encoder(replay_buffer, num_updates=num_ae_updates)
+                logger.info(f"Finished retraining encoder")
 
-            ###### Build memory for reset strategy ######
-            if self.reset_strategy == "latent-dist":
-                logger.info("Updating memory...")
-                self._update_memory(
-                    replay_buffer=replay_buffer, memory_size=self.memory_size
-                )
+                ###### Build memory for reset strategy ######
+                if self.reset_strategy == "latent-dist":
+                    logger.info("Updating memory...")
+                    self._update_memory(
+                        replay_buffer=replay_buffer, memory_size=self.memory_size
+                    )
 
-            # Train actor/critic
-            logger.info(f"Retraining actor/critic...")
-            # TODO calculate number of actor/critic updates from num_ae_updates
-            num_ddpg_updates = int(info["num_ae_updates"] * self.eta_ratio)
+                # Train actor/critic
+                logger.info(f"Retraining actor/critic...")
+                # TODO calculate number of actor/critic updates from num_ae_updates
+                num_ddpg_updates = int(info["num_ae_updates"] * self.eta_ratio)
             info = self.update_actor_critic(replay_buffer, num_updates=num_ddpg_updates)
 
     def train(self):
