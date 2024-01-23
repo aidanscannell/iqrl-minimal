@@ -1009,20 +1009,12 @@ class VQ_TC_TD3(Agent):
     @torch.no_grad()
     def select_action(self, observation, eval_mode: EvalMode = False, t0: T0 = None):
         flag = False
-        if self.fsq_idx == 0:
-            if observation.ndim > 3:
-                if observation.shape[0] == 1:
-                    observation = observation[0, ...]
-                    flag = True
-                else:
-                    raise NotImplementedError
-        else:
-            if observation.ndim > 2:
-                if observation.shape[0] == 1:
-                    observation = observation[0, ...]
-                    flag = True
-                else:
-                    raise NotImplementedError
+        if observation.ndim > 2:
+            if observation.shape[0] == 1:
+                observation = observation[0, ...]
+                flag = True
+            else:
+                raise NotImplementedError
         observation = torch.Tensor(observation).to(self.device)
         if self.use_target_encoder and self.act_with_target_enc:
             z = self.encoder_target(observation)
