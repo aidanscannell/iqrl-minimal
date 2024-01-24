@@ -728,10 +728,13 @@ class VQ_TC_TD3(Agent):
                     best_val_loss = val_loss
                     state = {
                         "encoder": self.encoder.state_dict(),
+                        "encoder_target": self.encoder_target.state_dict(),
                         "ae_opt": self.ae_opt.state_dict(),
                     }
                     if self.reward_loss:
                         state.update({"reward": self.reward.state_dict()})
+                    if self.reconstruction_loss:
+                        state.update({"decoder": self.decoder.state_dict()})
                     if self.temporal_consistency:
                         state.update({"dynamics": self.dynamics.state_dict()})
                     torch.save(state, "./best_ckpt_dict.pt")
@@ -739,9 +742,14 @@ class VQ_TC_TD3(Agent):
 
         # Load best checkpoints
         self.encoder.load_state_dict(torch.load("./best_ckpt_dict.pt")["encoder"])
+        self.encoder_target.load_state_dict(
+            torch.load("./best_ckpt_dict.pt")["encoder_target"]
+        )
         self.ae_opt.load_state_dict(torch.load("./best_ckpt_dict.pt")["ae_opt"])
         if self.reward_loss:
             self.reward.load_state_dict(torch.load("./best_ckpt_dict.pt")["reward"])
+        if self.reconstruction_loss:
+            self.decoder.load_state_dict(torch.load("./best_ckpt_dict.pt")["decoder"])
         if self.temporal_consistency:
             self.dynamics.load_state_dict(torch.load("./best_ckpt_dict.pt")["dynamics"])
 
