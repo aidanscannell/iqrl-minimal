@@ -647,10 +647,10 @@ class VQ_TC_TD3(Agent):
             elif self.reset_strategy == "latent-dist":
                 if self.trigger_reset_latent_dist(replay_buffer=replay_buffer):
                     reset_flag = 1
-            else:
-                raise NotImplementedError(
-                    "reset_strategy should be either 'every-x-params-updates' or 'latent-dist'"
-                )
+            # else:
+            #     raise NotImplementedError(
+            #         "reset_strategy should be either 'every-x-params-updates' or 'latent-dist'"
+            #     )
 
             if reset_flag == 1:
                 if wandb.run is not None:
