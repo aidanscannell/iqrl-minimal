@@ -309,7 +309,7 @@ class VQ_TC_TD3(Agent):
         reset_threshold: float = 0.01,
         retrain_after_reset: bool = True,
         reset_retrain_strategy: str = "interleaved",  # "interleaved" or "representation-first"
-        max_retrain_updates: int = 10000,
+        max_retrain_updates: int = 5000,
         eta_ratio: float = 1.0,  # encoder-to-agent parameter update ratio (agent updates from early stopping)
         memory_size: int = 10000,
         # AE config
