@@ -1080,6 +1080,9 @@ class VQ_TC_TD3(Agent):
         logger.info("Resetting actor/critic")
         self.ddpg.reset(reset_type=reset_type)
 
+        # Don't reset during retraining
+        reset_strategy = self.reset_strategy
+        self.reset_strategy = None
         if self.reset_retrain_strategy == "interleaved":
             logger.info(f"Retraining interleaved...")
             # if self.train_strategy == "interleaved":
@@ -1097,6 +1100,7 @@ class VQ_TC_TD3(Agent):
             )
         else:
             logger.info("Not retraining after reset")
+        self.reset_strategy = reset_strategy
 
         ###### Build memory for reset strategy ######
         if self.reset_strategy == "latent-dist":
