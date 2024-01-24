@@ -586,6 +586,7 @@ class VQ_TC_TD3(Agent):
         ###### Log some stuff ######
         if wandb.run is not None:
             wandb.log({"exploration_noise": self.ddpg.exploration_noise})
+            wandb.log({"buffer_size": replay_buffer.size()})
 
         self.ddpg.exploration_noise_schedule.step()
         self.eval()
