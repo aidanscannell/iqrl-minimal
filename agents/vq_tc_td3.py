@@ -309,6 +309,7 @@ class VQ_TC_TD3(Agent):
         reset_threshold: float = 0.01,
         retrain_after_reset: bool = True,
         reset_retrain_strategy: str = "interleaved",  # "interleaved" or "representation-first"
+        max_retrain_updates: int = 10000,
         eta_ratio: float = 1.0,  # encoder-to-agent parameter update ratio (agent updates from early stopping)
         memory_size: int = 10000,
         # AE config
@@ -328,6 +329,7 @@ class VQ_TC_TD3(Agent):
         ae_update_freq: int = 1,  # update encoder less frequently than actor/critic
         ae_patience: Optional[int] = None,
         ae_min_delta: Optional[float] = None,
+        use_early_stop: bool = False,
         # ae_patience: int = 100,
         # ae_min_delta: float = 0.0,
         latent_dim: int = 20,
@@ -482,10 +484,14 @@ class VQ_TC_TD3(Agent):
 
         self.ae_opt = torch.optim.AdamW(encoder_params, lr=ae_learning_rate)
 
-        if ae_patience is not None and ae_min_delta is not None:
-            self.ae_early_stopper = h.EarlyStopper(
-                patience=ae_patience, min_delta=ae_min_delta
-            )
+        self.use_early_stop = use_early_stop
+        if self.use_early_stop:
+            if ae_patience is not None and ae_min_delta is not None:
+                self.ae_early_stopper = h.EarlyStopper(
+                    patience=ae_patience, min_delta=ae_min_delta
+                )
+            else:
+                self.ae_early_stopper = None
         else:
             self.ae_early_stopper = None
 
@@ -558,6 +564,7 @@ class VQ_TC_TD3(Agent):
         self.reset_threshold = reset_threshold
         self.retrain_after_reset = retrain_after_reset
         self.reset_retrain_strategy = reset_retrain_strategy
+        self.max_retrain_updates = max_retrain_updates
         self.memory_size = memory_size
 
         # Init memory
@@ -692,7 +699,9 @@ class VQ_TC_TD3(Agent):
 
         return info
 
-    def update_encoder(self, replay_buffer: ReplayBuffer, num_updates: int) -> dict:
+    def update_encoder(
+        self, replay_buffer: ReplayBuffer, num_updates: int, use_early_stop: bool = True
+    ) -> dict:
         """Update representation and then train actor/critic"""
         if self.ae_early_stopper is not None:
             self.ae_early_stopper.reset()
@@ -717,43 +726,51 @@ class VQ_TC_TD3(Agent):
                 # reset_flag = 0
 
             # if i % self.early_stopper_freq == 0:
-            if self.ae_early_stopper is not None:
-                val_batch = replay_buffer.sample(self.ae_batch_size, val=True)
-                val_loss, val_info = self.representation_loss(val_batch)
-                if wandb.run is not None:
-                    wandb.log({"val_encoder_loss": val_info["encoder_loss"]})
-                if self.ae_early_stopper(val_loss):
-                    logger.info("Early stopping criteria met, stopping AE training...")
-                    break
+            if use_early_stop:
+                if self.ae_early_stopper is not None:
+                    val_batch = replay_buffer.sample(self.ae_batch_size, val=True)
+                    val_loss, val_info = self.representation_loss(val_batch)
+                    if wandb.run is not None:
+                        wandb.log({"val_encoder_loss": val_info["encoder_loss"]})
+                    if self.ae_early_stopper(val_loss):
+                        logger.info(
+                            "Early stopping criteria met, stopping AE training..."
+                        )
+                        break
 
-                if val_loss < best_val_loss:
-                    best_val_loss = val_loss
-                    state = {
-                        "encoder": self.encoder.state_dict(),
-                        "encoder_target": self.encoder_target.state_dict(),
-                        "ae_opt": self.ae_opt.state_dict(),
-                    }
-                    if self.reward_loss:
-                        state.update({"reward": self.reward.state_dict()})
-                    if self.reconstruction_loss:
-                        state.update({"decoder": self.decoder.state_dict()})
-                    if self.temporal_consistency:
-                        state.update({"dynamics": self.dynamics.state_dict()})
-                    torch.save(state, "./best_ckpt_dict.pt")
-                    # logger.info("Finished saving encoder+opt best ckpt")
+                    if val_loss < best_val_loss:
+                        best_val_loss = val_loss
+                        state = {
+                            "encoder": self.encoder.state_dict(),
+                            "encoder_target": self.encoder_target.state_dict(),
+                            "ae_opt": self.ae_opt.state_dict(),
+                        }
+                        if self.reward_loss:
+                            state.update({"reward": self.reward.state_dict()})
+                        if self.reconstruction_loss:
+                            state.update({"decoder": self.decoder.state_dict()})
+                        if self.temporal_consistency:
+                            state.update({"dynamics": self.dynamics.state_dict()})
+                        torch.save(state, "./best_ckpt_dict.pt")
+                        # logger.info("Finished saving encoder+opt best ckpt")
 
-        # Load best checkpoints
-        self.encoder.load_state_dict(torch.load("./best_ckpt_dict.pt")["encoder"])
-        self.encoder_target.load_state_dict(
-            torch.load("./best_ckpt_dict.pt")["encoder_target"]
-        )
-        self.ae_opt.load_state_dict(torch.load("./best_ckpt_dict.pt")["ae_opt"])
-        if self.reward_loss:
-            self.reward.load_state_dict(torch.load("./best_ckpt_dict.pt")["reward"])
-        if self.reconstruction_loss:
-            self.decoder.load_state_dict(torch.load("./best_ckpt_dict.pt")["decoder"])
-        if self.temporal_consistency:
-            self.dynamics.load_state_dict(torch.load("./best_ckpt_dict.pt")["dynamics"])
+        if use_early_stop:
+            # Load best checkpoints
+            self.encoder.load_state_dict(torch.load("./best_ckpt_dict.pt")["encoder"])
+            self.encoder_target.load_state_dict(
+                torch.load("./best_ckpt_dict.pt")["encoder_target"]
+            )
+            self.ae_opt.load_state_dict(torch.load("./best_ckpt_dict.pt")["ae_opt"])
+            if self.reward_loss:
+                self.reward.load_state_dict(torch.load("./best_ckpt_dict.pt")["reward"])
+            if self.reconstruction_loss:
+                self.decoder.load_state_dict(
+                    torch.load("./best_ckpt_dict.pt")["decoder"]
+                )
+            if self.temporal_consistency:
+                self.dynamics.load_state_dict(
+                    torch.load("./best_ckpt_dict.pt")["dynamics"]
+                )
 
         logger.info(f"Finished training AE for {i} update steps")
         info.update({"num_ae_updates": i})
@@ -1083,21 +1100,41 @@ class VQ_TC_TD3(Agent):
         # Don't reset during retraining
         reset_strategy = self.reset_strategy
         self.reset_strategy = None
+
+        # Calculate number of updates to perform
+        max_new_data = self.max_retrain_updates / self.ddpg.utd_ratio
+        num_new_transitions = np.min([replay_buffer.size(), max_new_data])
+
         if self.reset_retrain_strategy == "interleaved":
             logger.info(f"Retraining interleaved...")
-            # if self.train_strategy == "interleaved":
-            self.retrain_utd_ratio = self.ddpg.utd_ratio
             # Set large num encoder updates as will be stopped early using val loss
-            num_new_transitions = replay_buffer.size() * self.retrain_utd_ratio
             info = self.update_1(
-                replay_buffer=replay_buffer, num_new_transitions=num_new_transitions
+                replay_buffer=replay_buffer,
+                num_new_transitions=num_new_transitions,
             )
         elif self.reset_retrain_strategy == "representation-first":
             logger.info(f"Retraining representation-first...")
-            num_new_transitions = replay_buffer.size() * self.ae_utd_ratio
+            # self.retrain_utd_ratio = self.ae_utd_ratio
+            # Set large num encoder updates as will be stopped early using val loss
+            # num_new_transitions = replay_buffer.size() * self.retrain_utd_ratio
+            # num_new_transitions = replay_buffer.size() * self.ae_utd_ratio
+            max_new_data = self.max_retrain_updates / self.ddpg.utd_ratio
+            num_new_transitions = np.min([replay_buffer.size(), max_new_data])
             info = self.update_2(
                 replay_buffer=replay_buffer, num_new_transitions=num_new_transitions
             )
+        elif self.reset_retrain_strategy == "representation-only":
+            logger.info(f"Retraining representation-only...")
+            self.retrain_utd_ratio = self.ae_utd_ratio
+            # Set large num encoder updates as will be stopped early using val loss
+            num_ae_updates = replay_buffer.size() * self.retrain_utd_ratio
+            logger.info(f"Retraining encoder...")
+            info = self.update_encoder(
+                replay_buffer,
+                num_updates=num_ae_updates,
+                use_early_stop=self.use_early_stop,
+            )
+            logger.info(f"Finished retraining encoder")
         else:
             logger.info("Not retraining after reset")
         self.reset_strategy = reset_strategy
