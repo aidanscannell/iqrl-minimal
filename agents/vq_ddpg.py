@@ -27,6 +27,7 @@ class Encoder(nn.Module):
         observation_space: Space,
         mlp_dims: List[int],
         levels: List[int] = [8, 6, 5],  # target size 2^8, actual size 240
+        num_codes: int = 1024,
         # act_fn=nn.ELU,
     ):
         super().__init__()
@@ -40,7 +41,7 @@ class Encoder(nn.Module):
         # TODO is this the right way to make latent dim???
         # TODO data should be normalized???
         # self.latent_dim = len(levels)
-        self.latent_dim = (1024, len(levels))
+        self.latent_dim = (num_codes, len(levels))
         # self.latent_dim = (levels[0], len(levels), len(levels))
         # out_dim = self.latent_dim
         out_dim = np.array(self.latent_dim).prod()
@@ -73,13 +74,14 @@ class Decoder(nn.Module):
         observation_space: Space,
         mlp_dims: List[int],
         levels: List[int] = [8, 6, 5],  # target size 2^8, actual size 240
+        num_codes: int = 1024,
         # act_fn=nn.ELU,
     ):
         super().__init__()
         self.levels = levels
         # in_dim = np.array(levels).prod()
         # self.latent_dim = len(levels)
-        self.latent_dim = (1024, len(levels))
+        self.latent_dim = (num_codes, len(levels))
         # self.latent_dim = (levels[0], len(levels), len(levels))
         # in_dim = self.latent_dim
         in_dim = np.array(self.latent_dim).prod()
@@ -155,7 +157,7 @@ class VectorQuantizedDDPG(Agent):
         vq_patience: int = 100,
         vq_min_delta: float = 0.0,
         levels: List[int] = [8, 6, 5],  # target size 2^8, actual size 240
-        num_codes: int = 512,
+        num_codes: int = 1024,
         ae_tau: float = 0.005,
         use_target_encoder: bool = True,
         alpha: int = 10,
@@ -187,12 +189,14 @@ class VectorQuantizedDDPG(Agent):
             observation_space=observation_space,
             mlp_dims=mlp_dims,
             levels=levels,
+            num_codes=num_codes
             # act_fn=act_fn,
         ).to(device)
         self.vq_target = FSQAutoEncoder(
             observation_space=observation_space,
             mlp_dims=mlp_dims,
             levels=levels,
+            num_codes=num_codes
             # act_fn=act_fn,
         ).to(device)
         self.vq_target.load_state_dict(self.vq.state_dict())
@@ -219,7 +223,7 @@ class VectorQuantizedDDPG(Agent):
         self.latent_observation_space = gym.spaces.Box(
             low=0.0,
             high=high,
-            shape=(1024,),
+            shape=(self.num_codes,),
             # shape=(1024, len(self.levels)),
             # shape=(512, len(self.levels)),
             # shape=(levels[0], len(self.levels), len(self.levels)),
