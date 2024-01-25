@@ -162,6 +162,33 @@ class FSQMLPDynamics(MLPResettable):
         # return z
 
 
+class Projection(MLPResettable):
+    def __init__(
+        self,
+        mlp_dims: List[int],
+        levels: List[int] = [8, 6, 5],  # target size 2^8, actual size 240
+        out_dim: int = 1024,
+        num_codes: int = 1024,
+    ):
+        self.levels = levels
+        self.latent_dim = (num_codes, len(levels))
+        self.act_fn = None
+
+        in_dim = np.array(self.latent_dim).prod()
+        mlp = h.mlp(in_dim=in_dim, mlp_dims=mlp_dims, out_dim=out_dim, act_fn=None)
+
+        super().__init__(mlp=mlp)
+
+        self.reset(reset_type="full")
+
+    def forward(self, x):
+        if x.ndim > 2:
+            x = torch.flatten(x, -2, -1)
+        z = self.mlp(x)
+        # print(f"z {z.shape}")
+        return z
+
+
 class Encoder(MLPResettable):
     def __init__(
         self,
@@ -332,6 +359,8 @@ class VQ_TC_TD3(Agent):
         use_early_stop: bool = False,
         # ae_patience: int = 100,
         # ae_min_delta: float = 0.0,
+        project_latent: bool = False,
+        projection_dim: int = 1024,
         latent_dim: int = 20,
         ae_tau: float = 0.005,
         use_target_encoder: bool = True,
@@ -370,6 +399,9 @@ class VQ_TC_TD3(Agent):
         # self.ae_patience = int(ae_patience / self.early_stopper_freq)
         self.ae_patience = ae_patience
         self.ae_min_delta = ae_min_delta
+
+        self.project_latent = project_latent
+        self.projection_dim = projection_dim
 
         self.latent_dim = latent_dim
         self.ae_tau = ae_tau
@@ -481,6 +513,23 @@ class VQ_TC_TD3(Agent):
             if use_fsq:
                 raise NotImplementedError
             encoder_params += list(self.reward.parameters())
+
+        if self.project_latent:
+            self.projection = Projection(
+                mlp_dims=[1024],
+                levels=fsq_levels,
+                num_codes=fsq_num_codes,
+                out_dim=projection_dim,
+            ).to(device)
+            encoder_params += list(self.projection.parameters())
+
+            self.projection_target = Projection(
+                mlp_dims=[1024],
+                levels=fsq_levels,
+                num_codes=fsq_num_codes,
+                out_dim=projection_dim,
+            ).to(device)
+            self.projection_target.load_state_dict(self.projection.state_dict())
 
         self.ae_opt = torch.optim.AdamW(encoder_params, lr=ae_learning_rate)
 
@@ -751,6 +800,13 @@ class VQ_TC_TD3(Agent):
                             state.update({"decoder": self.decoder.state_dict()})
                         if self.temporal_consistency:
                             state.update({"dynamics": self.dynamics.state_dict()})
+                        if self.project_latent:
+                            state.update({"projection": self.projection.state_dict()})
+                            state.update(
+                                {
+                                    "projection_target": self.projection_target.state_dict()
+                                }
+                            )
                         torch.save(state, "./best_ckpt_dict.pt")
                         # logger.info("Finished saving encoder+opt best ckpt")
 
@@ -770,6 +826,13 @@ class VQ_TC_TD3(Agent):
             if self.temporal_consistency:
                 self.dynamics.load_state_dict(
                     torch.load("./best_ckpt_dict.pt")["dynamics"]
+                )
+            if self.project_latent:
+                self.projection.load_state_dict(
+                    torch.load("./best_ckpt_dict.pt")["projection"]
+                )
+                self.projection_target.load_state_dict(
+                    torch.load("./best_ckpt_dict.pt")["projection_target"]
                 )
 
         logger.info(f"Finished training AE for {i} update steps")
@@ -844,6 +907,8 @@ class VQ_TC_TD3(Agent):
         # Update the target network
         if self.use_target_encoder:
             soft_update_params(self.encoder, self.encoder_target, tau=self.ae_tau)
+        if self.project_latent:
+            soft_update_params(self.projection, self.projection_target, tau=self.ae_tau)
 
         return info
 
@@ -875,6 +940,11 @@ class VQ_TC_TD3(Agent):
                     z_next_enc_target = self.encoder(batch.next_observations)
                 if self.use_fsq:
                     z_next_enc_target = z_next_enc_target[0]
+
+            if self.project_latent:
+                z_next_enc_target = self.projection_target(z_next_enc_target)
+                z_next_dynamics = self.projection(z_next_dynamics)
+
             if self.use_cosine_similarity_dynamics:
                 temporal_consitency_loss = torch.mean(
                     nn.CosineSimilarity(dim=-1, eps=1e-6)(
