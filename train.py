@@ -208,8 +208,8 @@ def train(cfg):
                     # "std_reward": std_reward,
                     # "global_step": global_step,
                     "env_step": global_step * cfg.action_repeat,
-                    # "episode": episode_idx,
-                    # "elapsed_time": time.time() - start_time,
+                    "episode": episode_idx,
+                    "elapsed_time": time.time() - start_time,
                 }
                 if cfg.use_wandb:
                     wandb.log({"eval/": eval_metrics})
