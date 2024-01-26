@@ -22,6 +22,8 @@ dependencies:
   - mesalib
   - mesa-libgl-cos6-x86_64
   - glfw3
+  - seaborn
+  - matplotlib
   - pip
   - pip:
       - jaxtyping==0.2.23  # Types with shapes for tensors
