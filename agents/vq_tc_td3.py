@@ -516,8 +516,6 @@ class VQ_TC_TD3(Agent):
                     levels=fsq_levels,
                     num_codes=fsq_num_codes,
                 ).to(device)
-                if fsq_idx == 1:
-                    raise NotImplementedError
             else:
                 self.reward = MLPReward(
                     action_space=action_space,
@@ -683,14 +681,17 @@ class VQ_TC_TD3(Agent):
             # TODO don't use target here. It breaks dog?
             # TODO I used to use target here
             if self.use_target_encoder:
-                z = self.encoder_target(batch.observations)[self.fsq_idx]
-                z_next = self.encoder_target(batch.next_observations)[self.fsq_idx]
+                z = self.encoder_target(batch.observations)
+                z_next = self.encoder_target(batch.next_observations)
             else:
-                z = self.encoder(batch.observations)[self.fsq_idx]
-                z_next = self.encoder(batch.next_observations)[self.fsq_idx]
-            if self.fsq_idx == 0:
-                z = torch.flatten(z, -2, -1)
-                z_next = torch.flatten(z_next, -2, -1)
+                z = self.encoder(batch.observations)
+                z_next = self.encoder(batch.next_observations)
+            if self.use_fsq:
+                z = z[self.fsq_idx]
+                z_next = z_next[self.fsq_idx]
+                if self.fsq_idx == 0:
+                    z = torch.flatten(z, -2, -1)
+                    z_next = torch.flatten(z_next, -2, -1)
             latent_batch = ReplayBufferSamples(
                 observations=z.to(torch.float).detach(),
                 actions=batch.actions,
@@ -862,14 +863,17 @@ class VQ_TC_TD3(Agent):
             # TODO don't use target here. It breaks dog?
             # TODO I used to use target here
             if self.use_target_encoder:
-                z = self.encoder_target(batch.observations)[self.fsq_idx]
-                z_next = self.encoder_target(batch.next_observations)[self.fsq_idx]
+                z = self.encoder_target(batch.observations)
+                z_next = self.encoder_target(batch.next_observations)
             else:
-                z = self.encoder(batch.observations)[self.fsq_idx]
-                z_next = self.encoder(batch.next_observations)[self.fsq_idx]
-            if self.fsq_idx == 0:
-                z = torch.flatten(z, -2, -1)
-                z_next = torch.flatten(z_next, -2, -1)
+                z = self.encoder(batch.observations)
+                z_next = self.encoder(batch.next_observations)
+            if self.use_fsq:
+                z = z[self.fsq_idx]
+                z_next = z_next[self.fsq_idx]
+                if self.fsq_idx == 0:
+                    z = torch.flatten(z, -2, -1)
+                    z_next = torch.flatten(z_next, -2, -1)
             latent_batch = ReplayBufferSamples(
                 observations=z.to(torch.float).detach(),
                 actions=batch.actions,
@@ -1159,10 +1163,10 @@ class VQ_TC_TD3(Agent):
         if self.use_fsq:
             # TODO do we want to use z or indices for actor/critic?
             z = z[self.fsq_idx]
+            if self.fsq_idx == 0:
+                z = torch.flatten(z, -2, -1)
         z = z.to(torch.float)
 
-        if self.fsq_idx == 0:
-            z = torch.flatten(z, -2, -1)
         action = self.ddpg.select_action(observation=z, eval_mode=eval_mode, t0=t0)
         if flag:
             action = action[None, ...]
