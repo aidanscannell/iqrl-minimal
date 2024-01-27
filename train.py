@@ -93,7 +93,7 @@ def train(cfg):
         envs.single_action_space,
         # "auto",
         torch.device(cfg.device),
-        nstep=cfg.agent.nstep,
+        nstep=max(cfg.agent.nstep, cfg.agent.horizon),
         #        handle_timeout_termination=False,
         discount=cfg.agent.discount,
         train_validation_split=cfg.train_validation_split,
