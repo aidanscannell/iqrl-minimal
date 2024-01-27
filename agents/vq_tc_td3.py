@@ -612,7 +612,7 @@ class VQ_TC_TD3(Agent):
             # reset_params_freq=reset_params_freq,
             reset_params_freq=None,  # handle resetting in this class
             reset_type=None,  # handle resetting in this class
-            # nstep=nstep,  # N-step returns for critic training
+            nstep=nstep,  # N-step returns for critic training
             discount=discount,
             tau=tau,
             device=device,
