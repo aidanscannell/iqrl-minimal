@@ -79,7 +79,10 @@ class FSQEncoder(MLPResettable):
         z = z.reshape((*z.shape[0:-1], *self.latent_dim))
         # print(f"z {z.shape}")
         # indices = self._fsq(z)
-        z, indices = self._fsq(z)
+        if x.ndim > 2:
+            z, indices = torch.func.vmap(self._fsq)(z)
+        else:
+            z, indices = self._fsq(z)
         # print(f"z {z.shape}")
         # print(f"indices {indices.shape}")
         # breakpoint()
@@ -917,8 +920,14 @@ class VQ_TC_TD3(Agent):
     ) -> Tuple[torch.Tensor, dict]:
         x_train = batch.observations
         if self.use_fsq:
+            # if x_train.ndim > 2:
+            #     z, indices = torch.func.vmap(self.encoder)(x_train)
+            # else:
             z, indices = self.encoder(x_train)
         else:
+            # if x_train.ndim > 2:
+            #     z = torch.func.vmap(self.encoder)(x_train)
+            # else:
             z = self.encoder(x_train)
 
         if self.reconstruction_loss:
