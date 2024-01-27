@@ -760,17 +760,13 @@ class VQ_TC_TD3(Agent):
             elif self.reset_strategy == "latent-dist":
                 if self.trigger_reset_latent_dist(replay_buffer=replay_buffer):
                     reset_flag = 1
-            # else:
-            #     raise NotImplementedError(
-            #         "reset_strategy should be either 'every-x-params-updates' or 'latent-dist'"
-            #     )
 
             if reset_flag == 1:
                 if wandb.run is not None:
                     wandb.log({"reset": reset_flag})
 
             if i % 100 == 0:
-                logger.info(f"latent_obs {z0.shape}")
+                logger.info(f"latent_obs {z.shape}")
                 logger.info(
                     f"Iteration {i} | loss {info['encoder_loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']} | reward loss {info['reward_loss']} | value dynamics loss {info['value_dynamics_loss']}"
                 )

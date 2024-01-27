@@ -87,13 +87,17 @@ def train(cfg):
     pprint.pprint(HydraConfig.get().launcher)
 
     ###### Prepare replay buffer ######
+    try:
+        nstep = max(cfg.agent.nstep, cfg.agent.horizon)
+    except:
+        nstep = cfg.agent.nstep
     rb = ReplayBuffer(
         int(cfg.buffer_size),
         envs.single_observation_space,
         envs.single_action_space,
         # "auto",
         torch.device(cfg.device),
-        nstep=max(cfg.agent.nstep, cfg.agent.horizon),
+        nstep=nstep,
         #        handle_timeout_termination=False,
         discount=cfg.agent.discount,
         train_validation_split=cfg.train_validation_split,
