@@ -105,8 +105,8 @@ def train(cfg):
         observation_space=envs.single_observation_space,
         action_space=envs.single_action_space,
     )
-    if agent.compile:
-        agent = torch.compile(agent, mode="default")
+    # if agent.compile:
+    #     agent = torch.compile(agent, mode="default")
 
     ###### Convert episode stuff to global steps ######
     total_timesteps = int(cfg.num_episodes * cfg.max_episode_steps / cfg.action_repeat)
