@@ -80,7 +80,6 @@ class Agent(abc.ABC, nn.Module):
     ) -> Optional[dict]:
         raise NotImplementedError
 
-    @torch.compile
     def predict(
         self, observation, state=None, episode_start=None, deterministic: bool = False
     ):
