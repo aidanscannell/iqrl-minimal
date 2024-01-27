@@ -54,11 +54,11 @@ T0 = bool
 # OutputVar = TensorType["batch_size, output_dim"]
 
 
-@dataclass
+# @dataclass
 class Agent(abc.ABC, nn.Module):
-    observation_space: Space
-    action_space: Box
-    name: str = "BaseAgent"
+    # observation_space: Space
+    # action_space: Box
+    # name: str = "BaseAgent"
 
     def __init__(
         self, observation_space: Space, action_space: Box, name: str = "BaseAgent"
