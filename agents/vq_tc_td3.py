@@ -165,6 +165,34 @@ class FSQMLPDynamics(MLPResettable):
         # return z
 
 
+class FSQMLPReward(MLPResettable):
+    def __init__(
+        self,
+        action_space: Space,
+        mlp_dims: List[int],
+        levels: List[int] = [8, 6, 5],  # target size 2^8, actual size 240
+        num_codes: int = 1024,
+    ):
+        self.levels = levels
+        self.latent_dim = (num_codes, len(levels))
+        self.act_fn = None
+
+        in_dim = np.array(action_space.shape).prod() + np.array(self.latent_dim).prod()
+        mlp = h.mlp(in_dim=in_dim, mlp_dims=mlp_dims, out_dim=1, act_fn=None)
+
+        super().__init__(mlp=mlp)
+
+        self.reset(reset_type="full")
+
+    def forward(self, z, a):
+        if z.ndim > 2:
+            z = torch.flatten(z, -2, -1)
+        # breakpoint()
+        x = torch.cat([z, a], 1)
+        r = self.mlp(x)
+        return r
+
+
 class Projection(MLPResettable):
     def __init__(
         self,
@@ -328,9 +356,11 @@ class VQ_TC_TD3(Agent):
         batch_size: int = 128,
         utd_ratio: int = 1,  # DDPG parameter update-to-data ratio
         actor_update_freq: int = 1,  # update actor less frequently than critic
-        nstep: int = 1,
+        nstep: int = 1,  # nstep used for TD returns
+        horizon: int = 5,  # horizon used for representation learning
         discount: float = 0.99,
         tau: float = 0.005,
+        rho: float = 0.9,  # discount for dynamics
         act_with_target: bool = False,  # if True act with target actor network
         # Reset stuff
         reset_type: str = "last_layer",  # "full" or "last-layer"
@@ -406,6 +436,8 @@ class VQ_TC_TD3(Agent):
         self.project_latent = project_latent
         self.projection_dim = projection_dim
 
+        self.rho = rho
+
         self.latent_dim = latent_dim
         self.ae_tau = ae_tau
         self.use_target_encoder = use_target_encoder
@@ -419,6 +451,7 @@ class VQ_TC_TD3(Agent):
         self.fsq_idx = fsq_idx
 
         self.nstep = nstep
+        self.horizon = horizon
 
         self.device = device
 
@@ -508,13 +541,21 @@ class VQ_TC_TD3(Agent):
                 ).to(device)
             encoder_params += list(self.dynamics.parameters())
         if self.reward_loss:
-            self.reward = MLPReward(
-                action_space=action_space,
-                mlp_dims=mlp_dims,
-                latent_dim=latent_dim,
-            ).to(device)
             if use_fsq:
-                raise NotImplementedError
+                self.reward = FSQMLPReward(
+                    action_space=action_space,
+                    mlp_dims=mlp_dims,
+                    levels=fsq_levels,
+                    num_codes=fsq_num_codes,
+                ).to(device)
+                if fsq_idx == 1:
+                    raise NotImplementedError
+            else:
+                self.reward = MLPReward(
+                    action_space=action_space,
+                    mlp_dims=mlp_dims,
+                    latent_dim=latent_dim,
+                ).to(device)
             encoder_params += list(self.reward.parameters())
 
         if self.project_latent:
