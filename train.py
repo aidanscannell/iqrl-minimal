@@ -105,7 +105,7 @@ def train(cfg):
         observation_space=envs.single_observation_space,
         action_space=envs.single_action_space,
     )
-    if agent.comiple:
+    if agent.compile:
         agent = torch.compile(agent, mode="default")
 
     ###### Convert episode stuff to global steps ######
