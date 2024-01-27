@@ -24,6 +24,7 @@ class ReplayBufferSamples(NamedTuple):
     actions: th.Tensor
     next_observations: th.Tensor
     dones: th.Tensor
+    timeouts: th.Tensor
     rewards: th.Tensor
     next_state_discounts: th.Tensor
 
@@ -424,6 +425,58 @@ class ReplayBuffer(BaseBuffer):
         if nstep is None:
             nstep = self.nstep
 
+        batch_inds = np.stack([batch_inds + i for i in range(nstep)]).flatten(order="F")
+
+        # Sample randomly the env idx
+        env_indices = np.random.randint(0, high=self.n_envs, size=(len(batch_inds),))
+
+        if self.optimize_memory_usage:
+            next_obs = self._normalize_obs(
+                self.observations[(batch_inds + 1) % self.buffer_size, env_indices, :],
+                env,
+            )
+        else:
+            next_obs = self._normalize_obs(
+                self.next_observations[batch_inds, env_indices, :], env
+            )
+
+        next_state_discounts = (
+            np.ones_like(self.dones[batch_inds, env_indices]) * self.discount
+        )
+
+        data = (
+            self._normalize_obs(self.observations[batch_inds, env_indices, :], env),
+            self.actions[batch_inds, env_indices, :],
+            next_obs,
+            # Only use dones that are not due to timeouts
+            # deactivated by default (timeouts is initialized as an array of False)
+            self.dones[batch_inds, env_indices],
+            # (
+            #     self.dones[batch_inds, env_indices]
+            #     * (1 - self.timeouts[batch_inds, env_indices])
+            # ).reshape(-1, 1),
+            self.timeouts[batch_inds, env_indices],
+            self._normalize_reward(
+                self.rewards[batch_inds, env_indices].reshape(-1, 1), env
+            ),
+            next_state_discounts.astype(np.float32),
+        )
+        data_traj = ()
+        for i in range(len(data)):
+            data_traj += (
+                data[i].reshape(self.nstep, -1, *data[i].shape[1:], order="F"),
+            )
+
+        return ReplayBufferSamples(*tuple(map(self.to_torch, data_traj)))
+
+    def _get_nstep_samples(
+        self,
+        batch_inds: np.ndarray,
+        env: Optional[VecNormalize] = None,
+        nstep: Optional[int] = None,
+    ) -> ReplayBufferSamples:
+        if nstep is None:
+            nstep = self.nstep
         # Sample randomly the env idx
         env_indices = np.random.randint(0, high=self.n_envs, size=(len(batch_inds),))
 
