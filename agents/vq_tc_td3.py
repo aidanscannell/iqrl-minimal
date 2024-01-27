@@ -699,38 +699,88 @@ class VQ_TC_TD3(Agent):
         num_updates = int(num_new_transitions * self.ddpg.utd_ratio)
         info = {}
 
-        logger.info(f"Performing {num_updates} DDPG-AE updates...")
+        logger.info(f"Performing {num_updates} VQ-TC-TD3 updates...")
         reset_flag = 0
         for i in range(num_updates):
-            batch = replay_buffer.sample(self.ddpg.batch_size)
+            batch = replay_buffer.sample(self.ddpg.batch_size, val=False)
             # num_encoder_updates = 2  # 2 encoder updates for one q update
             # for i in range(num_encoder_updates):
             # Update encoder less frequently than actor/critic
             if i % self.encoder_update_freq == 0:
                 info.update(self.update_representation_step(batch=batch))
 
-            # Map observations to latent
-            if self.use_target_encoder:
-                latent_obs = self.encoder_target(batch.observations)[self.fsq_idx]
-                latent_next_obs = self.encoder_target(batch.next_observations)[
-                    self.fsq_idx
-                ]
-            else:
-                latent_obs = self.encoder(batch.observations)[self.fsq_idx]
-                latent_next_obs = self.encoder(batch.next_observations)[self.fsq_idx]
+            # Form n-step samples
+            # TODO don't use target here. It breaks dog?
+            # TODO I used to use target here
+            # if self.use_target_encoder:
+            #     z0 = self.encoder_target(batch_traj.observations[0])[self.fsq_idx]
+            #     zt = self.encoder_target(batch_traj.next_observations[self.nstep - 1])[
+            #         self.fsq_idx
+            #     ]
+            # else:
+            dones = torch.zeros_like(batch.dones[0], dtype=torch.bool)
+            rewards = torch.zeros_like(batch.rewards[0])
+            timeout_or_dones = torch.zeros_like(batch.dones[0], dtype=torch.bool)
+            next_state_discounts = torch.ones_like(batch.dones[0])
+
+            next_obs = torch.zeros_like(batch.observations[0])
+            for t in range(self.nstep):
+                next_obs = torch.where(
+                    timeout_or_dones[..., None], next_obs, batch.next_observations[t]
+                )
+                next_state_discounts *= torch.where(
+                    timeout_or_dones, 1, self.ddpg.discount
+                )
+                dones = torch.where(timeout_or_dones, dones, batch.dones[t])
+                rewards += torch.where(
+                    timeout_or_dones[..., None],
+                    0,
+                    self.ddpg.discount**t * batch.rewards[t],
+                )
+                timeout_or_dones = torch.logical_or(
+                    timeout_or_dones, torch.logical_or(dones, batch.timeouts[t])
+                )
+
+            z0 = self.encoder(batch.observations[0])
+            zt = self.encoder(next_obs)
+            if self.use_fsq:
+                z0 = z0[self.fsq_idx]
+                zt = zt[self.fsq_idx]
             if self.fsq_idx == 0:
-                latent_obs = torch.flatten(latent_obs, -2, -1)
-                latent_next_obs = torch.flatten(latent_next_obs, -2, -1)
-            # batch.observation = latent_obs.to(torch.float).detach()
-            # batch.next_observation = latent_next_obs.to(torch.float).detach()
+                z0 = torch.flatten(z0, -2, -1)
+                zt = torch.flatten(zt, -2, -1)
             latent_batch = ReplayBufferSamples(
-                observations=latent_obs.to(torch.float).detach(),
-                actions=batch.actions,
-                next_observations=latent_next_obs.to(torch.float).detach(),
-                dones=batch.dones,
-                rewards=batch.rewards,
-                next_state_discounts=batch.next_state_discounts,
+                observations=z0.to(torch.float).detach(),
+                actions=batch.actions[0],
+                next_observations=zt.to(torch.float).detach(),
+                dones=dones,
+                timeouts=timeout_or_dones,
+                rewards=rewards,
+                next_state_discounts=next_state_discounts,
             )
+
+            # Map observations to latent
+            # if self.use_target_encoder:
+            #     latent_obs = self.encoder_target(batch.observations)[self.fsq_idx]
+            #     latent_next_obs = self.encoder_target(batch.next_observations)[
+            #         self.fsq_idx
+            #     ]
+            # else:
+            #     latent_obs = self.encoder(batch.observations)[self.fsq_idx]
+            #     latent_next_obs = self.encoder(batch.next_observations)[self.fsq_idx]
+            # if self.fsq_idx == 0:
+            #     latent_obs = torch.flatten(latent_obs, -2, -1)
+            #     latent_next_obs = torch.flatten(latent_next_obs, -2, -1)
+            # # batch.observation = latent_obs.to(torch.float).detach()
+            # # batch.next_observation = latent_next_obs.to(torch.float).detach()
+            # latent_batch = ReplayBufferSamples(
+            #     observations=latent_obs.to(torch.float).detach(),
+            #     actions=batch.actions,
+            #     next_observations=latent_next_obs.to(torch.float).detach(),
+            #     dones=batch.dones,
+            #     rewards=batch.rewards,
+            #     next_state_discounts=batch.next_state_discounts,
+            # )
 
             # DDPG on latent representation
             info.update(self.ddpg.update_step(batch=latent_batch))
@@ -757,7 +807,7 @@ class VQ_TC_TD3(Agent):
                     wandb.log({"reset": reset_flag})
 
             if i % 100 == 0:
-                logger.info(f"latent_obs {latent_obs.shape}")
+                logger.info(f"latent_obs {z0.shape}")
                 logger.info(
                     f"Iteration {i} | loss {info['encoder_loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']} | reward loss {info['reward_loss']} | value dynamics loss {info['value_dynamics_loss']}"
                 )
@@ -978,51 +1028,81 @@ class VQ_TC_TD3(Agent):
             rec_loss = torch.zeros(1).to(self.device)
 
         if self.temporal_consistency:
-            # TODO multistep temporal consistency
-            delta_z_dynamics = self.dynamics(x=z, a=batch.actions)
+            temporal_consitency_loss, reward_loss = 0.0, 0.0
             if self.use_fsq:
-                delta_z_dynamics = delta_z_dynamics[0]
-            z_next_dynamics = z + delta_z_dynamics
-            with torch.no_grad():
-                if self.use_target_encoder:
-                    z_next_enc_target = self.encoder_target(batch.next_observations)
-                else:
-                    z_next_enc_target = self.encoder(batch.next_observations)
-                if self.use_fsq:
-                    z_next_enc_target = z_next_enc_target[0]
-
-            if self.project_latent:
-                z_next_enc_target = self.projection_target(z_next_enc_target)
-                z_next_dynamics = self.projection(z_next_dynamics)
-
-            if self.use_cosine_similarity_dynamics:
-                temporal_consitency_loss = torch.mean(
-                    nn.CosineSimilarity(dim=-1, eps=1e-6)(
-                        z_next_enc_target, z_next_dynamics
-                    )
-                )
-                # breakpoint()
+                z, _ = self.encoder(batch.observations[0])
             else:
-                # z_next_enc_target = z_next_enc_target.to(torch.float)
-                # z_next_dynamics = z_next_dynamics.to(torch.float)
-                temporal_consitency_loss = torch.nn.functional.mse_loss(
-                    input=z_next_enc_target, target=z_next_dynamics, reduction="mean"
+                z = self.encoder(batch.observations[0])
+
+            dones = torch.zeros_like(batch.dones[0], dtype=torch.bool)
+            timeout_or_dones = torch.zeros_like(batch.dones[0], dtype=torch.bool)
+            for t in range(self.horizon):
+                dones = torch.where(timeout_or_dones, dones, batch.dones[t])
+                timeout_or_dones = torch.logical_or(
+                    timeout_or_dones, torch.logical_or(dones, batch.timeouts[t])
                 )
+
+                # Predict next latent
+                delta_z_pred = self.dynamics(z, a=batch.actions[t])
+                if self.use_fsq:
+                    delta_z_pred = delta_z_pred[0]
+                next_z_pred = z + delta_z_pred
+
+                # Predict next reward
+                if self.reward_loss:
+                    r_pred = self.reward(z=z, a=batch.actions[t])
+
+                with torch.no_grad():
+                    next_obs = batch.next_observations[t]
+                    if self.use_target_encoder:
+                        next_z_tar = self.encoder_target(next_obs)
+                    else:
+                        next_z_tar = self.encoder(next_obs)
+                    if self.use_fsq:
+                        next_z_tar = next_z_tar[0]
+                    r_tar = batch.rewards[t]
+                    assert next_obs.ndim == r_tar.ndim == 2
+
+                if self.project_latent:
+                    # next_z_pred_not_projected = next_z_pred
+                    next_z_tar = self.projection_target(next_z_tar)
+                    next_z_pred = self.projection(next_z_pred)
+
+                # Don't forget this
+                z = next_z_pred
+
+                # Losses
+                rho = self.rho**t
+                if self.use_fsq:
+                    next_z_pred = next_z_pred.flatten(-2)
+                    next_z_tar = next_z_tar.flatten(-2)
+                if self.use_cosine_similarity_dynamics:
+                    _temporal_consitency_loss = nn.CosineSimilarity(dim=-1, eps=1e-6)(
+                        next_z_pred, next_z_tar
+                    )
+                else:
+                    _temporal_consitency_loss = torch.mean(
+                        (next_z_pred - next_z_tar) ** 2, dim=-1
+                    )
+                temporal_consitency_loss += rho * torch.mean(
+                    (1 - timeout_or_dones.to(torch.int)) * _temporal_consitency_loss
+                )
+                if self.reward_loss:
+                    assert r_pred.ndim == 2
+                    assert r_tar.ndim == 2
+                    if self.use_cosine_similarity_reward:
+                        _reward_loss = nn.CosineSimilarity(dim=-1, eps=1e-6)(
+                            r_pred, r_tar
+                        )
+                    else:
+                        _reward_loss = (r_pred[..., 0] - r_tar[..., 0]) ** 2
+                    reward_loss += rho * torch.mean(
+                        (1 - timeout_or_dones.to(torch.int)) * _reward_loss
+                    )
+                else:
+                    reward_loss += torch.zeros(1).to(self.device)
         else:
             temporal_consitency_loss = torch.zeros(1).to(self.device)
-
-        if self.reward_loss:
-            reward_pred = self.reward(z=z, a=batch.actions)
-            if self.use_cosine_similarity_reward:
-                reward_loss = torch.mean(
-                    nn.CosineSimilarity(dim=-1, eps=1e-6)(batch.rewards, reward_pred)
-                )
-            else:
-                reward_loss = torch.nn.functional.mse_loss(
-                    input=batch.rewards, target=reward_pred, reduction="mean"
-                )
-        else:
-            reward_loss = torch.zeros(1).to(self.device)
 
         def value_loss_fn(z_next):
             q1_pred, q2_pred = self.ddpg.critic(z, batch.actions)
