@@ -723,84 +723,27 @@ class VQ_TC_TD3(Agent):
         reset_flag = 0
         for i in range(num_updates):
             batch = replay_buffer.sample(self.ddpg.batch_size, val=False)
-            # num_encoder_updates = 2  # 2 encoder updates for one q update
-            # for i in range(num_encoder_updates):
             # Update encoder less frequently than actor/critic
             if i % self.encoder_update_freq == 0:
                 info.update(self.update_representation_step(batch=batch))
 
-            # Form n-step samples
+            # Map observations to latent
             # TODO don't use target here. It breaks dog?
             # TODO I used to use target here
-            # if self.use_target_encoder:
-            #     z0 = self.encoder_target(batch_traj.observations[0])[self.fsq_idx]
-            #     zt = self.encoder_target(batch_traj.next_observations[self.nstep - 1])[
-            #         self.fsq_idx
-            #     ]
-            # else:
-            dones = torch.zeros_like(batch.dones[0], dtype=torch.bool)
-            rewards = torch.zeros_like(batch.rewards[0])
-            timeout_or_dones = torch.zeros_like(batch.dones[0], dtype=torch.bool)
-            next_state_discounts = torch.ones_like(batch.dones[0])
-
-            next_obs = torch.zeros_like(batch.observations[0])
-            for t in range(self.nstep):
-                next_obs = torch.where(
-                    timeout_or_dones[..., None], next_obs, batch.next_observations[t]
-                )
-                next_state_discounts *= torch.where(
-                    timeout_or_dones, 1, self.ddpg.discount
-                )
-                dones = torch.where(timeout_or_dones, dones, batch.dones[t])
-                rewards += torch.where(
-                    timeout_or_dones[..., None],
-                    0,
-                    self.ddpg.discount**t * batch.rewards[t],
-                )
-                timeout_or_dones = torch.logical_or(
-                    timeout_or_dones, torch.logical_or(dones, batch.timeouts[t])
-                )
-
-            z0 = self.encoder(batch.observations[0])
-            zt = self.encoder(next_obs)
-            if self.use_fsq:
-                z0 = z0[self.fsq_idx]
-                zt = zt[self.fsq_idx]
+            z = self.encoder(batch.observations)[self.fsq_idx]
+            z_next = self.encoder(batch.next_observations)[self.fsq_idx]
             if self.fsq_idx == 0:
-                z0 = torch.flatten(z0, -2, -1)
-                zt = torch.flatten(zt, -2, -1)
+                z = torch.flatten(z, -2, -1)
+                z_next = torch.flatten(z_next, -2, -1)
             latent_batch = ReplayBufferSamples(
-                observations=z0.to(torch.float).detach(),
-                actions=batch.actions[0],
-                next_observations=zt.to(torch.float).detach(),
-                dones=dones,
-                timeouts=timeout_or_dones,
-                rewards=rewards,
-                next_state_discounts=next_state_discounts,
+                observations=z.to(torch.float).detach(),
+                actions=batch.actions,
+                next_observations=z_next.to(torch.float).detach(),
+                dones=batch.dones,
+                timeouts=batch.timeouts,
+                rewards=batch.rewards,
+                next_state_discounts=batch.next_state_discounts,
             )
-
-            # Map observations to latent
-            # if self.use_target_encoder:
-            #     latent_obs = self.encoder_target(batch.observations)[self.fsq_idx]
-            #     latent_next_obs = self.encoder_target(batch.next_observations)[
-            #         self.fsq_idx
-            #     ]
-            # else:
-            #     latent_obs = self.encoder(batch.observations)[self.fsq_idx]
-            #     latent_next_obs = self.encoder(batch.next_observations)[self.fsq_idx]
-            # if self.fsq_idx == 0:
-            #     latent_obs = torch.flatten(latent_obs, -2, -1)
-            #     latent_next_obs = torch.flatten(latent_next_obs, -2, -1)
-            # # batch.observation = latent_obs.to(torch.float).detach()
-            # # batch.next_observation = latent_next_obs.to(torch.float).detach()
-            # latent_batch = ReplayBufferSamples(
-            #     observations=latent_obs.to(torch.float).detach(),
-            #     actions=batch.actions,
-            #     next_observations=latent_next_obs.to(torch.float).detach(),
-            #     dones=batch.dones,
-            #     rewards=batch.rewards,
-            #     next_state_discounts=batch.next_state_discounts,
-            # )
 
             # DDPG on latent representation
             info.update(self.ddpg.update_step(batch=latent_batch))

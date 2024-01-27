@@ -148,7 +148,7 @@ class DDPG(Agent):
         self.actor_update_freq = actor_update_freq  # Should be 1 for true DDPG
         self.reset_params_freq = reset_params_freq
         self.reset_type = reset_type
-        self.nstep = 1
+        self.nstep = nstep
         self.discount = discount
         self.tau = tau
         self.act_with_target = act_with_target
@@ -227,12 +227,42 @@ class DDPG(Agent):
     def update_step(self, batch: ReplayBufferSamples) -> dict:
         info = {}
 
+        # Form n-step samples (truncate if timeout)
+        dones = torch.zeros_like(batch.dones[0], dtype=torch.bool)
+        rewards = torch.zeros_like(batch.rewards[0])
+        timeout_or_dones = torch.zeros_like(batch.dones[0], dtype=torch.bool)
+        next_state_discounts = torch.ones_like(batch.dones[0])
+        next_obs = torch.zeros_like(batch.observations[0])
+        for t in range(self.nstep):
+            next_obs = torch.where(
+                timeout_or_dones[..., None], next_obs, batch.next_observations[t]
+            )
+            next_state_discounts *= torch.where(timeout_or_dones, 1, self.discount)
+            dones = torch.where(timeout_or_dones, dones, batch.dones[t])
+            rewards += torch.where(
+                timeout_or_dones[..., None],
+                0,
+                self.discount**t * batch.rewards[t],
+            )
+            timeout_or_dones = torch.logical_or(
+                timeout_or_dones, torch.logical_or(dones, batch.timeouts[t])
+            )
+        nstep_batch = ReplayBufferSamples(
+            observations=batch.observations[0],
+            actions=batch.actions[0],
+            next_observations=next_obs,
+            dones=dones,
+            timeouts=timeout_or_dones,
+            rewards=rewards,
+            next_state_discounts=next_state_discounts,
+        )
+
         # Update critic
-        info.update(self.critic_update_step(data=batch))
+        info.update(self.critic_update_step(data=nstep_batch))
 
         # Update actor less frequently than critic
         if self.critic_update_counter % self.actor_update_freq == 0:
-            info.update(self.actor_update_step(data=batch))
+            info.update(self.actor_update_step(data=nstep_batch))
 
         return info
 
