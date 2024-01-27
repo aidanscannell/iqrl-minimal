@@ -228,59 +228,11 @@ class DDPG(Agent):
     def update_step(self, batch: ReplayBufferSamples) -> dict:
         info = {}
 
-        # add +1 for the first dummy transition
-        # batch_size = batch.observations.shape[0]
-        # idx = np.random.randint(0, batch_size - self.nstep + 1) + 1
-        # obs = batch.observations[idx - 1]
-        # next_obses, acts, rewards, discounts = [], [], [], []
-        # for t in range(self.nstep):
-        #     _idx = idx + t
-        #     # next_obses.append(batch.next_observations[_idx])
-        #     # actions.append(batch.actions[_idx])
-        #     rewards.append(batch.rewards[_idx])
-        #     # discounts.append(batch.discounts[_idx])
-        # # next_obses, acts, rews, discounts = (
-        # #     np.stack(next_obses, axis=0),
-        # #     np.stack(acts, axis=0),
-        # #     np.stack(rews, axis=0),
-        # #     np.stack(discounts, axis=0),
-        # # )
-
-        # # return (obs, acts, rews, discounts, next_obses)
-
-        # Form n-step samples
-        # if self.nstep > 1:
-        #     idxs = slice(0, -(self.nstep - 1))
-        # else:
-        #     idxs = slice(None)
-        # nstep_rewards = batch.rewards[idxs].clone()
-        # one_minus_dones = 1 - batch.dones[idxs].clone()
-        # for t in range(1, self.nstep):
-        #     t_idxs = slice(t, -(self.nstep - 1 - t))
-        #     if self.nstep - 1 - t == 0:
-        #         t_idxs = slice(t, None)
-        #     print(f"t={t} t_idxs: {t_idxs}")
-        #     nstep_rewards += (
-        #         one_minus_dones * self.discount**t * batch.rewards[t_idxs]
-        #     )
-        #     one_minus_dones *= 1 - batch.dones[t_idxs].clone()
-        #     breakpoint()
-
-        # batch_nstep = ReplayBufferSamples(
-        #     observations=batch.observations[idxs],
-        #     actions=batch.actions[idxs],
-        #     next_observations=batch.next_observations[self.nstep - 1 :],
-        #     dones=1 - one_minus_dones,
-        #     rewards=nstep_rewards,
-        # )
-
         # Update critic
-        # info.update(self.critic_update_step(data=batch_nstep))
         info.update(self.critic_update_step(data=batch))
 
         # Update actor less frequently than critic
         if self.critic_update_counter % self.actor_update_freq == 0:
-            # info.update(self.actor_update_step(data=batch_nstep))
             info.update(self.actor_update_step(data=batch))
 
         return info
