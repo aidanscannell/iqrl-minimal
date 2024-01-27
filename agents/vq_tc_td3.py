@@ -378,7 +378,7 @@ class VQ_TC_TD3(Agent):
         projection_dim: int = 1024,
         latent_dim: int = 20,
         ae_tau: float = 0.005,
-        use_target_encoder: bool = True,
+        use_target_encoder: bool = False,  # if True use target encoder for actor/critic
         act_with_target_enc: bool = False,  # if True act with target encoder network
         ae_normalize: bool = True,
         simplex_dim: int = 10,
@@ -448,44 +448,33 @@ class VQ_TC_TD3(Agent):
                 levels=fsq_levels,
                 num_codes=fsq_num_codes,
             ).to(device)
-            if self.use_target_encoder:
-                self.encoder_target = FSQEncoder(
-                    observation_space=observation_space,
-                    mlp_dims=encoder_mlp_dims,
-                    levels=fsq_levels,
-                    num_codes=fsq_num_codes,
-                ).to(device)
-                self.encoder_target.load_state_dict(self.encoder.state_dict())
+            self.encoder_target = FSQEncoder(
+                observation_space=observation_space,
+                mlp_dims=encoder_mlp_dims,
+                levels=fsq_levels,
+                num_codes=fsq_num_codes,
+            ).to(device)
         else:
             self.encoder = Encoder(
                 observation_space=observation_space,
                 mlp_dims=encoder_mlp_dims,
                 latent_dim=latent_dim,
                 act_fn=act_fn,
-                # normalize=ae_normalize,
-                # simplex_dim=simplex_dim,
-                # use_sigmoid=ae_use_sigmoid,
-                # sigmoid_scale=ae_sigmoid_scale,
             ).to(device)
-            if self.use_target_encoder:
-                self.encoder_target = Encoder(
-                    observation_space=observation_space,
-                    mlp_dims=encoder_mlp_dims,
-                    latent_dim=latent_dim,
-                    act_fn=target_act_fn,
-                    # normalize=ae_normalize,
-                    # simplex_dim=simplex_dim,
-                    # use_sigmoid=ae_use_sigmoid,
-                    # sigmoid_scale=ae_sigmoid_scale,
-                ).to(device)
-                self.encoder_target.load_state_dict(self.encoder.state_dict())
+            self.encoder_target = Encoder(
+                observation_space=observation_space,
+                mlp_dims=encoder_mlp_dims,
+                latent_dim=latent_dim,
+                act_fn=target_act_fn,
+            ).to(device)
+        self.encoder_target.load_state_dict(self.encoder.state_dict())
 
         if compile:
             self.encoder = torch.compile(self.encoder, mode="default")
-            if self.use_target_encoder:
-                self.encoder_target = torch.compile(self.encoder_target, mode="default")
+            self.encoder_target = torch.compile(self.encoder_target, mode="default")
 
         encoder_params = list(self.encoder.parameters())
+
         if reconstruction_loss:
             if use_fsq:
                 self.decoder = FSQDecoder(
@@ -698,8 +687,12 @@ class VQ_TC_TD3(Agent):
             # Map observations to latent
             # TODO don't use target here. It breaks dog?
             # TODO I used to use target here
-            z = self.encoder(batch.observations)[self.fsq_idx]
-            z_next = self.encoder(batch.next_observations)[self.fsq_idx]
+            if self.use_target_encoder:
+                z = self.encoder_target(batch.observations)[self.fsq_idx]
+                z_next = self.encoder_target(batch.next_observations)[self.fsq_idx]
+            else:
+                z = self.encoder(batch.observations)[self.fsq_idx]
+                z_next = self.encoder(batch.next_observations)[self.fsq_idx]
             if self.fsq_idx == 0:
                 z = torch.flatten(z, -2, -1)
                 z_next = torch.flatten(z_next, -2, -1)
@@ -871,24 +864,23 @@ class VQ_TC_TD3(Agent):
             batch = replay_buffer.sample(self.ddpg.batch_size)
 
             ###### Map observations to latent ######
+            # TODO don't use target here. It breaks dog?
+            # TODO I used to use target here
             if self.use_target_encoder:
-                latent_obs = self.encoder_target(batch.observations)[self.fsq_idx]
-                latent_next_obs = self.encoder_target(batch.next_observations)[
-                    self.fsq_idx
-                ]
+                z = self.encoder_target(batch.observations)[self.fsq_idx]
+                z_next = self.encoder_target(batch.next_observations)[self.fsq_idx]
             else:
-                latent_obs = self.encoder(batch.observations)[self.fsq_idx]
-                latent_next_obs = self.encoder(batch.next_observations)[self.fsq_idx]
+                z = self.encoder(batch.observations)[self.fsq_idx]
+                z_next = self.encoder(batch.next_observations)[self.fsq_idx]
             if self.fsq_idx == 0:
-                latent_obs = torch.flatten(latent_obs, -2, -1)
-                latent_next_obs = torch.flatten(latent_next_obs, -2, -1)
-            # batch.observation = latent_obs.to(torch.float).detach()
-            # batch.next_observation = latent_next_obs.to(torch.float).detach()
+                z = torch.flatten(z, -2, -1)
+                z_next = torch.flatten(z_next, -2, -1)
             latent_batch = ReplayBufferSamples(
-                observations=latent_obs.to(torch.float).detach(),
+                observations=z.to(torch.float).detach(),
                 actions=batch.actions,
-                next_observations=latent_next_obs.to(torch.float).detach(),
+                next_observations=z_next.to(torch.float).detach(),
                 dones=batch.dones,
+                timeouts=batch.timeouts,
                 rewards=batch.rewards,
                 next_state_discounts=batch.next_state_discounts,
             )
@@ -927,8 +919,7 @@ class VQ_TC_TD3(Agent):
         self.ae_opt.step()
 
         # Update the target network
-        if self.use_target_encoder:
-            soft_update_params(self.encoder, self.encoder_target, tau=self.ae_tau)
+        soft_update_params(self.encoder, self.encoder_target, tau=self.ae_tau)
         if self.project_latent:
             soft_update_params(self.projection, self.projection_target, tau=self.ae_tau)
 
@@ -982,10 +973,7 @@ class VQ_TC_TD3(Agent):
 
                 with torch.no_grad():
                     next_obs = batch.next_observations[t]
-                    if self.use_target_encoder:
-                        next_z_tar = self.encoder_target(next_obs)
-                    else:
-                        next_z_tar = self.encoder(next_obs)
+                    next_z_tar = self.encoder_target(next_obs)
                     if self.use_fsq:
                         next_z_tar = next_z_tar[0]
                     r_tar = batch.rewards[t]
@@ -1074,10 +1062,7 @@ class VQ_TC_TD3(Agent):
         if self.value_enc_loss:
             if not self.temporal_consistency:
                 with torch.no_grad():
-                    if self.use_target_encoder:
-                        z_next_enc_target = self.encoder_target(batch.next_observations)
-                    else:
-                        z_next_enc_target = self.encoder(batch.next_observations)
+                    z_next_enc_target = self.encoder_target(batch.next_observations)
             value_enc_loss = value_loss_fn(z_next_enc_target)
         else:
             value_enc_loss = torch.zeros(1).to(self.device)
@@ -1172,7 +1157,7 @@ class VQ_TC_TD3(Agent):
             else:
                 raise NotImplementedError
         observation = torch.Tensor(observation).to(self.device)
-        if self.use_target_encoder and self.act_with_target_enc:
+        if self.act_with_target_enc:
             z = self.encoder_target(observation)
         else:
             z = self.encoder(observation)
@@ -1210,8 +1195,7 @@ class VQ_TC_TD3(Agent):
             self.reward.reset(reset_type=reset_type)
             encoder_params += list(self.reward.parameters())
         # self.ae_target.reset(full_reset=full_reset)
-        if self.use_target_encoder:
-            self.encoder_target.load_state_dict(self.encoder.state_dict())
+        self.encoder_target.load_state_dict(self.encoder.state_dict())
         self.ae_opt = torch.optim.AdamW(encoder_params, lr=self.ae_learning_rate)
 
         logger.info("Resetting actor/critic")
