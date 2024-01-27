@@ -215,7 +215,6 @@ class DDPG(Agent):
 
             if i % 100 == 0:
                 if wandb.run is not None:
-                    # info.update({"exploration_noise": self.exploration_noise})
                     wandb.log(info)
                     wandb.log({"reset": reset_flag})
                 reset_flag = 0
