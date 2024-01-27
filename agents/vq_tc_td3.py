@@ -20,16 +20,6 @@ from vector_quantize_pytorch import FSQ
 logger = logging.getLogger(__name__)
 
 
-class ScaledSigmoid(nn.Module):
-    def __init__(self, init_scale: float = 1.0):
-        super().__init__()
-        self.sigmoid_fn = nn.Sigmoid()
-        self.scale = nn.Parameter(data=torch.Tensor(1) * init_scale, requires_grad=True)
-
-    def forward(self, x):
-        return self.sigmoid_fn(x * self.scale)
-
-
 class MLPResettable(nn.Module):
     def __init__(self, mlp):
         super().__init__()
@@ -229,8 +219,6 @@ class Encoder(MLPResettable):
         act_fn: Callable = None,
         # normalize: bool = True,
         # simplex_dim: int = 10,
-        # use_sigmoid: bool = False,
-        # sigmoid_scale: float = 1.0,
     ):
         in_dim = np.array(observation_space.shape).prod()
         # TODO data should be normalized???
@@ -284,17 +272,11 @@ class MLPDynamics(MLPResettable):
         act_fn: Callable = None
         # normalize: bool = True,
         # simplex_dim: int = 10,
-        # use_sigmoid: bool = False,
-        # sigmoid_scale: float = 1.0,
     ):
         self.latent_dim = latent_dim
         in_dim = np.array(action_space.shape).prod() + latent_dim
         # if normalize:
         #     act_fn = SimNorm(dim=simplex_dim)
-        #     if use_sigmoid:
-        #         # act_fn = nn.Sigmoid()
-        #         # act_fn = ScaledSigmoid(scale=sigmoid_scale)
-        #         act_fn = ScaledSigmoid(init_scale=sigmoid_scale)
         # else:
         #     act_fn = None
         # TODO data should be normalized???
@@ -399,8 +381,6 @@ class VQ_TC_TD3(Agent):
         use_target_encoder: bool = True,
         act_with_target_enc: bool = False,  # if True act with target encoder network
         ae_normalize: bool = True,
-        ae_use_sigmoid: bool = False,
-        ae_sigmoid_scale: float = 1.0,
         simplex_dim: int = 10,
         use_fsq: bool = False,
         fsq_num_codes: int = 1024,
@@ -444,14 +424,12 @@ class VQ_TC_TD3(Agent):
         self.use_target_encoder = use_target_encoder
         self.act_with_target_enc = act_with_target_enc
         self.ae_normalize = ae_normalize
-        self.ae_use_sigmoid = ae_use_sigmoid
         self.simplex_dim = simplex_dim
         self.use_fsq = use_fsq
         self.fsq_num_codes = fsq_num_codes
         self.fsq_levels = fsq_levels
         self.fsq_idx = fsq_idx
 
-        self.nstep = nstep
         self.horizon = horizon
 
         self.device = device
@@ -459,10 +437,6 @@ class VQ_TC_TD3(Agent):
         if ae_normalize:
             act_fn = SimNorm(dim=simplex_dim)
             target_act_fn = SimNorm(dim=simplex_dim)
-            if ae_use_sigmoid:
-                # act_fn = nn.Sigmoid()
-                act_fn = ScaledSigmoid(init_scale=ae_sigmoid_scale)
-                target_act_fn = ScaledSigmoid(init_scale=ae_sigmoid_scale)
         else:
             act_fn = None
             target_act_fn = None
@@ -543,10 +517,6 @@ class VQ_TC_TD3(Agent):
                     mlp_dims=mlp_dims,
                     latent_dim=latent_dim,
                     act_fn=act_fn,
-                    # normalize=ae_normalize,
-                    # simplex_dim=simplex_dim,
-                    # use_sigmoid=ae_use_sigmoid,
-                    # sigmoid_scale=ae_sigmoid_scale,
                 ).to(device)
             if compile:
                 self.dynamics = torch.compile(self.dynamics, mode="default")
@@ -641,8 +611,6 @@ class VQ_TC_TD3(Agent):
             observation_space=self.latent_observation_space,
             action_space=action_space,
             mlp_dims=mlp_dims,
-            # act_fn=act_fn,
-            # exploration_noise=exploration_noise,
             exploration_noise_start=exploration_noise_start,
             exploration_noise_end=exploration_noise_end,
             exploration_noise_num_steps=exploration_noise_num_steps,
@@ -1143,14 +1111,6 @@ class VQ_TC_TD3(Agent):
             "z_mean": torch.mean(z.to(torch.float)).item(),
             "z_median": torch.median(z).item(),
         }
-        if isinstance(self.encoder.act_fn, ScaledSigmoid):
-            info.update({"sigmoid_scale_encoder": self.encoder.act_fn.scale.item()})
-
-        if self.temporal_consistency or self.value_dynamics_loss:
-            if isinstance(self.dynamics.act_fn, ScaledSigmoid):
-                info.update(
-                    {"sigmoid_scale_dynamics": self.dynamics.act_fn.scale.item()}
-                )
         return loss, info
 
     def trigger_reset_latent_dist(self, replay_buffer) -> bool:
