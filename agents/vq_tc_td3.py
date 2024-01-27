@@ -661,6 +661,7 @@ class VQ_TC_TD3(Agent):
             device=device,
             act_with_target=act_with_target,
             name=name,
+            compile=compile,
         )
 
         # self.use_memory = False

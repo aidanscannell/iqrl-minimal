@@ -127,6 +127,7 @@ class DDPG(Agent):
         act_with_target: bool = False,  # if True act with target network
         device: str = "cuda",
         name: str = "DDPG",
+        compile: bool = False,
         nstep: int = 1,
         **kwargs,  # hack to let work with agent.latent_dim in env config
     ):
@@ -174,6 +175,12 @@ class DDPG(Agent):
             observation_space, action_space, mlp_dims=mlp_dims
         ).to(device)
         self.target_critic.load_state_dict(self.critic.state_dict())
+
+        if compile:
+            self.actor = torch.compile(self.actor, mode="default")
+            self.target_actor = torch.compile(self.target_actor, mode="default")
+            self.critic = torch.compile(self.critic, mode="default")
+            self.target_critic = torch.compile(self.target_critic, mode="default")
 
         # Optimizers
         self.q_optimizer = torch.optim.Adam(
