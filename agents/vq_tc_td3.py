@@ -506,10 +506,10 @@ class VQ_TC_TD3(Agent):
                 ).to(device)
                 self.encoder_target.load_state_dict(self.encoder.state_dict())
 
-        # if compile:
-        #     self.encoder = torch.compile(self.encoder, mode="default")
-        #     if self.use_target_encoder:
-        #         self.encoder_target = torch.compile(self.encoder_target, mode="default")
+        if compile:
+            self.encoder = torch.compile(self.encoder, mode="default")
+            if self.use_target_encoder:
+                self.encoder_target = torch.compile(self.encoder_target, mode="default")
 
         encoder_params = list(self.encoder.parameters())
         if reconstruction_loss:
