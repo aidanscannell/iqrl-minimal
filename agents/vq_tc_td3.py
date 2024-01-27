@@ -372,8 +372,6 @@ class VQ_TC_TD3(Agent):
         ae_patience: Optional[int] = None,
         ae_min_delta: Optional[float] = None,
         use_early_stop: bool = False,
-        # ae_patience: int = 100,
-        # ae_min_delta: float = 0.0,
         project_latent: bool = False,
         projection_dim: int = 1024,
         latent_dim: int = 20,
