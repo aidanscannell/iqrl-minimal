@@ -223,7 +223,6 @@ class DDPG(Agent):
 
         return info
 
-    @torch.compile
     def update_step(self, batch: ReplayBufferSamples) -> dict:
         info = {}
 
@@ -266,6 +265,7 @@ class DDPG(Agent):
 
         return info
 
+    @torch.compile
     def critic_update_step(self, data: ReplayBufferSamples) -> dict:
         self.critic_update_counter += 1
 
@@ -309,6 +309,7 @@ class DDPG(Agent):
         }
         return info
 
+    @torch.compile
     def actor_update_step(self, data: ReplayBufferSamples) -> dict:
         self.actor_update_counter += 1
         q1, q2 = self.critic(data.observations, self.actor(data.observations))
