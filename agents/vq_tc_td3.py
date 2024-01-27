@@ -407,6 +407,7 @@ class VQ_TC_TD3(Agent):
         fsq_levels: List[int] = [8, 6, 5],
         fsq_idx: int = 0,  # 0 uses z and 1 uses indices for actor/critic
         # encoder_reset_params_freq: int = 10000,  # reset enc params after X param updates
+        compile: bool = False,
         device: str = "cuda",
         name: str = "TC_TD3",
     ):
@@ -504,6 +505,12 @@ class VQ_TC_TD3(Agent):
                     # sigmoid_scale=ae_sigmoid_scale,
                 ).to(device)
                 self.encoder_target.load_state_dict(self.encoder.state_dict())
+
+        if compile:
+            self.encoder = torch.compile(self.encoder, mode="default")
+            if self.use_target_encoder:
+                self.encoder_target = torch.compile(self.encoder_target, mode="default")
+
         encoder_params = list(self.encoder.parameters())
         if reconstruction_loss:
             if use_fsq:
@@ -519,6 +526,8 @@ class VQ_TC_TD3(Agent):
                     mlp_dims=mlp_dims,
                     latent_dim=latent_dim,
                 ).to(device)
+            if compile:
+                self.decoder = torch.compile(self.decoder, mode="default")
             encoder_params += list(self.decoder.parameters())
         if temporal_consistency or value_dynamics_loss:
             if use_fsq:
@@ -539,6 +548,8 @@ class VQ_TC_TD3(Agent):
                     # use_sigmoid=ae_use_sigmoid,
                     # sigmoid_scale=ae_sigmoid_scale,
                 ).to(device)
+            if compile:
+                self.dynamics = torch.compile(self.dynamics, mode="default")
             encoder_params += list(self.dynamics.parameters())
         if self.reward_loss:
             if use_fsq:
@@ -556,6 +567,8 @@ class VQ_TC_TD3(Agent):
                     mlp_dims=mlp_dims,
                     latent_dim=latent_dim,
                 ).to(device)
+            if compile:
+                self.reward = torch.compile(self.reward, mode="default")
             encoder_params += list(self.reward.parameters())
 
         if self.project_latent:
@@ -565,6 +578,8 @@ class VQ_TC_TD3(Agent):
                 num_codes=fsq_num_codes,
                 out_dim=projection_dim,
             ).to(device)
+            if compile:
+                self.projection = torch.compile(self.projection, mode="default")
             encoder_params += list(self.projection.parameters())
 
             self.projection_target = Projection(
@@ -574,6 +589,10 @@ class VQ_TC_TD3(Agent):
                 out_dim=projection_dim,
             ).to(device)
             self.projection_target.load_state_dict(self.projection.state_dict())
+            if compile:
+                self.projection_target = torch.compile(
+                    self.projection_target, mode="default"
+                )
 
         self.ae_opt = torch.optim.AdamW(encoder_params, lr=ae_learning_rate)
 
