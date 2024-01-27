@@ -621,9 +621,6 @@ class VQ_TC_TD3(Agent):
             compile=compile,
         )
 
-        # self.use_memory = False
-        # self.use_memory_flag = False
-
         self.encoder_update_conter = 0
 
         self.reset_type = reset_type
