@@ -3,6 +3,7 @@ import abc
 from dataclasses import dataclass
 from typing import Any, Callable, List, NamedTuple, Optional, Tuple
 
+import torch
 import torch.nn as nn
 from gymnasium.spaces import Box, Space
 from jaxtyping import Float
@@ -79,6 +80,7 @@ class Agent(abc.ABC, nn.Module):
     ) -> Optional[dict]:
         raise NotImplementedError
 
+    @torch.compile
     def predict(
         self, observation, state=None, episode_start=None, deterministic: bool = False
     ):

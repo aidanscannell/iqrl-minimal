@@ -217,6 +217,7 @@ class DDPG(Agent):
 
         return info
 
+    @torch.compile
     def update_step(self, batch: ReplayBufferSamples) -> dict:
         info = {}
 

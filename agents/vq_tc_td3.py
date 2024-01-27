@@ -1007,6 +1007,7 @@ class VQ_TC_TD3(Agent):
 
         return info
 
+    @torch.compile
     def update_representation_step(self, batch: ReplayBufferSamples):
         # Reset encoder after a fixed number of updates
         self.encoder_update_conter += 1
