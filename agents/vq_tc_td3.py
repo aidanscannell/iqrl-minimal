@@ -537,8 +537,6 @@ class VQ_TC_TD3(Agent):
                 num_codes=fsq_num_codes,
                 out_dim=projection_dim,
             ).to(device)
-            if compile:
-                self.projection = torch.compile(self.projection, mode="default")
             encoder_params += list(self.projection.parameters())
 
             self.projection_target = Projection(
@@ -549,6 +547,7 @@ class VQ_TC_TD3(Agent):
             ).to(device)
             self.projection_target.load_state_dict(self.projection.state_dict())
             if compile:
+                self.projection = torch.compile(self.projection, mode="default")
                 self.projection_target = torch.compile(
                     self.projection_target, mode="default"
                 )
