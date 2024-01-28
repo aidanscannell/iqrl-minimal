@@ -537,8 +537,6 @@ class VQ_TC_TD3(Agent):
                 num_codes=fsq_num_codes,
                 out_dim=projection_dim,
             ).to(device)
-            encoder_params += list(self.projection.parameters())
-
             self.projection_target = Projection(
                 mlp_dims=[1024],
                 levels=fsq_levels,
@@ -551,6 +549,7 @@ class VQ_TC_TD3(Agent):
                 self.projection_target = torch.compile(
                     self.projection_target, mode="default"
                 )
+            encoder_params += list(self.projection.parameters())
 
         self.ae_opt = torch.optim.AdamW(encoder_params, lr=ae_learning_rate)
 
