@@ -433,12 +433,13 @@ class VQ_TC_TD3(Agent):
 
         self.device = device
 
+        # Use SimNorm activation if ae_normalize is True
+        act_fn = None
+        target_act_fn = None
         if ae_normalize:
             act_fn = SimNorm(dim=simplex_dim)
             target_act_fn = SimNorm(dim=simplex_dim)
-        else:
-            act_fn = None
-            target_act_fn = None
+
         # Init representation learning (encoder/decoder/dynamics/reward)
         if use_fsq:
             self.encoder = FSQEncoder(
