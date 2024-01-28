@@ -529,6 +529,8 @@ class VQ_TC_TD3(Agent):
             encoder_params += list(self.reward.parameters())
 
         if self.project_latent:
+            if not use_fsq:
+                raise NotImplementedError
             self.projection = Projection(
                 mlp_dims=[1024],
                 levels=fsq_levels,
