@@ -744,9 +744,9 @@ class VQ_TC_TD3(Agent):
                             wandb.log({f"{name}-rank-{j}": rank.item()})
                         wandb.log({f"{name}-cond-num": condition.item()})
 
-                    z_batch = self.encoder(batch.observations)
+                    z_batch = self.encoder(batch.observations[0])
                     if self.use_fsq:
-                        pre_norm_z_batch = self.encoder.mlp(batch.observations)
+                        pre_norm_z_batch = self.encoder.mlp(batch.observations[0])
                         log_rank(name="z-pre-normed", z=pre_norm_z_batch)
                         z_batch = z_batch[self.fsq_idx]
                         if self.fsq_idx == 0:
