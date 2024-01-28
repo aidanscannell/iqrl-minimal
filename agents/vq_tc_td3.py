@@ -13,6 +13,7 @@ import wandb
 from custom_types import Action, Agent, EvalMode, T0
 from gymnasium.spaces import Box, Space
 from helper import SimNorm, soft_update_params
+from torch.linalg import cond, matrix_rank
 from utils import ReplayBuffer, ReplayBufferSamples
 from vector_quantize_pytorch import FSQ
 
@@ -732,9 +733,30 @@ class VQ_TC_TD3(Agent):
                     wandb.log({"reset": reset_flag})
                     # z_dist = self.latent_euclidian_dist()
                     # wandb.log({"z_dist": z_dist})
+
+                    # Log rank of latent
+                    def log_rank(name, z):
+                        rank3 = matrix_rank(z, atol=1e-3, rtol=1e-3)
+                        rank2 = matrix_rank(z, atol=1e-2, rtol=1e-2)
+                        rank1 = matrix_rank(z, atol=1e-1, rtol=1e-1)
+                        condition = cond(z)
+                        for j, rank in enumerate([rank1, rank2, rank3]):
+                            wandb.log({f"{name}-rank-{j}": rank.item()})
+                        wandb.log({f"{name}-cond-num": condition.item()})
+
+                    z_batch = self.encoder(batch.observations)
+                    if self.use_fsq:
+                        pre_norm_z_batch = self.encoder.mlp(batch.observations)
+                        log_rank(name="z-pre-normed", z=pre_norm_z_batch)
+                        z_batch = z_batch[self.fsq_idx]
+                        if self.fsq_idx == 0:
+                            z_batch = torch.flatten(z_batch, -2, -1)
+
+                    log_rank(name="z", z=z_batch)
+
                 reset_flag = 0
 
-        logger.info("Finished training DDPG-AE")
+        logger.info("Finished training VQ-TC-TD3")
 
         return info
 
