@@ -1012,7 +1012,7 @@ class VQ_TC_TD3(Agent):
 
                 # Losses
                 rho = self.rho**t
-                if self.use_fsq:
+                if self.use_fsq and not self.project_latent:
                     next_z_pred = next_z_pred.flatten(-2)
                     next_z_tar = next_z_tar.flatten(-2)
                 if self.use_cosine_similarity_dynamics:
