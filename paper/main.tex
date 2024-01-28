@@ -277,6 +277,15 @@ Gross violations will trigger corrections at the camera-ready phase.
 \section{Introduction}
 \label{intro}
 
+\begin{figure}[ht]
+\vskip 0.2in
+\begin{center}
+\centerline{\includegraphics[width=0.6\columnwidth]{./figs/diagram-self-predictive.png}}
+\caption{Self-predictice loss}
+\label{diagram-self-predictive}
+\end{center}
+\vskip -0.2in
+\end{figure}
 
 
 
@@ -368,45 +377,43 @@ They say not to use if for image-based environments like Atari.
 \section{Method}
 \label{sec:method}
 
+\todo{Add algorithm}
 
-In humanoid-run and dog walk compare
+\begin{align}
+z_{t} &= e_{\theta} (s_{t}) \\
+\hat{z}_{t+1} &= d_{\phi} (z_{t}, a_{t}) \\
+q_{t} &= Q_{\psi} (z_{t}, a_{t}) \\
+a_{t} &\sim \pi_{\eta} (z_{t}),
+\end{align}
+
+\textbf{Representation learning}
+\begin{align}
+  \mathcal{L}(\theta, \phi; \mathcal{D})
+ % &= \E_{s_{t} \sim \mathcal{D}} \left[ \sum_{h=0}^{H-1} \| \hat{z}_{t+1} - z_{t+1} \|_{2}^{2} \right] \\
+&= \E_{(s_{t}, a_{t}, s_{t+1}) \sim \mathcal{D}} \left[ \sum_{h=0}^{H-1} \| d_{\phi}(e_{\theta}(s_{t}), a_{t}) - e_{\bar{\theta}}(s_{t+1}) \|_{2}^{2} \right]
+\end{align}
+
+
+\textbf{Policy and value function learning}
+
+\section{Experiments}
+\label{sec:experiments}
+
 \begin{itemize}
-    \item Show that resetting is beneficial
-    \begin{itemize}
-        \item But picking when to reset varies across environments
-    \end{itemize}
-    \item DDPG
-    \item DDPG reset every X param updates
-    \item DDPG-AE
-    \item DDPG-AE reset every X param updates
-    \item DDPG-AE auto-resets
-    \item DDPG-TAE
-    \item DDPG-TAE reset every X param updates
-    \item DDPG-TAE auto-resets
+    \item Show normalised latent leads to higher sample efficiency. Show results for NTC-TD3/TC-TD3/TD3/SAC/TCRL/TD-MPC with UTD=1.
+    \item Show normalised latent works with higher UTD. Compare NTC-TD3/TC-TD3/TCRL.
+    \item Show task-agnostic representation is good for incremental task learning. Compare NTC-TD3/TCRL-ours/TCRL
 \end{itemize}
 
 \text{Ablations}
 
 \begin{itemize}
-    \item Partial vs full resets vs $50\%$ resets etc
-    \item Interleaved training vs representation first
-    \begin{itemize}
-        \item Show that representation first is better when resetting
-        \item But interleaved better if not resetting
-    \end{itemize}
-    \item Normalized latent (SimNorm) vs unnormalized
+  \item Show un-normalised isn't as good.
+  \item Target encoder vs online encoder for mapping states to latents for TD3.
+  \item Show cosine similarity slows training.
+  \item Show adding reconstruction loss hurts performance.
 \end{itemize}
 
-\begin{itemize}
-    \item Our method for auto-resetting handles sensors breaking during agents lifetime.
-    \item Show this by transforming agents observations at some point during training.
-\end{itemize}
-
-\begin{itemize}
-    \item When to reset actor/critic/encoder?
-    \item How to pick UTD?
-    \item How to pick learning rate?
-\end{itemize}
 
 Simplical embeddings
 \cite{lavoieSimplicialEmbeddingsSelfSupervised2022}
@@ -426,27 +433,18 @@ Where encoders group states into clusters whilst preserving properties
 
 
 \textbf{Representation learning improves sample efficiency in RL}
-\begin{theorem}
-\label{thm:bigtheorem}
-Given two MDPs $\left( \mathcal{S}_{1}, \mathcal{A}, P, r, \rho_{0}, \gamma \right)$ and $\left( \mathcal{S}_{2}, \mathcal{A}, P, r, \rho_{0}, \gamma \right)$
-with $|\mathcal{S}_{1}| < |\mathcal{S}_{2}|$,
-the optimal value function $V : \mathcal{S} \rightarrow \R$ in $\mathcal{S}_{1}$ can be learned with less environment samples than in $\mathcal{S}_{2}$.
-\end{theorem}
+% \begin{theorem}
+% \label{thm:bigtheorem}
+% Given two MDPs $\left( \mathcal{S}_{1}, \mathcal{A}, P, r, \rho_{0}, \gamma \right)$ and $\left( \mathcal{S}_{2}, \mathcal{A}, P, r, \rho_{0}, \gamma \right)$
+% with $|\mathcal{S}_{1}| < |\mathcal{S}_{2}|$,
+% the optimal value function $V : \mathcal{S} \rightarrow \R$ in $\mathcal{S}_{1}$ can be learned with less environment samples than in $\mathcal{S}_{2}$.
+% \end{theorem}
 
 
-\begin{proof}
-Left as an exercise to the reader.
-\end{proof}
-
-\begin{corollary}
-If $f:X\to Y$ is bijective,
-the cardinality of $X$ is at least as large as that of $Y$.
-\end{corollary}
-
-\begin{assumption}
-The state space $\mathcal{S}$ is discrete
-\label{ass:discrete-state-space}
-\end{assumption}
+% \begin{assumption}
+% The state space $\mathcal{S}$ is discrete
+% \label{ass:discrete-state-space}
+% \end{assumption}
 
 
 \begin{itemize}
@@ -462,44 +460,6 @@ The state space $\mathcal{S}$ is discrete
     \end{itemize}
 \end{itemize}
 
-\begin{itemize}
-    \item Assume latent space contains all information from state space needed to predict values
-    \item Show retraining better contains information from state space
-    \begin{itemize}
-        \item Train agent on $\mathcal{D}^{i}$ with old encoder $e_{\phi^{i-1}}$ and compare to new encoder $e_{\phi^{i}}$
-    \end{itemize}
-\end{itemize}
-
-\section{Experiments}
-\label{experiments}
-
-SAC-AE is just SAC but using AE to get latent.
-BDC use bisimulation metric so they can obtain bound on the suboptimality of a value
-function trained on their representation.
-
-
-
-\begin{itemize}
-    \item Compare to SAC-AE
-    \item Compare to TCRL
-    \item Compare to SLAC
-    \item Compare to SAC-BDC \citet{zhangLearningInvariantRepresentations2020}
-    \item Compare to DeepMDP
-    \item Compare to DHGP
-\end{itemize}
-
-\begin{itemize}
-    \item Show we can use higher UTD?
-    \item AE vs VAE vs VQ-VAE
-    \item Full reset vs partial reset
-    \begin{itemize}
-        \item Reset last layer in MuJoCo
-        \item Reset a percentage (\eg 50\%) on image observations
-    \end{itemize}
-    \item Compare to resetting every X parameter updates like in \citep{doroSampleEfficientReinforcementLearning2022}.
-    \item How much training should we do after parameter reset?
-    \item MuJoCo and Atari
-\end{itemize}
 
 \section{Conclusion}
 \label{conclusion}
