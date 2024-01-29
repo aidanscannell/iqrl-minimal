@@ -436,11 +436,12 @@ discount factor $\gamma \in [0, 1]$
 \end{algorithmic}
 \end{algorithm}
 
+
 \begin{align}
-\text{Encoder: } &z_{t} = e_{\theta} (s_{t}) \label{eq:encoder} \\
-\text{Dynamics: } &\hat{z}_{t+1} = d_{\phi} (z_{t}, a_{t}) \label{eq:transition} \\
-\text{Value: } &q_{t} = Q_{\psi} (z_{t}, a_{t}) \label{eq:value} \\
-\text{Policy: } &a_{t} \sim \pi_{\eta} (z_{t}) , \label{eq:policy}
+&\text{Encoder: } & z_{t} &= e_{\theta} (s_{t}) \label{eq:encoder} \\
+&\text{Dynamics: } & \hat{z}_{t+1} &= d_{\phi} (z_{t}, a_{t}) \label{eq:transition} \\
+&\text{Value: } & q_{t} &= Q_{\psi} (z_{t}, a_{t}) \label{eq:value} \\
+&\text{Policy: } & a_{t} &\sim \pi_{\eta} (z_{t}) , \label{eq:policy}
 \end{align}
 Note that unlike TCRL \citep{zhaoSimplifiedTemporalConsistency2023}, our transition model does
 not predict the reward.
