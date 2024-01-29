@@ -740,13 +740,16 @@ class VQ_TC_TD3(Agent):
 
                     # Log rank of latent
                     def log_rank(name, z):
-                        rank3 = matrix_rank(z, atol=1e-3, rtol=1e-3)
-                        rank2 = matrix_rank(z, atol=1e-2, rtol=1e-2)
-                        rank1 = matrix_rank(z, atol=1e-1, rtol=1e-1)
-                        condition = cond(z)
-                        for j, rank in enumerate([rank1, rank2, rank3]):
-                            wandb.log({f"{name}-rank-{j}": rank.item()})
-                        wandb.log({f"{name}-cond-num": condition.item()})
+                        try:
+                            rank3 = matrix_rank(z, atol=1e-3, rtol=1e-3)
+                            rank2 = matrix_rank(z, atol=1e-2, rtol=1e-2)
+                            rank1 = matrix_rank(z, atol=1e-1, rtol=1e-1)
+                            condition = cond(z)
+                            for j, rank in enumerate([rank1, rank2, rank3]):
+                                wandb.log({f"{name}-rank-{j}": rank.item()})
+                            wandb.log({f"{name}-cond-num": condition.item()})
+                        except:
+                            pass
 
                     z_batch = self.encoder(batch.observations[0])
                     if self.use_fsq:
