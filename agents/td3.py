@@ -125,6 +125,7 @@ class TD3(Agent):
         discount: float = 0.99,
         tau: float = 0.005,
         act_with_target: bool = False,  # if True act with target network
+        logging_freq: int = 499,
         device: str = "cuda",
         name: str = "TD3",
         compile: bool = False,
@@ -152,6 +153,7 @@ class TD3(Agent):
         self.discount = discount
         self.tau = tau
         self.act_with_target = act_with_target
+        self.logging_freq = logging_freq
         self.device = device
 
         # Init actor and it's target
@@ -213,7 +215,7 @@ class TD3(Agent):
                 if wandb.run is not None:
                     wandb.log({"reset": reset_flag})
 
-            if i % 100 == 0:
+            if i % self.logging_freq == 0:
                 if wandb.run is not None:
                     wandb.log(info)
                     wandb.log({"reset": reset_flag})

@@ -345,7 +345,7 @@ class VQ_TC_TD3(Agent):
         tau: float = 0.005,
         rho: float = 0.9,  # discount for dynamics
         act_with_target: bool = False,  # if True act with target actor network
-        logging_epoch_freq: int = 499,
+        logging_freq: int = 499,
         # Reset stuff
         reset_type: str = "last_layer",  # "full" or "last-layer"
         reset_strategy: str = "latent-dist",  #  "latent-dist" or "every-x-param-updates"
@@ -413,7 +413,7 @@ class VQ_TC_TD3(Agent):
         self.ae_patience = ae_patience
         self.ae_min_delta = ae_min_delta
 
-        self.logging_epoch_freq = logging_epoch_freq
+        self.logging_freq = logging_freq
 
         self.project_latent = project_latent
         self.projection_dim = projection_dim
@@ -730,7 +730,7 @@ class VQ_TC_TD3(Agent):
                 if wandb.run is not None:
                     wandb.log({"reset": reset_flag})
 
-            if i % self.logging_epoch_freq == 0:
+            if i % self.logging_freq == 0:
                 logger.info(
                     f"Iteration {i} | loss {info['encoder_loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']} | reward loss {info['reward_loss']} | value dynamics loss {info['value_dynamics_loss']}"
                 )
@@ -803,7 +803,7 @@ class VQ_TC_TD3(Agent):
             batch = replay_buffer.sample(self.ae_batch_size, val=False)
             info.update(self.update_representation_step(batch=batch))
 
-            if i % self.logging_epoch_freq == 0:
+            if i % self.logging_freq == 0:
                 logger.info(
                     f"Iteration {i} | loss {info['encoder_loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']} | reward loss {info['reward_loss']} | value dynamics loss {info['value_dynamics_loss']}"
                 )
@@ -927,7 +927,7 @@ class VQ_TC_TD3(Agent):
                         self.reset(replay_buffer=replay_buffer)
                         wandb.log({"reset": 1})
 
-            if i % self.logging_epoch_freq == 0:
+            if i % self.logging_freq == 0:
                 if wandb.run is not None:
                     wandb.log(info)
                     wandb.log({"reset": 0})
