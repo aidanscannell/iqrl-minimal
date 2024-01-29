@@ -749,9 +749,8 @@ class VQ_TC_TD3(Agent):
                     if self.use_fsq:
                         pre_norm_z_batch = self.encoder.mlp(batch.observations[0])
                         log_rank(name="z-pre-normed", z=pre_norm_z_batch)
-                        z_batch = z_batch[self.fsq_idx]
-                        if self.fsq_idx == 0:
-                            z_batch = torch.flatten(z_batch, -2, -1)
+                        z_batch = z_batch[0]  # always use z not indices
+                        z_batch = torch.flatten(z_batch, -2, -1)
 
                     log_rank(name="z", z=z_batch)
 
