@@ -280,10 +280,33 @@ Gross violations will trigger corrections at the camera-ready phase.
 \section{Introduction}
 \label{intro}
 
+Reinforcement learning (RL) has potential...
+
+However, applying RL in real-world environments with high dimensional/complex observation spaces is challenging.
+
+Compressing observations in latent state space.
+Hand crafted features
+
+Learning features with representation learning.
+These methods typically learn task-specific representations
+as they train the representation to predict rewards and/or values
+\citep{zhaoSimplifiedTemporalConsistency2023,hansenTemporalDifferenceLearning2022}
+
+For example, \citet{zhaoSimplifiedTemporalConsistency2023} use a latent-state consistency loss based upon the Cosine
+similarity loss plus the MSE of reward predictions in the latent space.
+The cosine similarity loss provides training stability whilst the reward prediction prevents representation collapse.
+
+In this paper, we propose a simple representation learning technique that can be combined with any model-free RL method.
+Normalization based upon Finite Scalar Quantization
+Importantly, our representation {\em (i)} significantly speeds up learning, {\em (ii)} prevents representation collapse,
+and {\em (iii)} is task-agnostic.
+
+% In recent years, it has become common to
+
 \begin{figure}[ht]
 \vskip 0.2in
 \begin{center}
-\centerline{\includegraphics[width=0.6\columnwidth]{./figs/diagram-self-predictive.png}}
+\centerline{\includegraphics[width=\columnwidth]{./figs/method-diagram.png}}
 \caption{Self-predictice loss}
 \label{diagram-self-predictive}
 \end{center}
@@ -347,9 +370,9 @@ whilst DBC \citep{zhangLearningInvariantRepresentations2020} combine its method 
 \textbf{Primacy bias}
 Primacy bias in deep RL \citep{nikishinPrimacyBiasDeep2022}
 is where an agent overfits on early data and loses its ability to learn from new data,
-which arises due to the plasticity in NNs \cite{lyleUnderstandingPlasticityNeural2023} \todo{earlier citation of plasticiy in NNs??}.
-\cite{nikishinPrimacyBiasDeep2022} showed that periodically resetting the agent's parameters can help alleviate primacy bias.
-\cite{doroSampleEfficientReinforcementLearning2022} built on top of this insight and showed that resetting the
+which arises due to the plasticity in NNs \citep{lyleUnderstandingPlasticityNeural2023} \todo{earlier citation of plasticiy in NNs??}.
+\citet{nikishinPrimacyBiasDeep2022} showed that periodically resetting the agent's parameters can help alleviate primacy bias.
+\citet{doroSampleEfficientReinforcementLearning2022} built on top of this insight and showed that resetting the
 agent's parameters not only alleviates primacy bias but also
 enables the number of parameter update's per environment interaction to be increased.
 They refer to this as the replay ratio but it has also been referred to as the update to data
@@ -470,6 +493,26 @@ where each entry in  $f : z \rightarrow \left[ L/2 \right] \mathrm{tanh}(z))$
 \section{Experiments}
 \label{sec:experiments}
 
+\begin{table}[t]
+\caption{FSQ levels $\mathcal{L}$ to approximate different codebook sizes $|\mathcal{C}|$}
+\label{sample-table}
+\vskip 0.15in
+\begin{center}
+\begin{small}
+\begin{sc}
+\begin{tabular}{lccc}
+\toprule
+Target size $|\mathcal{C}|$ & $2^{8}$ & $2^{10}$ & $2^{12}$ \\
+\midrule
+Proposed $\mathcal{L}$ & $[8,6,5]$ & $[8,5,5,5]$ & $[7,5,5,5,5]$ \\
+% \bottomrule
+\end{tabular}
+\end{sc}
+\end{small}
+\end{center}
+\vskip -0.1in
+\end{table}
+
 
 \begin{figure*}[ht]
 \vskip 0.2in
@@ -490,8 +533,11 @@ where each entry in  $f : z \rightarrow \left[ L/2 \right] \mathrm{tanh}(z))$
 
 \text{Ablations}
 
+
+
 \begin{itemize}
   \item Show un-normalised isn't as good.
+  \item Compare different size latent spaces? Different levels $[8,5]$ vs $[8,6,5]$ vs $[8,5,5,5]$ vs $[7,5,5,5,5]$
   \item Target encoder vs online encoder for mapping states to latents for TD3.
   \item Show cosine similarity slows training.
   \item Show adding reconstruction loss hurts performance.
