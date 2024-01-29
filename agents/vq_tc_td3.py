@@ -45,11 +45,11 @@ class FSQEncoder(MLPResettable):
         observation_space: Space,
         mlp_dims: List[int],
         levels: List[int] = [8, 6, 5],  # target size 2^8, actual size 240
-        num_codes: int = 1024,
+        latent_dim: int = 1024,
     ):
         in_dim = np.array(observation_space.shape).prod()
         self.levels = tuple(levels)
-        self.latent_dim = (num_codes, len(levels))
+        self.latent_dim = (latent_dim, len(levels))
         self.act_fn = None
         out_dim = np.array(self.latent_dim).prod()
         # self._mlp = h.mlp(
@@ -86,10 +86,10 @@ class FSQDecoder(MLPResettable):
         observation_space: Space,
         mlp_dims: List[int],
         levels: List[int] = [8, 6, 5],  # target size 2^8, actual size 240
-        num_codes: int = 1024,
+        latent_dim: int = 1024,
     ):
         self.levels = levels
-        self.latent_dim = (num_codes, len(levels))
+        self.latent_dim = (latent_dim, len(levels))
         in_dim = np.array(self.latent_dim).prod()
         out_dim = np.array(observation_space.shape).prod()
         mlp = h.mlp(in_dim=in_dim, mlp_dims=mlp_dims, out_dim=out_dim, act_fn=None)
@@ -120,10 +120,10 @@ class FSQMLPDynamics(MLPResettable):
         mlp_dims: List[int],
         # latent_dim: int = 20,
         levels: List[int] = [8, 6, 5],  # target size 2^8, actual size 240
-        num_codes: int = 1024,
+        latent_dim: int = 1024,
     ):
         self.levels = levels
-        self.latent_dim = (num_codes, len(levels))
+        self.latent_dim = (latent_dim, len(levels))
         self.act_fn = None
 
         in_dim = np.array(action_space.shape).prod() + np.array(self.latent_dim).prod()
@@ -162,10 +162,10 @@ class FSQMLPReward(MLPResettable):
         action_space: Space,
         mlp_dims: List[int],
         levels: List[int] = [8, 6, 5],  # target size 2^8, actual size 240
-        num_codes: int = 1024,
+        latent_dim: int = 1024,
     ):
         self.levels = levels
-        self.latent_dim = (num_codes, len(levels))
+        self.latent_dim = (latent_dim, len(levels))
         self.act_fn = None
 
         in_dim = np.array(action_space.shape).prod() + np.array(self.latent_dim).prod()
@@ -190,10 +190,10 @@ class Projection(MLPResettable):
         mlp_dims: List[int],
         levels: List[int] = [8, 6, 5],  # target size 2^8, actual size 240
         out_dim: int = 1024,
-        num_codes: int = 1024,
+        latent_dim: int = 1024,
     ):
         self.levels = levels
-        self.latent_dim = (num_codes, len(levels))
+        self.latent_dim = (latent_dim, len(levels))
         self.act_fn = None
 
         in_dim = np.array(self.latent_dim).prod()
@@ -382,7 +382,6 @@ class VQ_TC_TD3(Agent):
         ae_normalize: bool = True,
         simplex_dim: int = 10,
         use_fsq: bool = False,
-        fsq_num_codes: int = 1024,
         fsq_levels: List[int] = [8, 6, 5],
         fsq_idx: int = 0,  # 0 uses z and 1 uses indices for actor/critic
         # encoder_reset_params_freq: int = 10000,  # reset enc params after X param updates
@@ -425,7 +424,6 @@ class VQ_TC_TD3(Agent):
         self.ae_normalize = ae_normalize
         self.simplex_dim = simplex_dim
         self.use_fsq = use_fsq
-        self.fsq_num_codes = fsq_num_codes
         self.fsq_levels = fsq_levels
         self.fsq_idx = fsq_idx
 
@@ -446,13 +444,13 @@ class VQ_TC_TD3(Agent):
                 observation_space=observation_space,
                 mlp_dims=encoder_mlp_dims,
                 levels=fsq_levels,
-                num_codes=fsq_num_codes,
+                latent_dim=latent_dim,
             ).to(device)
             self.encoder_target = FSQEncoder(
                 observation_space=observation_space,
                 mlp_dims=encoder_mlp_dims,
                 levels=fsq_levels,
-                num_codes=fsq_num_codes,
+                latent_dim=latent_dim,
             ).to(device)
         else:
             self.encoder = Encoder(
@@ -481,7 +479,7 @@ class VQ_TC_TD3(Agent):
                     observation_space=observation_space,
                     mlp_dims=mlp_dims,
                     levels=fsq_levels,
-                    num_codes=fsq_num_codes,
+                    latent_dim=latent_dim,
                 ).to(device)
             else:
                 self.decoder = Decoder(
@@ -498,7 +496,7 @@ class VQ_TC_TD3(Agent):
                     action_space=action_space,
                     mlp_dims=mlp_dims,
                     levels=fsq_levels,
-                    num_codes=fsq_num_codes,
+                    latent_dim=latent_dim,
                 ).to(device)
             else:
                 self.dynamics = MLPDynamics(
@@ -516,7 +514,7 @@ class VQ_TC_TD3(Agent):
                     action_space=action_space,
                     mlp_dims=mlp_dims,
                     levels=fsq_levels,
-                    num_codes=fsq_num_codes,
+                    latent_dim=latent_dim,
                 ).to(device)
             else:
                 self.reward = MLPReward(
@@ -534,13 +532,13 @@ class VQ_TC_TD3(Agent):
             self.projection = Projection(
                 mlp_dims=[1024],
                 levels=fsq_levels,
-                num_codes=fsq_num_codes,
+                latent_dim=latent_dim,
                 out_dim=projection_dim,
             ).to(device)
             self.projection_target = Projection(
                 mlp_dims=[1024],
                 levels=fsq_levels,
-                num_codes=fsq_num_codes,
+                latent_dim=latent_dim,
                 out_dim=projection_dim,
             ).to(device)
             self.projection_target.load_state_dict(self.projection.state_dict())
@@ -581,15 +579,20 @@ class VQ_TC_TD3(Agent):
                 # low=0.0, high=high, shape=(latent_dim,)
             )
         if use_fsq:
-            high = np.array(fsq_levels).prod()
+            codebook_size = np.array(fsq_levels).prod()
 
             if self.fsq_idx == 0:
-                shape = (fsq_num_codes * len(fsq_levels),)
-                # shape = (fsq_num_codes, len(fsq_levels))
+                num_levels = len(fsq_levels)
+                low = -num_levels / 2
+                high = num_levels / 2
+                shape = (latent_dim * len(fsq_levels),)
+                # shape = (latent_dim, len(fsq_levels))
             else:
-                shape = (fsq_num_codes,)
+                low = 1
+                high = codebook_size
+                shape = (latent_dim,)
             self.latent_observation_space = gym.spaces.Box(
-                low=0, high=high, shape=shape
+                low=low, high=high, shape=shape
             )
 
         print(f"latent_observation_space {self.latent_observation_space}")
