@@ -325,7 +325,7 @@ class MLPReward(MLPResettable):
 class VQ_TC_TD3(Agent):
     def __init__(
         self,
-        # DDPG config
+        # TD3 config
         observation_space: Space,
         action_space: Box,
         mlp_dims: List[int] = [512, 512],
@@ -337,7 +337,7 @@ class VQ_TC_TD3(Agent):
         noise_clip: float = 0.5,
         learning_rate: float = 3e-4,
         batch_size: int = 128,
-        utd_ratio: int = 1,  # DDPG parameter update-to-data ratio
+        utd_ratio: int = 1,  # TD3 parameter update-to-data ratio
         actor_update_freq: int = 1,  # update actor less frequently than critic
         nstep: int = 1,  # nstep used for TD returns
         horizon: int = 5,  # horizon used for representation learning
@@ -596,8 +596,8 @@ class VQ_TC_TD3(Agent):
             )
 
         print(f"latent_observation_space {self.latent_observation_space}")
-        # Init DDPG agent
-        self.ddpg = agents.DDPG(
+        # Init TD3 agent
+        self.td3 = agents.TD3(
             observation_space=self.latent_observation_space,
             action_space=action_space,
             mlp_dims=mlp_dims,
@@ -661,23 +661,23 @@ class VQ_TC_TD3(Agent):
 
         ###### Log some stuff ######
         if wandb.run is not None:
-            wandb.log({"exploration_noise": self.ddpg.exploration_noise})
+            wandb.log({"exploration_noise": self.td3.exploration_noise})
             wandb.log({"buffer_size": replay_buffer.size()})
 
-        self.ddpg.exploration_noise_schedule.step()
+        self.td3.exploration_noise_schedule.step()
         self.eval()
-        # self.ddpg.eval()
+        # self.td3.eval()
         return info
 
     def update_1(self, replay_buffer: ReplayBuffer, num_new_transitions: int) -> dict:
-        """Update representation and DDPG at same time"""
-        num_updates = int(num_new_transitions * self.ddpg.utd_ratio)
+        """Update representation and TD3 at same time"""
+        num_updates = int(num_new_transitions * self.td3.utd_ratio)
         info = {}
 
         logger.info(f"Performing {num_updates} VQ-TC-TD3 updates...")
         reset_flag = 0
         for i in range(num_updates):
-            batch = replay_buffer.sample(self.ddpg.batch_size, val=False)
+            batch = replay_buffer.sample(self.td3.batch_size, val=False)
             # Update encoder less frequently than actor/critic
             if i % self.encoder_update_freq == 0:
                 info.update(self.update_representation_step(batch=batch))
@@ -707,15 +707,15 @@ class VQ_TC_TD3(Agent):
                 next_state_discounts=batch.next_state_discounts,
             )
 
-            # DDPG on latent representation
-            info.update(self.ddpg.update_step(batch=latent_batch))
+            # TD3 on latent representation
+            info.update(self.td3.update_step(batch=latent_batch))
 
             # Potentially reset ae/actor/critic NN params
             if self.reset_strategy == "every-x-param-updates":
                 if self.reset_params_freq is not None:
-                    if self.ddpg.critic_update_counter % self.reset_params_freq == 0:
+                    if self.td3.critic_update_counter % self.reset_params_freq == 0:
                         logger.info(
-                            f"Resetting as step {self.ddpg.critic_update_counter} % {self.reset_params_freq} == 0"
+                            f"Resetting as step {self.td3.critic_update_counter} % {self.reset_params_freq} == 0"
                         )
                         self.reset(replay_buffer=replay_buffer)
                         reset_flag = 1
@@ -732,7 +732,7 @@ class VQ_TC_TD3(Agent):
                     f"Iteration {i} | loss {info['encoder_loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']} | reward loss {info['reward_loss']} | value dynamics loss {info['value_dynamics_loss']}"
                 )
                 if wandb.run is not None:
-                    # info.update({"exploration_noise": self.ddpg.exploration_noise})
+                    # info.update({"exploration_noise": self.td3.exploration_noise})
                     wandb.log(info)
                     wandb.log({"reset": reset_flag})
                     # z_dist = self.latent_euclidian_dist()
@@ -764,7 +764,7 @@ class VQ_TC_TD3(Agent):
         return info
 
     def update_2(self, replay_buffer: ReplayBuffer, num_new_transitions: int) -> dict:
-        """Update representation and then do DDPG"""
+        """Update representation and then do TD3"""
 
         ###### Train the representation ######
         num_ae_updates = int(num_new_transitions * self.ae_utd_ratio)
@@ -777,7 +777,7 @@ class VQ_TC_TD3(Agent):
                     wandb.log({"reset": 1})
 
         ###### Train actor/critic ######
-        num_updates = int(num_new_transitions * self.ddpg.utd_ratio)
+        num_updates = int(num_new_transitions * self.td3.utd_ratio)
         info.update(self.update_actor_critic(replay_buffer, num_updates=num_updates))
 
         return info
@@ -877,11 +877,11 @@ class VQ_TC_TD3(Agent):
         self, replay_buffer: ReplayBuffer, num_updates: int
     ) -> dict:
         """Update actor/critic"""
-        # TODO This could use ddpg.update()
+        # TODO This could use td3.update()
         logger.info(f"Performing {num_updates} actor/critic updates...")
         info = {}
         for i in range(num_updates):
-            batch = replay_buffer.sample(self.ddpg.batch_size)
+            batch = replay_buffer.sample(self.td3.batch_size)
 
             ###### Map observations to latent ######
             # TODO don't use target here. It breaks dog?
@@ -909,14 +909,14 @@ class VQ_TC_TD3(Agent):
             )
 
             ###### Train actor/critic on latent representation ######
-            info.update(self.ddpg.update_step(batch=latent_batch))
+            info.update(self.td3.update_step(batch=latent_batch))
 
             ###### Potentially reset ae/actor/critic NN params ######
             if self.reset_strategy == "every-x-param-updates":
                 if self.reset_params_freq is not None:
-                    if self.ddpg.critic_update_counter % self.reset_params_freq == 0:
+                    if self.td3.critic_update_counter % self.reset_params_freq == 0:
                         logger.info(
-                            f"Resetting as step {self.ddpg.critic_update_counter} % {self.reset_params_freq} == 0"
+                            f"Resetting as step {self.td3.critic_update_counter} % {self.reset_params_freq} == 0"
                         )
                         self.reset(replay_buffer=replay_buffer)
                         wandb.log({"reset": 1})
@@ -1044,27 +1044,27 @@ class VQ_TC_TD3(Agent):
             temporal_consitency_loss = torch.zeros(1).to(self.device)
 
         def value_loss_fn(z_next):
-            q1_pred, q2_pred = self.ddpg.critic(z, batch.actions)
+            q1_pred, q2_pred = self.td3.critic(z, batch.actions)
 
             # Policy smoothing actions for next state
-            # TODO get this functionality from method in ddpg
+            # TODO get this functionality from method in td3
             clipped_noise = (
                 torch.randn_like(batch.actions, device=self.device)
-                * self.ddpg.policy_noise
+                * self.td3.policy_noise
             ).clamp(
-                -self.ddpg.noise_clip, self.ddpg.noise_clip
-            ) * self.ddpg.target_actor.action_scale
+                -self.td3.noise_clip, self.td3.noise_clip
+            ) * self.td3.target_actor.action_scale
 
-            next_state_actions = (self.ddpg.target_actor(z_next) + clipped_noise).clamp(
-                self.ddpg.action_space.low[0], self.ddpg.action_space.high[0]
+            next_state_actions = (self.td3.target_actor(z_next) + clipped_noise).clamp(
+                self.td3.action_space.low[0], self.td3.action_space.high[0]
             )
-            q1_next_target, q2_next_target = self.ddpg.target_critic(
+            q1_next_target, q2_next_target = self.td3.target_critic(
                 z_next, next_state_actions
             )
             min_q_next_target = torch.min(q1_next_target, q2_next_target)
             next_q_value = batch.rewards.flatten() + (
                 1 - batch.dones.flatten()
-            ) * self.ddpg.discount**self.ddpg.nstep * (min_q_next_target).view(-1)
+            ) * self.td3.discount**self.td3.nstep * (min_q_next_target).view(-1)
             q1_loss = torch.nn.functional.mse_loss(
                 input=q1_pred, target=next_q_value, reduction="mean"
             )
@@ -1090,9 +1090,9 @@ class VQ_TC_TD3(Agent):
         else:
             value_enc_loss = torch.zeros(1).to(self.device)
 
-        # if (self.ddpg.critic_update_counter / 1000) > 5:
+        # if (self.td3.critic_update_counter / 1000) > 5:
         #     print(
-        #         f"(self.ddpg.critic_update_counter / 1000) {(self.ddpg.critic_update_counter / 1000)}"
+        #         f"(self.td3.critic_update_counter / 1000) {(self.td3.critic_update_counter / 1000)}"
         #     )
         #     self.value_weight *= self.value_weight_discount
 
@@ -1191,7 +1191,7 @@ class VQ_TC_TD3(Agent):
                 z = torch.flatten(z, -2, -1)
         z = z.to(torch.float)
 
-        action = self.ddpg.select_action(observation=z, eval_mode=eval_mode, t0=t0)
+        action = self.td3.select_action(observation=z, eval_mode=eval_mode, t0=t0)
         if flag:
             action = action[None, ...]
         return action
@@ -1222,14 +1222,14 @@ class VQ_TC_TD3(Agent):
         self.ae_opt = torch.optim.AdamW(encoder_params, lr=self.ae_learning_rate)
 
         logger.info("Resetting actor/critic")
-        self.ddpg.reset(reset_type=reset_type)
+        self.td3.reset(reset_type=reset_type)
 
         # Don't reset during retraining
         reset_strategy = self.reset_strategy
         self.reset_strategy = None
 
         # Calculate number of updates to perform
-        max_new_data = self.max_retrain_updates / self.ddpg.utd_ratio
+        max_new_data = self.max_retrain_updates / self.td3.utd_ratio
         num_new_transitions = np.min([replay_buffer.size(), max_new_data])
 
         if self.reset_retrain_strategy == "interleaved":
@@ -1245,7 +1245,7 @@ class VQ_TC_TD3(Agent):
             # Set large num encoder updates as will be stopped early using val loss
             # num_new_transitions = replay_buffer.size() * self.retrain_utd_ratio
             # num_new_transitions = replay_buffer.size() * self.ae_utd_ratio
-            max_new_data = self.max_retrain_updates / self.ddpg.utd_ratio
+            max_new_data = self.max_retrain_updates / self.td3.utd_ratio
             num_new_transitions = np.min([replay_buffer.size(), max_new_data])
             info = self.update_2(
                 replay_buffer=replay_buffer, num_new_transitions=num_new_transitions
@@ -1294,14 +1294,14 @@ class VQ_TC_TD3(Agent):
         #         # Train actor/critic
         #         logger.info(f"Retraining actor/critic...")
         #         # TODO calculate number of actor/critic updates from num_ae_updates
-        #         num_ddpg_updates = int(info["num_ae_updates"] * self.eta_ratio)
+        #         num_td3_updates = int(info["num_ae_updates"] * self.eta_ratio)
         #         info = self.update_actor_critic(
-        #             replay_buffer, num_updates=num_ddpg_updates
+        #             replay_buffer, num_updates=num_td3_updates
         #         )
 
     def train(self):
         self.encoder.train()
-        self.ddpg.train()
+        self.td3.train()
         if self.reconstruction_loss:
             self.decoder.train()
         if self.temporal_consistency or self.value_dynamics_loss:
@@ -1311,7 +1311,7 @@ class VQ_TC_TD3(Agent):
 
     def eval(self):
         self.encoder.eval()
-        self.ddpg.eval()
+        self.td3.eval()
         if self.reconstruction_loss:
             self.decoder.eval()
         if self.temporal_consistency or self.value_dynamics_loss:

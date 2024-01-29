@@ -1,5 +1,5 @@
-_target_: "agents.DDPG"
-# DDPG stuff
+_target_: "agents.TD3"
+# TD3 stuff
 mlp_dims: [512, 512]
 exploration_noise_start: 1.0
 exploration_noise_end: 0.1
@@ -18,4 +18,4 @@ device: ${device}
 reset_type: "full" # "full" or "last-layer"
 reset_params_freq: None # reset params after this many param updates
 # reset_params_freq: 100000  # reset params after this many param updates
-name: DDPG_reset-freq=${agent.reset_params_freq}_reset_type=${agent.reset_type}_utd=${agent.utd_ratio}
+name: TD3_reset-freq=${agent.reset_params_freq}_reset_type=${agent.reset_type}_utd=${agent.utd_ratio}
