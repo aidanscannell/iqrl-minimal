@@ -101,7 +101,7 @@ class Actor(nn.Module):
             raise NotImplementedError
 
 
-class DDPG(Agent):
+class TD3(Agent):
     def __init__(
         self,
         observation_space: Space,
@@ -125,8 +125,9 @@ class DDPG(Agent):
         discount: float = 0.99,
         tau: float = 0.005,
         act_with_target: bool = False,  # if True act with target network
+        logging_freq: int = 499,
         device: str = "cuda",
-        name: str = "DDPG",
+        name: str = "TD3",
         compile: bool = False,
         nstep: int = 1,
         **kwargs,  # hack to let work with agent.latent_dim in env config
@@ -152,6 +153,7 @@ class DDPG(Agent):
         self.discount = discount
         self.tau = tau
         self.act_with_target = act_with_target
+        self.logging_freq = logging_freq
         self.device = device
 
         # Init actor and it's target
@@ -196,7 +198,7 @@ class DDPG(Agent):
 
     def update(self, replay_buffer: ReplayBuffer, num_new_transitions: int) -> dict:
         num_updates = int(num_new_transitions * self.utd_ratio)
-        logger.info(f"Performing {num_updates} DDPG updates")
+        logger.info(f"Performing {num_updates} TD3 updates")
 
         if wandb.run is not None:
             wandb.log({"exploration_noise": self.exploration_noise})
@@ -213,7 +215,7 @@ class DDPG(Agent):
                 if wandb.run is not None:
                     wandb.log({"reset": reset_flag})
 
-            if i % 100 == 0:
+            if i % self.logging_freq == 0:
                 if wandb.run is not None:
                     wandb.log(info)
                     wandb.log({"reset": reset_flag})

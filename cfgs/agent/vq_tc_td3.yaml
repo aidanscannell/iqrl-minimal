@@ -27,6 +27,8 @@ train_strategy: "interleaved"  # "interleaved" or "representation-first"
 temporal_consistency: True # if True include dynamic model in encoder
 reconstruction_loss: False # if True include decoder
 use_cosine_similarity_dynamics: False
+use_target_encoder: False
+act_with_target_enc: False
 encoder_mlp_dims: [256]
 ae_learning_rate: 1e-4
 ae_batch_size: 256
@@ -38,8 +40,7 @@ ae_tau: 0.005
 ae_normalize: True
 simplex_dim: 8
 use_fsq: True
-fsq_num_codes: 1024
 fsq_levels: [8, 6, 5]
 fsq_idx: 0
 # encoder_reset_params_freq: int = 10000  # reset enc params after X param updates
-name: VQ-TC-TD3_n=${agent.nstep}_h=${agent.horizon}_cos=${agent.use_cosine_similarity_dynamics}_${agent.reset_strategy}-${agent.reset_type}_${agent.train_strategy}-${agent.reset_params_freq}_temp-${agent.temporal_consistency}_rec=${agent.reconstruction_loss}_utd=${agent.utd_ratio}_${agent.fsq_levels}_idx=${agent.fsq_idx}
+name: VQ-TC-TD3_n=${agent.nstep}_h=${agent.horizon}_td3-targ=${agent.use_target_encoder}_act-targ=${agent.act_with_target_enc}_cos=${agent.use_cosine_similarity_dynamics}_${agent.reset_strategy}-${agent.reset_type}_${agent.train_strategy}-${agent.reset_params_freq}_temp-${agent.temporal_consistency}_rec=${agent.reconstruction_loss}_utd=${agent.utd_ratio}_fsq=${agent.use_fsq}_${agent.fsq_levels}_idx=${agent.fsq_idx}_d=${agent.latent_dim}

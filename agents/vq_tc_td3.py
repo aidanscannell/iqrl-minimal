@@ -13,6 +13,7 @@ import wandb
 from custom_types import Action, Agent, EvalMode, T0
 from gymnasium.spaces import Box, Space
 from helper import SimNorm, soft_update_params
+from torch.linalg import cond, matrix_rank
 from utils import ReplayBuffer, ReplayBufferSamples
 from vector_quantize_pytorch import FSQ
 
@@ -44,11 +45,11 @@ class FSQEncoder(MLPResettable):
         observation_space: Space,
         mlp_dims: List[int],
         levels: List[int] = [8, 6, 5],  # target size 2^8, actual size 240
-        num_codes: int = 1024,
+        latent_dim: int = 1024,
     ):
         in_dim = np.array(observation_space.shape).prod()
         self.levels = tuple(levels)
-        self.latent_dim = (num_codes, len(levels))
+        self.latent_dim = (latent_dim, len(levels))
         self.act_fn = None
         out_dim = np.array(self.latent_dim).prod()
         # self._mlp = h.mlp(
@@ -85,10 +86,10 @@ class FSQDecoder(MLPResettable):
         observation_space: Space,
         mlp_dims: List[int],
         levels: List[int] = [8, 6, 5],  # target size 2^8, actual size 240
-        num_codes: int = 1024,
+        latent_dim: int = 1024,
     ):
         self.levels = levels
-        self.latent_dim = (num_codes, len(levels))
+        self.latent_dim = (latent_dim, len(levels))
         in_dim = np.array(self.latent_dim).prod()
         out_dim = np.array(observation_space.shape).prod()
         mlp = h.mlp(in_dim=in_dim, mlp_dims=mlp_dims, out_dim=out_dim, act_fn=None)
@@ -119,10 +120,10 @@ class FSQMLPDynamics(MLPResettable):
         mlp_dims: List[int],
         # latent_dim: int = 20,
         levels: List[int] = [8, 6, 5],  # target size 2^8, actual size 240
-        num_codes: int = 1024,
+        latent_dim: int = 1024,
     ):
         self.levels = levels
-        self.latent_dim = (num_codes, len(levels))
+        self.latent_dim = (latent_dim, len(levels))
         self.act_fn = None
 
         in_dim = np.array(action_space.shape).prod() + np.array(self.latent_dim).prod()
@@ -161,10 +162,10 @@ class FSQMLPReward(MLPResettable):
         action_space: Space,
         mlp_dims: List[int],
         levels: List[int] = [8, 6, 5],  # target size 2^8, actual size 240
-        num_codes: int = 1024,
+        latent_dim: int = 1024,
     ):
         self.levels = levels
-        self.latent_dim = (num_codes, len(levels))
+        self.latent_dim = (latent_dim, len(levels))
         self.act_fn = None
 
         in_dim = np.array(action_space.shape).prod() + np.array(self.latent_dim).prod()
@@ -189,10 +190,10 @@ class Projection(MLPResettable):
         mlp_dims: List[int],
         levels: List[int] = [8, 6, 5],  # target size 2^8, actual size 240
         out_dim: int = 1024,
-        num_codes: int = 1024,
+        latent_dim: int = 1024,
     ):
         self.levels = levels
-        self.latent_dim = (num_codes, len(levels))
+        self.latent_dim = (latent_dim, len(levels))
         self.act_fn = None
 
         in_dim = np.array(self.latent_dim).prod()
@@ -324,7 +325,7 @@ class MLPReward(MLPResettable):
 class VQ_TC_TD3(Agent):
     def __init__(
         self,
-        # DDPG config
+        # TD3 config
         observation_space: Space,
         action_space: Box,
         mlp_dims: List[int] = [512, 512],
@@ -336,7 +337,7 @@ class VQ_TC_TD3(Agent):
         noise_clip: float = 0.5,
         learning_rate: float = 3e-4,
         batch_size: int = 128,
-        utd_ratio: int = 1,  # DDPG parameter update-to-data ratio
+        utd_ratio: int = 1,  # TD3 parameter update-to-data ratio
         actor_update_freq: int = 1,  # update actor less frequently than critic
         nstep: int = 1,  # nstep used for TD returns
         horizon: int = 5,  # horizon used for representation learning
@@ -344,6 +345,7 @@ class VQ_TC_TD3(Agent):
         tau: float = 0.005,
         rho: float = 0.9,  # discount for dynamics
         act_with_target: bool = False,  # if True act with target actor network
+        logging_freq: int = 499,
         # Reset stuff
         reset_type: str = "last_layer",  # "full" or "last-layer"
         reset_strategy: str = "latent-dist",  #  "latent-dist" or "every-x-param-updates"
@@ -381,7 +383,6 @@ class VQ_TC_TD3(Agent):
         ae_normalize: bool = True,
         simplex_dim: int = 10,
         use_fsq: bool = False,
-        fsq_num_codes: int = 1024,
         fsq_levels: List[int] = [8, 6, 5],
         fsq_idx: int = 0,  # 0 uses z and 1 uses indices for actor/critic
         # encoder_reset_params_freq: int = 10000,  # reset enc params after X param updates
@@ -412,6 +413,8 @@ class VQ_TC_TD3(Agent):
         self.ae_patience = ae_patience
         self.ae_min_delta = ae_min_delta
 
+        self.logging_freq = logging_freq
+
         self.project_latent = project_latent
         self.projection_dim = projection_dim
 
@@ -424,7 +427,6 @@ class VQ_TC_TD3(Agent):
         self.ae_normalize = ae_normalize
         self.simplex_dim = simplex_dim
         self.use_fsq = use_fsq
-        self.fsq_num_codes = fsq_num_codes
         self.fsq_levels = fsq_levels
         self.fsq_idx = fsq_idx
 
@@ -432,25 +434,26 @@ class VQ_TC_TD3(Agent):
 
         self.device = device
 
+        # Use SimNorm activation if ae_normalize is True
+        act_fn = None
+        target_act_fn = None
         if ae_normalize:
             act_fn = SimNorm(dim=simplex_dim)
             target_act_fn = SimNorm(dim=simplex_dim)
-        else:
-            act_fn = None
-            target_act_fn = None
+
         # Init representation learning (encoder/decoder/dynamics/reward)
         if use_fsq:
             self.encoder = FSQEncoder(
                 observation_space=observation_space,
                 mlp_dims=encoder_mlp_dims,
                 levels=fsq_levels,
-                num_codes=fsq_num_codes,
+                latent_dim=latent_dim,
             ).to(device)
             self.encoder_target = FSQEncoder(
                 observation_space=observation_space,
                 mlp_dims=encoder_mlp_dims,
                 levels=fsq_levels,
-                num_codes=fsq_num_codes,
+                latent_dim=latent_dim,
             ).to(device)
         else:
             self.encoder = Encoder(
@@ -479,7 +482,7 @@ class VQ_TC_TD3(Agent):
                     observation_space=observation_space,
                     mlp_dims=mlp_dims,
                     levels=fsq_levels,
-                    num_codes=fsq_num_codes,
+                    latent_dim=latent_dim,
                 ).to(device)
             else:
                 self.decoder = Decoder(
@@ -496,7 +499,7 @@ class VQ_TC_TD3(Agent):
                     action_space=action_space,
                     mlp_dims=mlp_dims,
                     levels=fsq_levels,
-                    num_codes=fsq_num_codes,
+                    latent_dim=latent_dim,
                 ).to(device)
             else:
                 self.dynamics = MLPDynamics(
@@ -514,7 +517,7 @@ class VQ_TC_TD3(Agent):
                     action_space=action_space,
                     mlp_dims=mlp_dims,
                     levels=fsq_levels,
-                    num_codes=fsq_num_codes,
+                    latent_dim=latent_dim,
                 ).to(device)
             else:
                 self.reward = MLPReward(
@@ -527,27 +530,27 @@ class VQ_TC_TD3(Agent):
             encoder_params += list(self.reward.parameters())
 
         if self.project_latent:
+            if not use_fsq:
+                raise NotImplementedError
             self.projection = Projection(
                 mlp_dims=[1024],
                 levels=fsq_levels,
-                num_codes=fsq_num_codes,
+                latent_dim=latent_dim,
                 out_dim=projection_dim,
             ).to(device)
-            if compile:
-                self.projection = torch.compile(self.projection, mode="default")
-            encoder_params += list(self.projection.parameters())
-
             self.projection_target = Projection(
                 mlp_dims=[1024],
                 levels=fsq_levels,
-                num_codes=fsq_num_codes,
+                latent_dim=latent_dim,
                 out_dim=projection_dim,
             ).to(device)
             self.projection_target.load_state_dict(self.projection.state_dict())
             if compile:
+                self.projection = torch.compile(self.projection, mode="default")
                 self.projection_target = torch.compile(
                     self.projection_target, mode="default"
                 )
+            encoder_params += list(self.projection.parameters())
 
         self.ae_opt = torch.optim.AdamW(encoder_params, lr=ae_learning_rate)
 
@@ -579,20 +582,25 @@ class VQ_TC_TD3(Agent):
                 # low=0.0, high=high, shape=(latent_dim,)
             )
         if use_fsq:
-            high = np.array(fsq_levels).prod()
+            codebook_size = np.array(fsq_levels).prod()
 
             if self.fsq_idx == 0:
-                shape = (fsq_num_codes * len(fsq_levels),)
-                # shape = (fsq_num_codes, len(fsq_levels))
+                num_levels = len(fsq_levels)
+                low = -num_levels / 2
+                high = num_levels / 2
+                shape = (latent_dim * len(fsq_levels),)
+                # shape = (latent_dim, len(fsq_levels))
             else:
-                shape = (fsq_num_codes,)
+                low = 1
+                high = codebook_size
+                shape = (latent_dim,)
             self.latent_observation_space = gym.spaces.Box(
-                low=0, high=high, shape=shape
+                low=low, high=high, shape=shape
             )
 
         print(f"latent_observation_space {self.latent_observation_space}")
-        # Init DDPG agent
-        self.ddpg = agents.DDPG(
+        # Init TD3 agent
+        self.td3 = agents.TD3(
             observation_space=self.latent_observation_space,
             action_space=action_space,
             mlp_dims=mlp_dims,
@@ -656,23 +664,23 @@ class VQ_TC_TD3(Agent):
 
         ###### Log some stuff ######
         if wandb.run is not None:
-            wandb.log({"exploration_noise": self.ddpg.exploration_noise})
+            wandb.log({"exploration_noise": self.td3.exploration_noise})
             wandb.log({"buffer_size": replay_buffer.size()})
 
-        self.ddpg.exploration_noise_schedule.step()
+        self.td3.exploration_noise_schedule.step()
         self.eval()
-        # self.ddpg.eval()
+        # self.td3.eval()
         return info
 
     def update_1(self, replay_buffer: ReplayBuffer, num_new_transitions: int) -> dict:
-        """Update representation and DDPG at same time"""
-        num_updates = int(num_new_transitions * self.ddpg.utd_ratio)
+        """Update representation and TD3 at same time"""
+        num_updates = int(num_new_transitions * self.td3.utd_ratio)
         info = {}
 
         logger.info(f"Performing {num_updates} VQ-TC-TD3 updates...")
         reset_flag = 0
         for i in range(num_updates):
-            batch = replay_buffer.sample(self.ddpg.batch_size, val=False)
+            batch = replay_buffer.sample(self.td3.batch_size, val=False)
             # Update encoder less frequently than actor/critic
             if i % self.encoder_update_freq == 0:
                 info.update(self.update_representation_step(batch=batch))
@@ -702,15 +710,15 @@ class VQ_TC_TD3(Agent):
                 next_state_discounts=batch.next_state_discounts,
             )
 
-            # DDPG on latent representation
-            info.update(self.ddpg.update_step(batch=latent_batch))
+            # TD3 on latent representation
+            info.update(self.td3.update_step(batch=latent_batch))
 
             # Potentially reset ae/actor/critic NN params
             if self.reset_strategy == "every-x-param-updates":
                 if self.reset_params_freq is not None:
-                    if self.ddpg.critic_update_counter % self.reset_params_freq == 0:
+                    if self.td3.critic_update_counter % self.reset_params_freq == 0:
                         logger.info(
-                            f"Resetting as step {self.ddpg.critic_update_counter} % {self.reset_params_freq} == 0"
+                            f"Resetting as step {self.td3.critic_update_counter} % {self.reset_params_freq} == 0"
                         )
                         self.reset(replay_buffer=replay_buffer)
                         reset_flag = 1
@@ -722,24 +730,47 @@ class VQ_TC_TD3(Agent):
                 if wandb.run is not None:
                     wandb.log({"reset": reset_flag})
 
-            if i % 100 == 0:
+            if i % self.logging_freq == 0:
                 logger.info(
                     f"Iteration {i} | loss {info['encoder_loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']} | reward loss {info['reward_loss']} | value dynamics loss {info['value_dynamics_loss']}"
                 )
                 if wandb.run is not None:
-                    # info.update({"exploration_noise": self.ddpg.exploration_noise})
+                    # info.update({"exploration_noise": self.td3.exploration_noise})
                     wandb.log(info)
                     wandb.log({"reset": reset_flag})
                     # z_dist = self.latent_euclidian_dist()
                     # wandb.log({"z_dist": z_dist})
+
+                    # Log rank of latent
+                    def log_rank(name, z):
+                        try:
+                            rank3 = matrix_rank(z, atol=1e-3, rtol=1e-3)
+                            rank2 = matrix_rank(z, atol=1e-2, rtol=1e-2)
+                            rank1 = matrix_rank(z, atol=1e-1, rtol=1e-1)
+                            condition = cond(z)
+                            for j, rank in enumerate([rank1, rank2, rank3]):
+                                wandb.log({f"{name}-rank-{j}": rank.item()})
+                            wandb.log({f"{name}-cond-num": condition.item()})
+                        except:
+                            pass
+
+                    z_batch = self.encoder(batch.observations[0])
+                    if self.use_fsq:
+                        pre_norm_z_batch = self.encoder.mlp(batch.observations[0])
+                        log_rank(name="z-pre-normed", z=pre_norm_z_batch)
+                        z_batch = z_batch[0]  # always use z not indices
+                        z_batch = torch.flatten(z_batch, -2, -1)
+
+                    log_rank(name="z", z=z_batch)
+
                 reset_flag = 0
 
-        logger.info("Finished training DDPG-AE")
+        logger.info("Finished training VQ-TC-TD3")
 
         return info
 
     def update_2(self, replay_buffer: ReplayBuffer, num_new_transitions: int) -> dict:
-        """Update representation and then do DDPG"""
+        """Update representation and then do TD3"""
 
         ###### Train the representation ######
         num_ae_updates = int(num_new_transitions * self.ae_utd_ratio)
@@ -752,7 +783,7 @@ class VQ_TC_TD3(Agent):
                     wandb.log({"reset": 1})
 
         ###### Train actor/critic ######
-        num_updates = int(num_new_transitions * self.ddpg.utd_ratio)
+        num_updates = int(num_new_transitions * self.td3.utd_ratio)
         info.update(self.update_actor_critic(replay_buffer, num_updates=num_updates))
 
         return info
@@ -772,7 +803,7 @@ class VQ_TC_TD3(Agent):
             batch = replay_buffer.sample(self.ae_batch_size, val=False)
             info.update(self.update_representation_step(batch=batch))
 
-            if i % 100 == 0:
+            if i % self.logging_freq == 0:
                 logger.info(
                     f"Iteration {i} | loss {info['encoder_loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']} | reward loss {info['reward_loss']} | value dynamics loss {info['value_dynamics_loss']}"
                 )
@@ -852,11 +883,11 @@ class VQ_TC_TD3(Agent):
         self, replay_buffer: ReplayBuffer, num_updates: int
     ) -> dict:
         """Update actor/critic"""
-        # TODO This could use ddpg.update()
+        # TODO This could use td3.update()
         logger.info(f"Performing {num_updates} actor/critic updates...")
         info = {}
         for i in range(num_updates):
-            batch = replay_buffer.sample(self.ddpg.batch_size)
+            batch = replay_buffer.sample(self.td3.batch_size)
 
             ###### Map observations to latent ######
             # TODO don't use target here. It breaks dog?
@@ -884,19 +915,19 @@ class VQ_TC_TD3(Agent):
             )
 
             ###### Train actor/critic on latent representation ######
-            info.update(self.ddpg.update_step(batch=latent_batch))
+            info.update(self.td3.update_step(batch=latent_batch))
 
             ###### Potentially reset ae/actor/critic NN params ######
             if self.reset_strategy == "every-x-param-updates":
                 if self.reset_params_freq is not None:
-                    if self.ddpg.critic_update_counter % self.reset_params_freq == 0:
+                    if self.td3.critic_update_counter % self.reset_params_freq == 0:
                         logger.info(
-                            f"Resetting as step {self.ddpg.critic_update_counter} % {self.reset_params_freq} == 0"
+                            f"Resetting as step {self.td3.critic_update_counter} % {self.reset_params_freq} == 0"
                         )
                         self.reset(replay_buffer=replay_buffer)
                         wandb.log({"reset": 1})
 
-            if i % 100 == 0:
+            if i % self.logging_freq == 0:
                 if wandb.run is not None:
                     wandb.log(info)
                     wandb.log({"reset": 0})
@@ -987,7 +1018,7 @@ class VQ_TC_TD3(Agent):
 
                 # Losses
                 rho = self.rho**t
-                if self.use_fsq:
+                if self.use_fsq and not self.project_latent:
                     next_z_pred = next_z_pred.flatten(-2)
                     next_z_tar = next_z_tar.flatten(-2)
                 if self.use_cosine_similarity_dynamics:
@@ -1019,27 +1050,27 @@ class VQ_TC_TD3(Agent):
             temporal_consitency_loss = torch.zeros(1).to(self.device)
 
         def value_loss_fn(z_next):
-            q1_pred, q2_pred = self.ddpg.critic(z, batch.actions)
+            q1_pred, q2_pred = self.td3.critic(z, batch.actions)
 
             # Policy smoothing actions for next state
-            # TODO get this functionality from method in ddpg
+            # TODO get this functionality from method in td3
             clipped_noise = (
                 torch.randn_like(batch.actions, device=self.device)
-                * self.ddpg.policy_noise
+                * self.td3.policy_noise
             ).clamp(
-                -self.ddpg.noise_clip, self.ddpg.noise_clip
-            ) * self.ddpg.target_actor.action_scale
+                -self.td3.noise_clip, self.td3.noise_clip
+            ) * self.td3.target_actor.action_scale
 
-            next_state_actions = (self.ddpg.target_actor(z_next) + clipped_noise).clamp(
-                self.ddpg.action_space.low[0], self.ddpg.action_space.high[0]
+            next_state_actions = (self.td3.target_actor(z_next) + clipped_noise).clamp(
+                self.td3.action_space.low[0], self.td3.action_space.high[0]
             )
-            q1_next_target, q2_next_target = self.ddpg.target_critic(
+            q1_next_target, q2_next_target = self.td3.target_critic(
                 z_next, next_state_actions
             )
             min_q_next_target = torch.min(q1_next_target, q2_next_target)
             next_q_value = batch.rewards.flatten() + (
                 1 - batch.dones.flatten()
-            ) * self.ddpg.discount**self.ddpg.nstep * (min_q_next_target).view(-1)
+            ) * self.td3.discount**self.td3.nstep * (min_q_next_target).view(-1)
             q1_loss = torch.nn.functional.mse_loss(
                 input=q1_pred, target=next_q_value, reduction="mean"
             )
@@ -1065,9 +1096,9 @@ class VQ_TC_TD3(Agent):
         else:
             value_enc_loss = torch.zeros(1).to(self.device)
 
-        # if (self.ddpg.critic_update_counter / 1000) > 5:
+        # if (self.td3.critic_update_counter / 1000) > 5:
         #     print(
-        #         f"(self.ddpg.critic_update_counter / 1000) {(self.ddpg.critic_update_counter / 1000)}"
+        #         f"(self.td3.critic_update_counter / 1000) {(self.td3.critic_update_counter / 1000)}"
         #     )
         #     self.value_weight *= self.value_weight_discount
 
@@ -1166,7 +1197,7 @@ class VQ_TC_TD3(Agent):
                 z = torch.flatten(z, -2, -1)
         z = z.to(torch.float)
 
-        action = self.ddpg.select_action(observation=z, eval_mode=eval_mode, t0=t0)
+        action = self.td3.select_action(observation=z, eval_mode=eval_mode, t0=t0)
         if flag:
             action = action[None, ...]
         return action
@@ -1197,14 +1228,14 @@ class VQ_TC_TD3(Agent):
         self.ae_opt = torch.optim.AdamW(encoder_params, lr=self.ae_learning_rate)
 
         logger.info("Resetting actor/critic")
-        self.ddpg.reset(reset_type=reset_type)
+        self.td3.reset(reset_type=reset_type)
 
         # Don't reset during retraining
         reset_strategy = self.reset_strategy
         self.reset_strategy = None
 
         # Calculate number of updates to perform
-        max_new_data = self.max_retrain_updates / self.ddpg.utd_ratio
+        max_new_data = self.max_retrain_updates / self.td3.utd_ratio
         num_new_transitions = np.min([replay_buffer.size(), max_new_data])
 
         if self.reset_retrain_strategy == "interleaved":
@@ -1220,7 +1251,7 @@ class VQ_TC_TD3(Agent):
             # Set large num encoder updates as will be stopped early using val loss
             # num_new_transitions = replay_buffer.size() * self.retrain_utd_ratio
             # num_new_transitions = replay_buffer.size() * self.ae_utd_ratio
-            max_new_data = self.max_retrain_updates / self.ddpg.utd_ratio
+            max_new_data = self.max_retrain_updates / self.td3.utd_ratio
             num_new_transitions = np.min([replay_buffer.size(), max_new_data])
             info = self.update_2(
                 replay_buffer=replay_buffer, num_new_transitions=num_new_transitions
@@ -1269,14 +1300,14 @@ class VQ_TC_TD3(Agent):
         #         # Train actor/critic
         #         logger.info(f"Retraining actor/critic...")
         #         # TODO calculate number of actor/critic updates from num_ae_updates
-        #         num_ddpg_updates = int(info["num_ae_updates"] * self.eta_ratio)
+        #         num_td3_updates = int(info["num_ae_updates"] * self.eta_ratio)
         #         info = self.update_actor_critic(
-        #             replay_buffer, num_updates=num_ddpg_updates
+        #             replay_buffer, num_updates=num_td3_updates
         #         )
 
     def train(self):
         self.encoder.train()
-        self.ddpg.train()
+        self.td3.train()
         if self.reconstruction_loss:
             self.decoder.train()
         if self.temporal_consistency or self.value_dynamics_loss:
@@ -1286,7 +1317,7 @@ class VQ_TC_TD3(Agent):
 
     def eval(self):
         self.encoder.eval()
-        self.ddpg.eval()
+        self.td3.eval()
         if self.reconstruction_loss:
             self.decoder.eval()
         if self.temporal_consistency or self.value_dynamics_loss:
