@@ -171,6 +171,17 @@ def train(cfg):
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
 
+        if cfg.empty_cache:
+            torch.cuda.empty_cache()
+
+        if cfg.use_wandb:
+            wandb.log(
+                {
+                    "memory_allocated": torch.cuda.memory_allocated(),
+                    "memory_cached": torch.cuda.memory_cached(),
+                }
+            )
+
         ###### Training ######
         if global_step > learning_starts:
             if "final_info" in infos:  # Update after every episode
