@@ -12,6 +12,8 @@ defaults:
 env_id: "cartpole"
 dmc_task: "swingup"
 
+slurm_id: ${env_id}-${dmc_task}-${agent.name}
+
 # Experiment
 train_validation_split: 0.7 # Fraction of data to use for training
 max_episode_steps: 1000 # Max episode length
