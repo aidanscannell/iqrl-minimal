@@ -629,7 +629,11 @@ class VQ_TC_TD3(Agent):
         )
 
         if train_strategy == "combined":
-            params = encoder_params + list(self.td3.parameters())
+            params = (
+                encoder_params
+                + list(self.td3.actor.parameters())
+                + list(self.td3.critic.parameters())
+            )
             self.opt = torch.optim.AdamW(params, lr=learning_rate)
 
         self.encoder_update_conter = 0
