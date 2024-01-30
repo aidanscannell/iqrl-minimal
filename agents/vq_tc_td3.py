@@ -368,6 +368,7 @@ class VQ_TC_TD3(Agent):
         encoder_mlp_dims: List[int] = [256],
         ae_learning_rate: float = 3e-4,
         ae_batch_size: int = 128,
+        zp_weight: float = 10,
         # ae_num_updates: int = 1000,
         ae_utd_ratio: int = 1,  # used for representation first training
         ae_update_freq: int = 1,  # update encoder less frequently than actor/critic
@@ -429,6 +430,8 @@ class VQ_TC_TD3(Agent):
         self.use_fsq = use_fsq
         self.fsq_levels = fsq_levels
         self.fsq_idx = fsq_idx
+
+        self.zp_weight = zp_weight
 
         self.horizon = horizon
 
@@ -879,7 +882,7 @@ class VQ_TC_TD3(Agent):
             pi_loss = -torch.min(q1, q2).mean()
 
             # Total loss
-            loss = q_loss + pi_loss + encoder_loss
+            loss = q_loss + pi_loss + self.zp_weight * encoder_loss
 
             self.opt.zero_grad()
             loss.backward()
