@@ -703,12 +703,13 @@ class VQ_TC_TD3(Agent):
             # Map observations to latent
             # TODO don't use target here. It breaks dog?
             # TODO I used to use target here
-            if self.use_target_encoder:
-                z = self.encoder_target(batch.observations)
-                z_next = self.encoder_target(batch.next_observations)
-            else:
-                z = self.encoder(batch.observations)
-                z_next = self.encoder(batch.next_observations)
+            with torch.no_grad():
+                if self.use_target_encoder:
+                    z = self.encoder_target(batch.observations)
+                    z_next = self.encoder_target(batch.next_observations)
+                else:
+                    z = self.encoder(batch.observations)
+                    z_next = self.encoder(batch.next_observations)
             if self.use_fsq:
                 z = z[self.fsq_idx]
                 z_next = z_next[self.fsq_idx]
