@@ -813,6 +813,10 @@ class VQ_TC_TD3(Agent):
         for i in range(num_updates):
             batch = replay_buffer.sample(self.td3.batch_size, val=False)
 
+            # Update encoder less frequently than actor/critic
+            if i % self.encoder_update_freq == 0:
+                info.update(self.update_representation_step(batch=batch))
+
             # Form n-step samples (truncate if timeout)
             dones = torch.zeros_like(batch.dones[0], dtype=torch.bool)
             rewards = torch.zeros_like(batch.rewards[0])
@@ -845,19 +849,19 @@ class VQ_TC_TD3(Agent):
                 next_state_discounts=next_state_discounts,
             )
 
-            # Update encoder less frequently than actor/critic
-            if i % self.encoder_update_freq == 0:
-                encoder_loss, _info = self.representation_loss(batch=batch)
-                info.update(_info)
-            else:
-                encoder_loss = torch.zeros(1).to(self.device)
+            # # Update encoder less frequently than actor/critic
+            # if i % self.encoder_update_freq == 0:
+            #     encoder_loss, _info = self.representation_loss(batch=batch)
+            #     info.update(_info)
+            # else:
+            #     encoder_loss = torch.zeros(1).to(self.device)
 
             # Map observations to latent
             with torch.no_grad():
                 z_tar = self.encoder_target(nstep_batch.observations)
                 z_next_tar = self.encoder_target(nstep_batch.next_observations)
-            z = self.encoder(nstep_batch.observations)
-            z_next = self.encoder(nstep_batch.next_observations)
+                z = self.encoder(nstep_batch.observations)
+                z_next = self.encoder(nstep_batch.next_observations)
             if self.use_fsq:
                 z = z[self.fsq_idx]
                 z_tar = z_tar[self.fsq_idx]
@@ -869,10 +873,10 @@ class VQ_TC_TD3(Agent):
                     z_next = torch.flatten(z_next, -2, -1)
                     z_next_tar = torch.flatten(z_next_tar, -2, -1)
 
-            # Critic loss
+            # Update critic
             q_loss = self.td3.critic_loss(  # uses target z_next
                 ReplayBufferSamples(
-                    observations=z.to(torch.float),
+                    observations=z.to(torch.float).detach(),
                     actions=nstep_batch.actions,
                     next_observations=z_next_tar.to(torch.float).detach(),
                     dones=nstep_batch.dones,
@@ -881,34 +885,33 @@ class VQ_TC_TD3(Agent):
                     next_state_discounts=nstep_batch.next_state_discounts,
                 )
             )
+            self.td3.q_optimizer.zero_grad()
+            q_loss.backward()
+            self.td3.q_optimizer.step()
+            info.update({"q_loss": q_loss})
 
-            # Actor loss
-            q1, q2 = self.td3.target_critic(z_tar, self.td3.actor(z))
-            pi_loss = -torch.min(q1, q2).mean()
-
-            # Total loss
-            loss = q_loss + pi_loss + self.zp_weight * encoder_loss
-
-            self.opt.zero_grad()
-            loss.backward()
-            self.opt.step()
-
-            info.update({"loss": loss.item(), "q_loss": q_loss, "actor_loss": pi_loss})
-
-            # Update target networks
+            # Update target network
             soft_update_params(
                 self.td3.critic, self.td3.target_critic, tau=self.td3.tau
             )
-            soft_update_params(self.td3.actor, self.td3.target_actor, tau=self.td3.tau)
-            soft_update_params(self.encoder, self.encoder, tau=self.ae_tau)
-            if self.project_latent:
+
+            # Update actor less frequently than critic
+            if self.td3.critic_update_counter % self.td3.actor_update_freq == 0:
+                q1, q2 = self.td3.target_critic(z_tar, self.td3.actor(z))
+                pi_loss = -torch.min(q1, q2).mean()
+                self.td3.actor_optimizer.zero_grad()
+                pi_loss.backward()
+                self.td3.actor_optimizer.step()
+                info.update({"actor_loss": pi_loss})
+
+                # Update target network
                 soft_update_params(
-                    self.projection, self.projection_target, tau=self.ae_tau
+                    self.td3.actor, self.td3.target_actor, tau=self.td3.tau
                 )
 
             if i % self.logging_freq == 0:
                 logger.info(
-                    f"Iteration {i} | loss {info['loss']} | encoder loss {info['encoder_loss']} | q loss {info['q_loss']} | pi loss {info['actor_loss']}"
+                    f"Iteration {i} | encoder loss {info['encoder_loss']} | q loss {info['q_loss']} | pi loss {info['actor_loss']}"
                 )
                 if wandb.run is not None:
                     # info.update({"exploration_noise": self.td3.exploration_noise})
