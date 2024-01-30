@@ -849,8 +849,9 @@ class VQ_TC_TD3(Agent):
                 encoder_loss = torch.zeros(1).to(self.device)
 
             # Map observations to latent
-            z_tar = self.encoder_target(nstep_batch.observations)
-            z_next_tar = self.encoder_target(nstep_batch.next_observations)
+            with torch.no_grad():
+                z_tar = self.encoder_target(nstep_batch.observations)
+                z_next_tar = self.encoder_target(nstep_batch.next_observations)
             z = self.encoder(nstep_batch.observations)
             z_next = self.encoder(nstep_batch.next_observations)
             if self.use_fsq:
