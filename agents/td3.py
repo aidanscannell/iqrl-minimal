@@ -270,6 +270,27 @@ class TD3(Agent):
     def critic_update_step(self, data: ReplayBufferSamples) -> dict:
         self.critic_update_counter += 1
 
+        q_loss = self.critic_loss(data)
+
+        # Optimize the model
+        self.q_optimizer.zero_grad()
+        q_loss.backward()
+        self.q_optimizer.step()
+
+        # Update the target network
+        soft_update_params(self.critic, self.target_critic, tau=self.tau)
+
+        info = {
+            # "q1_values": q1_values.mean().item(),
+            # "q2_values": q2_values.mean().item(),
+            # "q1_loss": q1_loss.item(),
+            # "q2_loss": q2_loss.item(),
+            "q_loss": q_loss.item() / 2,
+            "critic_update_counter": self.critic_update_counter,
+        }
+        return info
+
+    def critic_loss(self, data: ReplayBufferSamples):
         with torch.no_grad():
             clipped_noise = (
                 torch.randn_like(data.actions, device=self.device) * self.policy_noise
@@ -291,29 +312,13 @@ class TD3(Agent):
         q1_loss = F.mse_loss(q1_values.view(-1), next_q_value)
         q2_loss = F.mse_loss(q2_values.view(-1), next_q_value)
         q_loss = q1_loss + q2_loss
-
-        # Optimize the model
-        self.q_optimizer.zero_grad()
-        q_loss.backward()
-        self.q_optimizer.step()
-
-        # Update the target network
-        soft_update_params(self.critic, self.target_critic, tau=self.tau)
-
-        info = {
-            # "q1_values": q1_values.mean().item(),
-            # "q2_values": q2_values.mean().item(),
-            # "q1_loss": q1_loss.item(),
-            # "q2_loss": q2_loss.item(),
-            "q_loss": q_loss.item() / 2,
-            "critic_update_counter": self.critic_update_counter,
-        }
-        return info
+        return q_loss
 
     def actor_update_step(self, data: ReplayBufferSamples) -> dict:
         self.actor_update_counter += 1
-        q1, q2 = self.critic(data.observations, self.actor(data.observations))
-        actor_loss = -torch.min(q1, q2).mean()
+
+        actor_loss = self.actor_loss(data)
+
         self.actor_optimizer.zero_grad()
         actor_loss.backward()
         self.actor_optimizer.step()
@@ -326,6 +331,11 @@ class TD3(Agent):
             "actor_update_counter": self.actor_update_counter,
         }
         return info
+
+    def actor_loss(self, data: ReplayBufferSamples):
+        q1, q2 = self.critic(data.observations, self.actor(data.observations))
+        actor_loss = -torch.min(q1, q2).mean()
+        return actor_loss
 
     def trigger_reset(self) -> bool:
         """Returns True if it has reset and False otherwise"""
