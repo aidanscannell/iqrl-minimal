@@ -31,7 +31,7 @@
 \usepackage{amsthm}
 
 % if you use cleveref..
-\usepackage[capitalize,noabbrev]{cleveref}
+\usepackage[capitalize,noabbrev,nameinlink]{cleveref}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % THEOREMS
@@ -72,6 +72,7 @@
 \newcommand{\etal}{\textit{et~al.\@}\xspace}
 
 % Vectors
+\usepackage{bm}
 \def\vzero{{\bm{0}}}
 \def\vone{{\bm{1}}}
 \def\vmu{{\bm{\mu}}}
@@ -198,6 +199,8 @@
 \DeclareMathOperator*{\argmax}{arg\,max}
 \DeclareMathOperator*{\argmin}{arg\,min}
 
+\usetikzlibrary{shapes.geometric,positioning,calc}
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % BEGIN DOCUMENT
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -280,13 +283,119 @@ Gross violations will trigger corrections at the camera-ready phase.
 \section{Introduction}
 \label{intro}
 
-\begin{figure}[ht]
-\vskip 0.2in
-\begin{center}
-\centerline{\includegraphics[width=0.6\columnwidth]{./figs/diagram-self-predictive.png}}
+Reinforcement learning (RL) has potential...
+
+However, applying RL in real-world environments with high dimensional/complex observation spaces is challenging.
+
+Compressing observations in latent state space.
+Hand crafted features
+
+Learning features with representation learning.
+These methods typically learn task-specific representations
+as they train the representation to predict rewards and/or values
+\citep{zhaoSimplifiedTemporalConsistency2023,hansenTemporalDifferenceLearning2022}
+
+For example, \citet{zhaoSimplifiedTemporalConsistency2023} use a latent-state consistency loss based upon the Cosine
+similarity loss plus the MSE of reward predictions in the latent space.
+The cosine similarity loss provides training stability whilst the reward prediction prevents representation collapse.
+
+In this paper, we propose a simple representation learning technique that can be combined with any model-free RL method.
+Normalization based upon Finite Scalar Quantization
+Importantly, our representation {\em (i)} significantly speeds up learning, {\em (ii)} prevents representation collapse,
+and {\em (iii)} is task-agnostic.
+
+% In recent years, it has become common to
+
+\begin{figure}[t!]
+\centering\scriptsize
+\resizebox{\columnwidth}{!}{%
+\begin{tikzpicture}
+
+  % Declare that we have a background layer (advanced)
+  \pgfdeclarelayer{background}
+  \pgfsetlayers{background,main}
+
+  % Helpers for small subscripts
+  \newcommand{\sub}[0]{\scalebox{.8}{\ensuremath t}}
+  \newcommand{\subs}[1]{\scalebox{.8}{\ensuremath t{+}#1}}
+
+  % Lengths (this tunes distance)
+  \newlength{\nodedist}\setlength{\nodedist}{2cm}
+
+  % Styles (this tunes colours etc.)
+  \tikzstyle{mynode}=[fill=blue!10!cyan,rounded corners=1pt,font=\tiny,inner sep=0]
+  \tikzstyle{trap}=[mynode,trapezium,minimum width=1.5em, minimum height=2em,
+                    trapezium left angle=-70, trapezium right angle=-70]
+  \tikzstyle{blob}=[mynode,circle,minimum width=2.4em,minimum height=2.4em]
+  \tikzstyle{polval}=[mynode,minimum width=6em,minimum height=2em,align=center,text=white,fill=black!60,inner sep=2pt]
+  \tikzstyle{arr}=[line width=1pt,black,->]
+  \tikzstyle{darr}=[line width=1pt,black,<->,densely dotted]
+    
+  % *** FIRST HALF ***  
+    
+  % Draw nodes
+  \node[blob] (z0) at (0\nodedist,0) {$\vz_{\sub}$};
+  \node[blob] (z1) at (1\nodedist,0) {$\hat\vz_{\subs{1}}$};
+  \node[blob] (z2) at (2\nodedist,0) {$\hat\vz_{\subs{2}}$};
+
+  \node[trap] (e0) at (0\nodedist,\nodedist) {$e_\phi$};
+  \node[trap] (e1) at (1\nodedist,\nodedist) {$e_{\bar\phi}$};
+  \node[trap] (e2) at (2\nodedist,\nodedist) {$e_{\bar\phi}$};
+
+  \node[blob] (zh1) at ($(z1)!0.5!(e1)$) {$\bar\vz_{\subs{1}}$};
+  \node[blob] (zh2) at ($(z2)!0.5!(e2)$) {$\bar\vz_{\subs{2}}$};
+
+  \coordinate (m0) at ($(z0)!.5!(z1)$);
+  \node[blob] (a0) at ($(m0)!(zh1)!(m0)$) {$\va_{\sub}$};
+  \coordinate (m1) at ($(z1)!.5!(z2)$);
+  \node[blob] (a1) at ($(m1)!(zh2)!(m1)$) {$\va_{\subs{1}}$};
+  
+  \node[mynode,above of=e0] (i0) {\includegraphics[width=4.7em]{figs/bg}};
+  \node[mynode,above of=e1] (i1) {\includegraphics[width=4.7em]{figs/bg}};
+  \node[mynode,above of=e2] (i2) {\includegraphics[width=4.7em]{figs/bg}};
+  
+  \node[anchor=north] (o0) at (i0.north) {\color{white}$o_{\sub}$};
+  \node[anchor=north] (o1) at (i1.north) {\color{white}$o_{\subs{1}}$};
+  \node[anchor=north] (o2) at (i2.north) {\color{white}$o_{\subs{2}}$};
+  
+  \node[above of=i1,align=center] (lab0) {\normalsize\bf 1.\ Learn representation};
+    
+  % Draw arrows
+  \draw[arr] (i0) -- (e0);
+  \draw[arr] (i1) -- (e1);
+  \draw[arr] (i2) -- (e2);
+  \draw[arr] (z0) -- (z1);
+  \draw[arr] (z1) -- (z2);
+  \draw[arr] (e0) -- (z0);
+  \draw[arr] (e1) -- (zh1);
+  \draw[arr] (e2) -- (zh2);
+  \draw[arr] (a0) -- (z1);
+  \draw[arr] (a1) -- (z2);
+  \draw[darr] (zh1) -- (z1);
+  \draw[darr] (zh2) -- (z2); 
+  
+  
+  % *** SECOND HALF ***
+  
+  \node[blob] (z) at ($(e2) + (1.5\nodedist,0)$) {$\bar\vz_{\sub}$};
+  \node[polval] (policy) at ($(z) + (-.5\nodedist,-.5\nodedist)$) {{\bf Policy} \\ $\pi_\theta(\va_t \mid \bar\vz_t)$};
+  \node[polval] (value) at ($(z) + (.5\nodedist,-.5\nodedist)$) {{\bf Value} \\ $\mathcal{Q}_\psi(\bar\vz_t, \va_t)$};
+  
+  \draw[arr] (z) -- (policy);
+  \draw[arr] (z) -- (value);
+  
+  \node[align=center] at ($(z)!(lab0)!(z)$) {\normalsize\bf 2.\ Latent actor-critic\vphantom{p}};  
+
+  % Draw backgrounds
+  \begin{pgfonlayer}{background}
+    \draw[draw=none,fill=black!10,rounded corners=5pt] ($(i0.north west) + (-.5cm,1cm)$) 
+      rectangle ($(i2.east)!(z2.north)!(i2.east) + (.5cm,-1cm)$);
+  \end{pgfonlayer}
+  
+\end{tikzpicture}}
+%\centerline{\includegraphics[width=\columnwidth]{./figs/method-diagram.png}}
 \caption{Self-predictice loss}
 \label{diagram-self-predictive}
-\end{center}
 \vskip -0.2in
 \end{figure}
 
@@ -347,9 +456,9 @@ whilst DBC \citep{zhangLearningInvariantRepresentations2020} combine its method 
 \textbf{Primacy bias}
 Primacy bias in deep RL \citep{nikishinPrimacyBiasDeep2022}
 is where an agent overfits on early data and loses its ability to learn from new data,
-which arises due to the plasticity in NNs \cite{lyleUnderstandingPlasticityNeural2023} \todo{earlier citation of plasticiy in NNs??}.
-\cite{nikishinPrimacyBiasDeep2022} showed that periodically resetting the agent's parameters can help alleviate primacy bias.
-\cite{doroSampleEfficientReinforcementLearning2022} built on top of this insight and showed that resetting the
+which arises due to the plasticity in NNs \citep{lyleUnderstandingPlasticityNeural2023} \todo{earlier citation of plasticiy in NNs??}.
+\citet{nikishinPrimacyBiasDeep2022} showed that periodically resetting the agent's parameters can help alleviate primacy bias.
+\citet{doroSampleEfficientReinforcementLearning2022} built on top of this insight and showed that resetting the
 agent's parameters not only alleviates primacy bias but also
 enables the number of parameter update's per environment interaction to be increased.
 They refer to this as the replay ratio but it has also been referred to as the update to data
@@ -413,11 +522,12 @@ discount factor $\gamma \in [0, 1]$
 \end{algorithmic}
 \end{algorithm}
 
+
 \begin{align}
-\text{Encoder: } &z_{t} = e_{\theta} (s_{t}) \label{eq:encoder} \\
-\text{Dynamics: } &\hat{z}_{t+1} = d_{\phi} (z_{t}, a_{t}) \label{eq:transition} \\
-\text{Value: } &q_{t} = Q_{\psi} (z_{t}, a_{t}) \label{eq:value} \\
-\text{Policy: } &a_{t} \sim \pi_{\eta} (z_{t}) , \label{eq:policy}
+&\text{Encoder: } & z_{t} &= e_{\theta} (s_{t}) \label{eq:encoder} \\
+&\text{Dynamics: } & \hat{z}_{t+1} &= d_{\phi} (z_{t}, a_{t}) \label{eq:transition} \\
+&\text{Value: } & q_{t} &= Q_{\psi} (z_{t}, a_{t}) \label{eq:value} \\
+&\text{Policy: } & a_{t} &\sim \pi_{\eta} (z_{t}) , \label{eq:policy}
 \end{align}
 Note that unlike TCRL \citep{zhaoSimplifiedTemporalConsistency2023}, our transition model does
 not predict the reward.
@@ -470,6 +580,26 @@ where each entry in  $f : z \rightarrow \left[ L/2 \right] \mathrm{tanh}(z))$
 \section{Experiments}
 \label{sec:experiments}
 
+\begin{table}[t]
+\caption{FSQ levels $\mathcal{L}$ to approximate different codebook sizes $|\mathcal{C}|$}
+\label{sample-table}
+\vskip 0.15in
+\begin{center}
+\begin{small}
+\begin{sc}
+\begin{tabular}{lccc}
+\toprule
+Target size $|\mathcal{C}|$ & $2^{8}$ & $2^{10}$ & $2^{12}$ \\
+\midrule
+Proposed $\mathcal{L}$ & $[8,6,5]$ & $[8,5,5,5]$ & $[7,5,5,5,5]$ \\
+% \bottomrule
+\end{tabular}
+\end{sc}
+\end{small}
+\end{center}
+\vskip -0.1in
+\end{table}
+
 
 \begin{figure*}[ht]
 \vskip 0.2in
@@ -490,8 +620,11 @@ where each entry in  $f : z \rightarrow \left[ L/2 \right] \mathrm{tanh}(z))$
 
 \text{Ablations}
 
+
+
 \begin{itemize}
   \item Show un-normalised isn't as good.
+  \item Compare different size latent spaces? Different levels $[8,5]$ vs $[8,6,5]$ vs $[8,5,5,5]$ vs $[7,5,5,5,5]$
   \item Target encoder vs online encoder for mapping states to latents for TD3.
   \item Show cosine similarity slows training.
   \item Show adding reconstruction loss hurts performance.
