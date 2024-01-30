@@ -969,7 +969,8 @@ class VQ_TC_TD3(Agent):
             # else:
             z = self.encoder(x_train)
 
-        if self.reconstruction_loss:
+        if self.reconstruction_loss and not self.temporal_consistency:
+            raise NotImplementedError("Doesn't handle leading dim of N-step?")
             x_rec = self.decoder(z)
             rec_loss = (x_rec - x_train).abs().mean()
         else:
@@ -977,6 +978,7 @@ class VQ_TC_TD3(Agent):
 
         if self.temporal_consistency:
             temporal_consitency_loss, reward_loss = 0.0, 0.0
+            rec_loss = torch.zeros(1).to(self.device)
             if self.use_fsq:
                 z, _ = self.encoder(batch.observations[0])
             else:
@@ -989,6 +991,11 @@ class VQ_TC_TD3(Agent):
                 timeout_or_dones = torch.logical_or(
                     timeout_or_dones, torch.logical_or(dones, batch.timeouts[t])
                 )
+
+                # Calculate reconstruction loss for each time step
+                if self.reconstruction_loss:
+                    x_rec = self.decoder(z)
+                    rec_loss += (x_rec - x_train[t]).abs().mean()
 
                 # Predict next latent
                 delta_z_pred = self.dynamics(z, a=batch.actions[t])
