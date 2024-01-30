@@ -171,17 +171,6 @@ def train(cfg):
         # TRY NOT TO MODIFY: CRUCIAL step easy to overlook
         obs = next_obs
 
-        if cfg.empty_cache:
-            torch.cuda.empty_cache()
-
-        if cfg.use_wandb:
-            wandb.log(
-                {
-                    "memory_allocated": torch.cuda.memory_allocated(),
-                    "memory_cached": torch.cuda.memory_cached(),
-                }
-            )
-
         ###### Training ######
         if global_step > learning_starts:
             if "final_info" in infos:  # Update after every episode
@@ -203,11 +192,11 @@ def train(cfg):
                         {
                             "global_step": global_step,
                             # "SPS": int(global_step / (time.time() - start_time)),
-                            "num_new_transitions": num_new_transitions,
+                            # "num_new_transitions": num_new_transitions,
                             # "action_repeat": cfg.action_repeat,
                             "env_step": global_step * cfg.action_repeat,
                             # "episode": episode_idx,
-                            "elapsed_time": time.time() - start_time,
+                            # "elapsed_time": time.time() - start_time,
                         }
                     )
                     wandb.log({"train/": train_metrics})
@@ -230,6 +219,16 @@ def train(cfg):
                 }
                 if cfg.use_wandb:
                     wandb.log({"eval/": eval_metrics})
+                    wandb.log(
+                        {
+                            "memory_allocated": torch.cuda.memory_allocated(),
+                            "memory_cached": torch.cuda.memory_cached(),
+                        }
+                    )
+
+        # Release some GPU memory (if possible)
+        if cfg.empty_cache:
+            torch.cuda.empty_cache()
 
     envs.close()
 
