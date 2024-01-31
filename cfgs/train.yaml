@@ -20,7 +20,7 @@ max_episode_steps: 1000 # Max episode length
 num_episodes: 500 # Number of training episodes
 random_episodes: 10 # Number of random episodes at start
 action_repeat: 2
-buffer_size: 1e6
+buffer_size: 5e6
 seed: 42
 device: "cuda"  # "cpu" or "cuda" etc
 
