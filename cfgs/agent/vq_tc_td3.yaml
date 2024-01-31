@@ -36,7 +36,8 @@ ae_utd_ratio: 1  # encoder parameter update-to-data ratio
 ae_patience: 100
 ae_min_delta: 0.0
 latent_dim: 512
-ae_tau: 0.005
+ae_tau: 0.0001
+# ae_tau: 0.005
 ae_normalize: True
 simplex_dim: 8
 use_fsq: True
