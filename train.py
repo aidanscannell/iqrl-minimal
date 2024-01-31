@@ -219,6 +219,37 @@ def train(cfg):
                     "elapsed_time": time.time() - start_time,
                 }
                 if cfg.use_wandb:
+                    # Log rank of latent
+                    def calc_rank(name, z):
+                        rank3 = matrix_rank(z, atol=1e-3, rtol=1e-3)
+                        rank2 = matrix_rank(z, atol=1e-2, rtol=1e-2)
+                        rank1 = matrix_rank(z, atol=1e-1, rtol=1e-1)
+                        condition = cond(z)
+                        info = {}
+                        for j, rank in enumerate([rank1, rank2, rank3]):
+                            info.update({f"{name}-rank-{j}": rank.item()})
+                            # wandb.log({f"{name}-rank-{j}": rank.item()})
+                        info.update({f"{name}-cond-num": condition.item()})
+                        # wandb.log({f"{name}-cond-num": condition.item()})
+                        return info
+
+                    try:
+                        batch = rb.sample(agent.td3.batch_size, val=False)
+                        z_batch = agent.encoder(batch.observations[0])
+                        rank_info = {}
+                        if cfg.agent.use_fsq:
+                            pre_norm_z_batch = agent.encoder.mlp(batch.observations[0])
+                            rank_info.update(
+                                calc_rank(name="z-pre-normed", z=pre_norm_z_batch)
+                            )
+                            z_batch = z_batch[0]  # always use z not indices
+                            z_batch = torch.flatten(z_batch, -2, -1)
+
+                        rank_info.update(calc_rank(name="z", z=z_batch))
+                        eval_metrics.update(rank_info)
+                    except:
+                        pass
+
                     wandb.log({"eval/": eval_metrics})
                     wandb.log(
                         {
@@ -226,29 +257,6 @@ def train(cfg):
                             "memory_cached": torch.cuda.memory_cached(),
                         }
                     )
-
-                    # Log rank of latent
-                    def log_rank(name, z):
-                        rank3 = matrix_rank(z, atol=1e-3, rtol=1e-3)
-                        rank2 = matrix_rank(z, atol=1e-2, rtol=1e-2)
-                        rank1 = matrix_rank(z, atol=1e-1, rtol=1e-1)
-                        condition = cond(z)
-                        for j, rank in enumerate([rank1, rank2, rank3]):
-                            wandb.log({f"{name}-rank-{j}": rank.item()})
-                        wandb.log({f"{name}-cond-num": condition.item()})
-
-                    try:
-                        batch = rb.sample(agent.td3.batch_size, val=False)
-                        z_batch = agent.encoder(batch.observations[0])
-                        if cfg.use_fsq:
-                            pre_norm_z_batch = agent.encoder.mlp(batch.observations[0])
-                            log_rank(name="z-pre-normed", z=pre_norm_z_batch)
-                            z_batch = z_batch[0]  # always use z not indices
-                            z_batch = torch.flatten(z_batch, -2, -1)
-
-                        log_rank(name="z", z=z_batch)
-                    except:
-                        pass
 
         # Release some GPU memory (if possible)
         torch.cuda.empty_cache()
