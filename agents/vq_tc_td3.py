@@ -382,7 +382,7 @@ class VQ_TC_TD3(Agent):
         use_early_stop: bool = False,
         project_latent: bool = False,
         projection_mlp_dims: List[int] = [256],
-        projection_dim: int = 128,
+        projection_dim: Optional[int] = None,
         latent_dim: int = 20,
         ae_tau: float = 0.005,
         use_target_encoder: bool = False,  # if True use target encoder for actor/critic
@@ -543,6 +543,8 @@ class VQ_TC_TD3(Agent):
                 projection_levels = None
             else:
                 projection_levels = fsq_levels
+            if projection_dim is None:
+                projection_dim = latent_dim
             self.projection = Projection(
                 # mlp_dims=[1024],
                 mlp_dims=projection_mlp_dims,
