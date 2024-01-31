@@ -1176,13 +1176,12 @@ class VQ_TC_TD3(Agent):
                     r_tar = batch.rewards[t]
                     assert next_obs.ndim == r_tar.ndim == 2
 
-                if self.project_latent:
-                    # next_z_pred_not_projected = next_z_pred
-                    next_z_tar = self.projection_target(next_z_tar)
-                    next_z_pred = self.projection(next_z_pred)
-
                 # Don't forget this
                 z = next_z_pred
+
+                if self.project_latent:
+                    next_z_tar = self.projection_target(next_z_tar)
+                    next_z_pred = self.projection(next_z_pred)
 
                 # Losses
                 rho = self.rho**t
