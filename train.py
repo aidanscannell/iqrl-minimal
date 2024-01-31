@@ -227,8 +227,7 @@ def train(cfg):
                     )
 
         # Release some GPU memory (if possible)
-        if cfg.empty_cache:
-            torch.cuda.empty_cache()
+        torch.cuda.empty_cache()
 
     envs.close()
 
