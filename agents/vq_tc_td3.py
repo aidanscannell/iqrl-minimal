@@ -728,18 +728,21 @@ class VQ_TC_TD3(Agent):
                 if self.fsq_idx == 0:
                     z = torch.flatten(z, -2, -1)
                     z_next = torch.flatten(z_next, -2, -1)
-            latent_batch = ReplayBufferSamples(
-                observations=z.to(torch.float).detach(),
-                actions=batch.actions,
-                next_observations=z_next.to(torch.float).detach(),
-                dones=batch.dones,
-                timeouts=batch.timeouts,
-                rewards=batch.rewards,
-                next_state_discounts=batch.next_state_discounts,
-            )
 
             # TD3 on latent representation
-            info.update(self.td3.update_step(batch=latent_batch))
+            info.update(
+                self.td3.update_step(
+                    batch=ReplayBufferSamples(
+                        observations=z.to(torch.float).detach(),
+                        actions=batch.actions,
+                        next_observations=z_next.to(torch.float).detach(),
+                        dones=batch.dones,
+                        timeouts=batch.timeouts,
+                        rewards=batch.rewards,
+                        next_state_discounts=batch.next_state_discounts,
+                    )
+                )
+            )
 
             # Potentially reset ae/actor/critic NN params
             if self.reset_strategy == "every-x-param-updates":
