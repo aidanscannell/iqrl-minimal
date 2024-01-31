@@ -55,13 +55,14 @@
 
 % The \icmltitle you define below is probably too long as a header.
 % Therefore, a short form for the running title is supplied here:
-\icmltitlerunning{Sample-efficient Reinforcement Learning with Latent Representations}
+\icmltitlerunning{Sample-efficient Reinforcement Learning with Implicitly Quantized Representations}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % CUSTOM (our stuff)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-\newcommand{\our}{\textsc{vq-td3}\xspace}
+% \newcommand{\our}{\textsc{vq-td3}\xspace}
+\newcommand{\our}{\textsc{iFSQ-RL}\xspace}
 
 % Latin
 \usepackage{xspace}
@@ -209,7 +210,8 @@
 \twocolumn[
 % \icmltitle{Submission and Formatting Instructions for \\
 %            International Conference on Machine Learning (ICML 2024)}
-\icmltitle{Sample-efficient Reinforcement Learning with Latent Representations}
+% \icmltitle{Sample-efficient Reinforcement Learning with Latent Representations}
+\icmltitle{Sample-efficient Reinforcement Learning with Implicitly Quantized Representations}
 
 % It is OKAY to include author information, even for blind
 % submissions: the style file will automatically remove it for you
@@ -564,22 +566,6 @@ where each entry in  $f : z \rightarrow \left[ L/2 \right] \mathrm{tanh}(z))$
 % Qd
 % i=1 Li
 
-
-\textbf{Policy and value function learning}
-
-\begin{align} \label{eq:value-loss}
-  \mathcal{L}_{Q}(\psi ; \mathcal{D}) &= \E_{\tau \sim \mathcal{D}} \left[ (Q_{\psi_{k}}(e_{\theta}(s_{t}), a_{t}) - y)^{2}  \right], \quad \forall k \in 1, 2 \\
-  y &= \sum_{n=0}^{N-1} \gamma^{n} r_{t+n} + \gamma^{n} \min_{k \in \{1,2\}} Q_{\bar{\psi}_{k}}(e_{\bar{\theta}}(s_{t+n}), a_{t+n})
-\end{align}
-
-
-\begin{align} \label{eq:policy-loss}
- \mathcal{L}_{\pi}(\eta; \mathcal{D}) = \E_{(o_{t}, a_{t}) \sim \mathcal{D}} \left[ \min_{k\in\{1,2\}} Q_{\psi_{k}}(e_{\theta}(o_{t}), a_{t}) \right]
-\end{align}
-
-\section{Experiments}
-\label{sec:experiments}
-
 \begin{table}[t]
 \caption{FSQ levels $\mathcal{L}$ to approximate different codebook sizes $|\mathcal{C}|$}
 \label{sample-table}
@@ -601,16 +587,86 @@ Proposed $\mathcal{L}$ & $[8,6,5]$ & $[8,5,5,5]$ & $[7,5,5,5,5]$ \\
 \end{table}
 
 
+
+\textbf{Policy and value function learning}
+
+\begin{align} \label{eq:value-loss}
+  \mathcal{L}_{Q}(\psi ; \mathcal{D}) &= \E_{\tau \sim \mathcal{D}} \left[ (Q_{\psi_{k}}(e_{\theta}(s_{t}), a_{t}) - y)^{2}  \right], \quad \forall k \in 1, 2 \\
+  y &= \sum_{n=0}^{N-1} \gamma^{n} r_{t+n} + \gamma^{n} \min_{k \in \{1,2\}} Q_{\bar{\psi}_{k}}(e_{\bar{\theta}}(s_{t+n}), a_{t+n})
+\end{align}
+
+
+\begin{align} \label{eq:policy-loss}
+ \mathcal{L}_{\pi}(\eta; \mathcal{D}) = \E_{(o_{t}, a_{t}) \sim \mathcal{D}} \left[ \min_{k\in\{1,2\}} Q_{\psi_{k}}(e_{\theta}(o_{t}), a_{t}) \right]
+\end{align}
+
+\section{Experiments}
+\label{sec:experiments}
+
 \begin{figure*}[ht]
 \vskip 0.2in
 \begin{center}
-\centerline{\includegraphics[width=1.0\textwidth]{./figs/main_plot.pdf}}
-\caption{Comparison to baselines with UTD=1.}
-\label{fig:main_plot}
+\centerline{\includegraphics[width=1.0\textwidth]{./figs/utd_comparison.pdf}}
+\caption{\textbf{Normalizing the latent-space enables higher UTD} \our's (blue) sample efficiency improves when the UTD ratio is increased from $1 \rightarrow 8$. TCRL (which has an un-normalized latent space) does not see an improvement in sample efficiency when when the UTD ratio is increased. Results are for four DMC tasks. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
+\label{fig:normalization_enables_higher_utd}
 \end{center}
 \vskip -0.2in
 \end{figure*}
 
+\textbf{Normalizing the latent-space enables higher UTD}
+We first show how using bounded latent states enables us to increase the UTD ratio to see improvements in sample efficiency.
+\cref{fig:normalization_enables_higher_utd} shows that as the UTD ratio is increased from $1$ to $8$ \our's sample efficiency
+continues to improve.
+In contrast, when increasing the UTD ratio for TCRL no improvements are observed.
+
+
+
+
+\begin{figure*}[ht]
+\vskip 0.2in
+\begin{center}
+\centerline{\includegraphics[width=1.0\textwidth]{./figs/main_plot.pdf}}
+\caption{\textbf{Normalizing the latent-space improves sample efficiency} \our is significanly more sample efficient than the model-free baselines SAC (blue) and REDQ (purple). It performs similarly to TD-MPC (orange) whilst being significantly simpler and quicker to train. \our even outperforms TCRL, which is the most similar baseline. Results are for eight DMC tasks with UTD=1. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
+\label{fig:normalization_improves_sample_efficiency}
+\end{center}
+\vskip -0.2in
+\end{figure*}
+
+\textbf{Normalizing the latent-space improves sample efficiency}
+In \cref{fig:normalization_improves_sample_efficiency},
+
+
+\begin{figure*}[ht]
+\vskip 0.2in
+\begin{center}
+\centerline{\includegraphics[width=1.0\textwidth]{./figs/utd_comparison.pdf}}
+\caption{\textbf{\our's task-agnostic representation helps for multi-task RL}. \our XXXXXX We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
+\label{fig:multi-task-pretraining}
+\end{center}
+\vskip -0.2in
+\end{figure*}
+
+\textbf{\our's representation is helpful for multi-task RL}
+In contrast to TCRL and TD-MPC, \our learns a representation that is task-agnostic.
+As such, \our's task-agnostic representations can be used to speed-up learning in the incremental multi-task setting.
+That is, leverage information learned from solving one task to aid learning another task in the same environment.
+For example, pre-training our representation in walker-walk and then using this to speed up training in walker-walk.
+In \cref{fig:multi-task-pretraining} we show that \our benefits from pre-training the representation in walker-walk
+before training on walker-run.
+In contrast, TCRL does not see this improvement.
+This is because its representation loss contains a reward prediction term which makes its representation task-specific.
+These results demonstrate that confirms task-agnostic representation
+
+
+\begin{figure*}[ht]
+\vskip 0.2in
+\begin{center}
+\centerline{\includegraphics[width=1.0\textwidth]{./figs/fsq_levels_comparison.pdf}}
+\caption{\textbf{Comparison of different FSQ levels $\mathcal{L}$}. Results are for four DMC tasks. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
+\label{fig:fsq_levels_comparison}
+\end{center}
+\vskip -0.2in
+\end{figure*}
 
 \begin{itemize}
     \item Show normalised latent leads to higher sample efficiency. Show results for NTC-TD3/TC-TD3/TD3/SAC/TCRL/TD-MPC with UTD=1.
@@ -654,8 +710,67 @@ Proposed $\mathcal{L}$ & $[8,6,5]$ & $[8,5,5,5]$ & $[7,5,5,5,5]$ \\
 \newpage
 \appendix
 \onecolumn
-\section{You \emph{can} have an appendix here.}
 
+\section{Hyperparameters}
+\cref{tab:hyperparameters} lists all of the hyperparameters for training \our.
+For further details please check the code which is available at XXXXXXX.
+
+\begin{table}[t]
+\caption{Hyperparameters for \our.}
+\label{tab:hyperparameters}
+\vskip 0.15in
+\begin{center}
+\begin{small}
+\begin{sc}
+\begin{tabular}{lll}
+\toprule
+Hyperparameter & Value & Description \\
+\midrule
+\textbf{Training} & & \\
+\hline
+Max episode length & 1000 &  Max episode length \\
+Num episodes & $500$ (easy) & Number of training episodes \\
+             & $1000$ (medium) & \\
+             & $15000$ (hard) & \\
+Random episodes & $10$ & Number of random episodes at start \\
+Action repeat & 2 & \\
+Eval every episodes & $5$ & \\
+Num eval episodes & $10$ & \\
+\hline
+\textbf{TD3} & & \\
+\hline
+Actor update freq & $2$  & update actor less frequently than critic \\
+Batch size & $256$ & \\
+Buffer size & $1e6$ & \\
+Exploration noise & $\mathrm{Linear}(1.0,0.1,50)$ (easy) & \\
+                  & $\mathrm{Linear}(1.0,0.1,150)$ (medium) & \\
+                  & $\mathrm{Linear}(1.0,0.1,500)$ (hard) & \\
+Learning rate & $3 \times 10^{-4}$ & \\
+MLP dims & $[512, 512]$ & \\
+Momentum coefficient ($\tau$) & $0.005$ & \\
+Noise clip & $0.3$ & \\
+N-step TD & $1$ & \\
+Policy noise & $0.2$ & \\
+UTD ratio & $1$ & \\
+\hline
+\textbf{Encoder} &  & \\
+\hline
+Discount $\gamma$ & $0.99$ & \\
+Encoder learning rate & $10^{-4}$ & \\
+Encoder MLP dims & $[256]$ & \\
+Encoder momentum coefficient ($\tau$) & 0.005 & \\
+FSQ levels & $[8, 5, 5, 5]$ & \\
+Horizon $(H)$ & $5$ & Horizon for representation learning \\
+Latent dimension ($d$) & $1024$ & \\
+% \bottomrule
+\end{tabular}
+\end{sc}
+\end{small}
+\end{center}
+\vskip -0.1in
+\end{table}
+
+\section{Full results}
 \begin{figure*}[ht]
 \vskip 0.2in
 \begin{center}
@@ -667,6 +782,7 @@ Proposed $\mathcal{L}$ & $[8,6,5]$ & $[8,5,5,5]$ & $[7,5,5,5,5]$ \\
 \end{figure*}
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 
 
 \end{document}
