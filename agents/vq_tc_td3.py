@@ -544,7 +544,7 @@ class VQ_TC_TD3(Agent):
             else:
                 projection_levels = fsq_levels
             if projection_dim is None:
-                projection_dim = latent_dim
+                projection_dim = int(latent_dim / 2)
             self.projection = Projection(
                 # mlp_dims=[1024],
                 mlp_dims=projection_mlp_dims,
