@@ -381,7 +381,8 @@ class VQ_TC_TD3(Agent):
         ae_min_delta: Optional[float] = None,
         use_early_stop: bool = False,
         project_latent: bool = False,
-        projection_dim: int = 1024,
+        projection_mlp_dims: List[int] = [256],
+        projection_dim: int = 128,
         latent_dim: int = 20,
         ae_tau: float = 0.005,
         use_target_encoder: bool = False,  # if True use target encoder for actor/critic
@@ -543,13 +544,15 @@ class VQ_TC_TD3(Agent):
             else:
                 projection_levels = fsq_levels
             self.projection = Projection(
-                mlp_dims=[1024],
+                # mlp_dims=[1024],
+                mlp_dims=projection_mlp_dims,
                 levels=projection_levels,
                 latent_dim=latent_dim,
                 out_dim=projection_dim,
             ).to(device)
             self.projection_target = Projection(
-                mlp_dims=[1024],
+                # mlp_dims=[1024],
+                mlp_dims=projection_mlp_dims,
                 levels=projection_levels,
                 latent_dim=latent_dim,
                 out_dim=projection_dim,
