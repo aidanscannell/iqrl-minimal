@@ -13,7 +13,7 @@ mem_gb: 100
 # mem_gb: 50
 nodes: 1
 # name: ${hydra.job.name}
-name: ${slurm_id}
+name: ${env_id}-${dmc_task}-${agent.name}
 qos: null
 comment: null
 exclude: null
