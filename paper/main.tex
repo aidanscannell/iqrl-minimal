@@ -390,8 +390,15 @@ and {\em (iii)} is task-agnostic.
 
   % Draw backgrounds
   \begin{pgfonlayer}{background}
-    \draw[draw=none,fill=black!10,rounded corners=5pt] ($(i0.north west) + (-.5cm,1cm)$) 
-      rectangle ($(i2.east)!(z2.north)!(i2.east) + (.5cm,-1cm)$);
+  
+    \coordinate (mid) at ($(i2.east)!.5!(policy.west)$);  
+    
+    \draw[draw=none,fill=black!10,rounded corners=5pt] ($(i0.north west) + (-.25cm,1cm)$) 
+      rectangle ($(mid)!(z2.north)!(mid) + (-3pt,-1cm)$);
+      
+    \draw[draw=none,fill=black!05,rounded corners=5pt] ($(mid)!(i2.north east)!(mid) + (3pt,1cm)$) 
+      rectangle ($(value.east)!(z2.north)!(value.east) + (.25cm,-1cm)$);
+      
   \end{pgfonlayer}
   
 \end{tikzpicture}}

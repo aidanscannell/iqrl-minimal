@@ -368,6 +368,7 @@ class VQ_TC_TD3(Agent):
         encoder_mlp_dims: List[int] = [256],
         ae_learning_rate: float = 3e-4,
         ae_batch_size: int = 128,
+        zp_weight: float = 10,
         # ae_num_updates: int = 1000,
         ae_utd_ratio: int = 1,  # used for representation first training
         ae_update_freq: int = 1,  # update encoder less frequently than actor/critic
@@ -429,6 +430,8 @@ class VQ_TC_TD3(Agent):
         self.use_fsq = use_fsq
         self.fsq_levels = fsq_levels
         self.fsq_idx = fsq_idx
+
+        self.zp_weight = zp_weight
 
         self.horizon = horizon
 
@@ -625,6 +628,14 @@ class VQ_TC_TD3(Agent):
             compile=compile,
         )
 
+        if train_strategy == "combined":
+            params = (
+                encoder_params
+                + list(self.td3.actor.parameters())
+                + list(self.td3.critic.parameters())
+            )
+            self.opt = torch.optim.AdamW(params, lr=learning_rate)
+
         self.encoder_update_conter = 0
 
         self.reset_type = reset_type
@@ -655,6 +666,10 @@ class VQ_TC_TD3(Agent):
             )
         elif self.train_strategy == "representation-first":
             info = self.update_2(
+                replay_buffer=replay_buffer, num_new_transitions=num_new_transitions
+            )
+        elif self.train_strategy == "combined":
+            info = self.update_3(
                 replay_buffer=replay_buffer, num_new_transitions=num_new_transitions
             )
         else:
@@ -688,12 +703,13 @@ class VQ_TC_TD3(Agent):
             # Map observations to latent
             # TODO don't use target here. It breaks dog?
             # TODO I used to use target here
-            if self.use_target_encoder:
-                z = self.encoder_target(batch.observations)
-                z_next = self.encoder_target(batch.next_observations)
-            else:
-                z = self.encoder(batch.observations)
-                z_next = self.encoder(batch.next_observations)
+            with torch.no_grad():
+                if self.use_target_encoder:
+                    z = self.encoder_target(batch.observations)
+                    z_next = self.encoder_target(batch.next_observations)
+                else:
+                    z = self.encoder(batch.observations)
+                    z_next = self.encoder(batch.next_observations)
             if self.use_fsq:
                 z = z[self.fsq_idx]
                 z_next = z_next[self.fsq_idx]
@@ -785,6 +801,151 @@ class VQ_TC_TD3(Agent):
         ###### Train actor/critic ######
         num_updates = int(num_new_transitions * self.td3.utd_ratio)
         info.update(self.update_actor_critic(replay_buffer, num_updates=num_updates))
+
+        return info
+
+    def update_3(self, replay_buffer: ReplayBuffer, num_new_transitions: int) -> dict:
+        """Update representation and TD3 at same time"""
+        num_updates = int(num_new_transitions * self.td3.utd_ratio)
+        info = {}
+
+        logger.info(f"Performing {num_updates} VQ-TC-TD3 updates...")
+        reset_flag = 0
+        for i in range(num_updates):
+            batch = replay_buffer.sample(self.td3.batch_size, val=False)
+
+            # Update encoder less frequently than actor/critic
+            if i % self.encoder_update_freq == 0:
+                info.update(self.update_representation_step(batch=batch))
+
+            # Form n-step samples (truncate if timeout)
+            dones = torch.zeros_like(batch.dones[0], dtype=torch.bool)
+            rewards = torch.zeros_like(batch.rewards[0])
+            timeout_or_dones = torch.zeros_like(batch.dones[0], dtype=torch.bool)
+            next_state_discounts = torch.ones_like(batch.dones[0])
+            next_obs = torch.zeros_like(batch.observations[0])
+            for t in range(self.td3.nstep):
+                next_obs = torch.where(
+                    timeout_or_dones[..., None], next_obs, batch.next_observations[t]
+                )
+                next_state_discounts *= torch.where(
+                    timeout_or_dones, 1, self.td3.discount
+                )
+                dones = torch.where(timeout_or_dones, dones, batch.dones[t])
+                rewards += torch.where(
+                    timeout_or_dones[..., None],
+                    0,
+                    self.td3.discount**t * batch.rewards[t],
+                )
+                timeout_or_dones = torch.logical_or(
+                    timeout_or_dones, torch.logical_or(dones, batch.timeouts[t])
+                )
+            nstep_batch = ReplayBufferSamples(
+                observations=batch.observations[0],
+                actions=batch.actions[0],
+                next_observations=next_obs,
+                dones=dones,
+                timeouts=timeout_or_dones,
+                rewards=rewards,
+                next_state_discounts=next_state_discounts,
+            )
+
+            # # Update encoder less frequently than actor/critic
+            # if i % self.encoder_update_freq == 0:
+            #     encoder_loss, _info = self.representation_loss(batch=batch)
+            #     info.update(_info)
+            # else:
+            #     encoder_loss = torch.zeros(1).to(self.device)
+
+            # Map observations to latent
+            with torch.no_grad():
+                z_tar = self.encoder_target(nstep_batch.observations)
+                z_next_tar = self.encoder_target(nstep_batch.next_observations)
+                z = self.encoder(nstep_batch.observations)
+                z_next = self.encoder(nstep_batch.next_observations)
+            if self.use_fsq:
+                z = z[self.fsq_idx]
+                z_tar = z_tar[self.fsq_idx]
+                z_next = z_next[self.fsq_idx]
+                z_next_tar = z_next_tar[self.fsq_idx]
+                if self.fsq_idx == 0:
+                    z = torch.flatten(z, -2, -1)
+                    z_tar = torch.flatten(z_tar, -2, -1)
+                    z_next = torch.flatten(z_next, -2, -1)
+                    z_next_tar = torch.flatten(z_next_tar, -2, -1)
+
+            # Update critic
+            q_loss = self.td3.critic_loss(  # uses target z_next
+                ReplayBufferSamples(
+                    observations=z.to(torch.float).detach(),
+                    actions=nstep_batch.actions,
+                    next_observations=z_next_tar.to(torch.float).detach(),
+                    dones=nstep_batch.dones,
+                    timeouts=nstep_batch.timeouts,
+                    rewards=nstep_batch.rewards,
+                    next_state_discounts=nstep_batch.next_state_discounts,
+                )
+            )
+            self.td3.q_optimizer.zero_grad()
+            q_loss.backward()
+            self.td3.q_optimizer.step()
+            info.update({"q_loss": q_loss})
+
+            # Update target network
+            soft_update_params(
+                self.td3.critic, self.td3.target_critic, tau=self.td3.tau
+            )
+
+            # Update actor less frequently than critic
+            if self.td3.critic_update_counter % self.td3.actor_update_freq == 0:
+                q1, q2 = self.td3.target_critic(z_tar, self.td3.actor(z))
+                pi_loss = -torch.min(q1, q2).mean()
+                self.td3.actor_optimizer.zero_grad()
+                pi_loss.backward()
+                self.td3.actor_optimizer.step()
+                info.update({"actor_loss": pi_loss})
+
+                # Update target network
+                soft_update_params(
+                    self.td3.actor, self.td3.target_actor, tau=self.td3.tau
+                )
+
+            if i % self.logging_freq == 0:
+                logger.info(
+                    f"Iteration {i} | encoder loss {info['encoder_loss']} | q loss {info['q_loss']} | pi loss {info['actor_loss']}"
+                )
+                if wandb.run is not None:
+                    # info.update({"exploration_noise": self.td3.exploration_noise})
+                    wandb.log(info)
+                    wandb.log({"reset": reset_flag})
+                    # z_dist = self.latent_euclidian_dist()
+                    # wandb.log({"z_dist": z_dist})
+
+                    # Log rank of latent
+                    def log_rank(name, z):
+                        try:
+                            rank3 = matrix_rank(z, atol=1e-3, rtol=1e-3)
+                            rank2 = matrix_rank(z, atol=1e-2, rtol=1e-2)
+                            rank1 = matrix_rank(z, atol=1e-1, rtol=1e-1)
+                            condition = cond(z)
+                            for j, rank in enumerate([rank1, rank2, rank3]):
+                                wandb.log({f"{name}-rank-{j}": rank.item()})
+                            wandb.log({f"{name}-cond-num": condition.item()})
+                        except:
+                            pass
+
+                    z_batch = self.encoder(batch.observations[0])
+                    if self.use_fsq:
+                        pre_norm_z_batch = self.encoder.mlp(batch.observations[0])
+                        log_rank(name="z-pre-normed", z=pre_norm_z_batch)
+                        z_batch = z_batch[0]  # always use z not indices
+                        z_batch = torch.flatten(z_batch, -2, -1)
+
+                    log_rank(name="z", z=z_batch)
+
+                reset_flag = 0
+
+        logger.info("Finished training VQ-TC-TD3")
 
         return info
 
@@ -969,7 +1130,8 @@ class VQ_TC_TD3(Agent):
             # else:
             z = self.encoder(x_train)
 
-        if self.reconstruction_loss:
+        if self.reconstruction_loss and not self.temporal_consistency:
+            raise NotImplementedError("Doesn't handle leading dim of N-step?")
             x_rec = self.decoder(z)
             rec_loss = (x_rec - x_train).abs().mean()
         else:
@@ -977,6 +1139,7 @@ class VQ_TC_TD3(Agent):
 
         if self.temporal_consistency:
             temporal_consitency_loss, reward_loss = 0.0, 0.0
+            rec_loss = torch.zeros(1).to(self.device)
             if self.use_fsq:
                 z, _ = self.encoder(batch.observations[0])
             else:
@@ -989,6 +1152,11 @@ class VQ_TC_TD3(Agent):
                 timeout_or_dones = torch.logical_or(
                     timeout_or_dones, torch.logical_or(dones, batch.timeouts[t])
                 )
+
+                # Calculate reconstruction loss for each time step
+                if self.reconstruction_loss:
+                    x_rec = self.decoder(z)
+                    rec_loss += (x_rec - x_train[t]).abs().mean()
 
                 # Predict next latent
                 delta_z_pred = self.dynamics(z, a=batch.actions[t])
@@ -1008,13 +1176,12 @@ class VQ_TC_TD3(Agent):
                     r_tar = batch.rewards[t]
                     assert next_obs.ndim == r_tar.ndim == 2
 
-                if self.project_latent:
-                    # next_z_pred_not_projected = next_z_pred
-                    next_z_tar = self.projection_target(next_z_tar)
-                    next_z_pred = self.projection(next_z_pred)
-
                 # Don't forget this
                 z = next_z_pred
+
+                if self.project_latent:
+                    next_z_tar = self.projection_target(next_z_tar)
+                    next_z_pred = self.projection(next_z_pred)
 
                 # Losses
                 rho = self.rho**t
