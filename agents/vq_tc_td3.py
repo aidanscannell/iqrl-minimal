@@ -188,15 +188,19 @@ class Projection(MLPResettable):
     def __init__(
         self,
         mlp_dims: List[int],
-        levels: List[int] = [8, 6, 5],  # target size 2^8, actual size 240
+        levels: Optional[List[int]] = None,
         out_dim: int = 1024,
         latent_dim: int = 1024,
     ):
         self.levels = levels
-        self.latent_dim = (latent_dim, len(levels))
+        if levels is not None:
+            self.latent_dim = (latent_dim, len(levels))
+            in_dim = np.array(self.latent_dim).prod()
+        else:
+            self.latent_dim = latent_dim
+            in_dim = self.latent_dim
         self.act_fn = None
 
-        in_dim = np.array(self.latent_dim).prod()
         mlp = h.mlp(in_dim=in_dim, mlp_dims=mlp_dims, out_dim=out_dim, act_fn=None)
 
         super().__init__(mlp=mlp)
@@ -204,8 +208,9 @@ class Projection(MLPResettable):
         self.reset(reset_type="full")
 
     def forward(self, x):
-        if x.ndim > 2:
-            x = torch.flatten(x, -2, -1)
+        if self.levels is not None:
+            if x.ndim > 2:
+                x = torch.flatten(x, -2, -1)
         z = self.mlp(x)
         # print(f"z {z.shape}")
         return z
@@ -534,16 +539,18 @@ class VQ_TC_TD3(Agent):
 
         if self.project_latent:
             if not use_fsq:
-                raise NotImplementedError
+                projection_levels = None
+            else:
+                projection_levels = fsq_levels
             self.projection = Projection(
                 mlp_dims=[1024],
-                levels=fsq_levels,
+                levels=projection_levels,
                 latent_dim=latent_dim,
                 out_dim=projection_dim,
             ).to(device)
             self.projection_target = Projection(
                 mlp_dims=[1024],
-                levels=fsq_levels,
+                levels=projection_levels,
                 latent_dim=latent_dim,
                 out_dim=projection_dim,
             ).to(device)
