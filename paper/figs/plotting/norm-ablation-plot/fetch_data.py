@@ -135,7 +135,7 @@ keys = [
 rename = {a: b for a, b in zip(keys, titles)}
 
 
-def fetch_results(run_path, run_name_list, keys, agent_name):
+def fetch_results(run_path, run_name_list, keys):
     data = []
     for run_name in run_name_list:
         wandb_run = api.run(run_path + run_name)
@@ -160,7 +160,7 @@ def fetch_results(run_path, run_name_list, keys, agent_name):
         if wandb_run.config["agent"]["use_fsq"]:
             history["name"] = "iFSQ"
         else:
-            history["name"] = "no-norm"
+            history["name"] = f"no-norm $d={wandb_run.config['agent']['latent_dim']}$"
         history["utd_ratio"] = wandb_run.config["agent"]["utd_ratio"]
 
         data.append(history)
@@ -175,7 +175,7 @@ data = pd.concat(
             run_path=ddpg_data["path"],
             run_name_list=ddpg_data["data"][env],
             keys=keys,
-            agent_name="VQ-TD3",
+            # agent_name="VQ-TD3",
         )
         for env in ddpg_data["data"].keys()
     ]
@@ -183,7 +183,7 @@ data = pd.concat(
 
 # %%
 
-data.to_csv("./vq_td3_main.csv")
+data.to_csv("./ifsq-rl.csv")
 
 
 # %%

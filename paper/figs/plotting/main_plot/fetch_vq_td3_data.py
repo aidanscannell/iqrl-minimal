@@ -10,9 +10,51 @@ ddpg_data = {
         "fish-swim": ["5rhervdh", "btrclty9", "royfiwdl", "2bvv2o87", "krfia2hj"],
         "walker-walk": ["4wydf2sz", "n7l8xac6", "l7nqlsid", "yrwwmyq2", "bpdxi4jw"],
         "quadruped-walk": ["6gf2r90u", "uvq2ctjr", "4x1r1nqg", "lji8f92s", "eiafkell"],
-        "humanoid-walk": ["lcmbhw37"],  # "lcmbhw37"],
-        "dog-walk": ["sjqd8i9u"],
-        "dog-run": ["zhsh5oyd"],
+        "humanoid-walk": [
+            "wur1u276",
+            "l8da5827",
+            "oy053sve",
+            "krctc38z",
+            "anstkvup",
+        ],  # project=False
+        # "humanoid-walk": [
+        #     "bk32bbsi",
+        #     "fr1hpr9b",
+        #     "t9hbnhff",
+        #     "681rgba7",
+        #     "ndd0tr73",
+        # ],  # project=True
+        # "humanoid-walk": ["lcmbhw37"],  # "lcmbhw37"],
+        "dog-walk": [
+            "stawiad8",
+            "iv8p110s",
+            "k454j543",
+            "nihkvll9",
+            "jpkbw5h7",
+        ],  # project=False
+        # "dog-walk": [
+        #     "9k5cqnuq",
+        #     "q28f7f9i",
+        #     "2vf4clxu",
+        #     "8nnpgifp",
+        #     "b5ffm8rt",
+        # ],  # project=True
+        # "dog-walk": ["sjqd8i9u"],
+        "dog-run": [
+            "ohxmhffe",
+            "aikn5eix",
+            "kprj5q9u",
+            "r232jms2",
+            "aox6spn2",
+        ],  # project=False
+        # "dog-run": [
+        #     "7hty9mrz",
+        #     "0no65695",
+        #     "nfuag4aj",
+        #     "otirlyw0",
+        #     "t9oyygr9",
+        # ],  # project=True
+        # "dog-run": ["zhsh5oyd"],
         #### OLD ####
         # "cheetah-run": ["6bzzn892"],  # "lcmbhw37"],
         # "humanoid-walk": ["lcmbhw37"],  # "lcmbhw37"],

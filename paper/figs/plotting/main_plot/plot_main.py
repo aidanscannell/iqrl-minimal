@@ -84,7 +84,7 @@ def plot(df, key="episode_reward"):
         ax.set_xlabel("Environment Steps (1e3)")
         ax.set_ylabel("Episode Return")
     plt.tight_layout()
-    plt.savefig(f"main_plot_new.pdf")
+    plt.savefig(f"baselines_comparison.pdf")
     # plt.show()
 
 

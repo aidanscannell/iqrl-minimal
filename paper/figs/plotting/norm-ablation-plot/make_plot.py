@@ -112,7 +112,7 @@ def plot(df, key="episode_reward"):
         ax.set_xlabel("Environment Steps (1e3)")
         ax.set_ylabel("Episode Return")
     plt.tight_layout()
-    plt.savefig(f"normalization-ablation.pdf")
+    plt.savefig(f"../../normalization-ablation.pdf")
     # plt.show()
 
 
@@ -133,7 +133,7 @@ df = [
     # pd.read_csv(f"{data_path}/tdmpc_main.csv"),
     # df_redq,
     # pd.read_csv(f"{data_path}/sac_main.csv"),
-    pd.read_csv(f"{data_path}/vq_td3_main.csv"),
+    pd.read_csv(f"{data_path}/ifsq-rl.csv"),
 ]
 plot(pd.concat(df))
 
