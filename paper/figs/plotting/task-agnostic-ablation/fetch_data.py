@@ -45,11 +45,16 @@ ddpg_data = {
             "my89a2ui",
             "0bdbllyg",
             # Task-specific pre-training
-            "uykvengt",
-            "e6u4u0et",
-            "phlr610t",
-            "32c5rcc6",
-            "2hyd7evc",
+#            "uykvengt",
+#            "e6u4u0et",
+#            "phlr610t",
+#            "32c5rcc6",
+#            "2hyd7evc",
+            "lc8kap78",
+            "fs0fug53",
+            "rypu71yu",
+            "7lerwfz0",
+            "jcvs7slh",
         ],
         "walker-run": [
             # Pre-training"
@@ -65,11 +70,16 @@ ddpg_data = {
             "cbp72vz9",
             "oi0gnnd1",
             # Task-specific pre-training
-            "oxisl0xv",
-            "wv0a1i6l",
-            "2mstpcgd",
-            "olnugqts",
-            "1iegxig2",
+#            "oxisl0xv",
+#            "wv0a1i6l",
+#            "2mstpcgd",
+#            "olnugqts",
+#            "1iegxig2",
+            "g029b1dc",
+            "2dy32443",
+            "1ogr1lye",
+            "8rtrpoht",
+            "glmvfvho",
         ],
     },
 }
@@ -129,15 +139,23 @@ def fetch_results(run_path, run_name_list, keys):
         history["time"] = 0
         history["env"] = env_name
         history["seed"] = wandb_run.config["seed"]
-        history = history[history["env_step"] <= 2e6]
+
+        if env_name == "hopper-hop":
+            pass
+        elif env_name == "humanoid-run":
+            history = history[history["env_step"] <= 2e6]
+        elif env_name in ["walker-run", "quadruped-run"]:
+            history = history[history["env_step"] <= 500000]
+        else:
+            raise NotImplementedError
 
         # history["agent"] = agent_name
         if not wandb_run.config["load_pretrained_agent"]:
-            history["name"] = "iFSQ-RL"
+            history["name"] = "iQRL"
         elif wandb_run.config["agent"]["reward_loss"]:
-            history["name"] = "iFSQ-RL-spec-trf"
+            history["name"] = "iQRL-pretrained"
         else:
-            history["name"] = "iFSQ-RL-agn-trf"
+            history["name"] = "iQRL+rew-pretrained"
             # history["name"] = f"no-norm $d={wandb_run.config['agent']['latent_dim']}$"
         history["utd_ratio"] = wandb_run.config["agent"]["utd_ratio"]
 
