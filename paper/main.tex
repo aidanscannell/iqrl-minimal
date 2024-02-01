@@ -610,21 +610,21 @@ Proposed $\mathcal{L}$ & $[8,6,5]$ & $[8,5,5,5]$ & $[7,5,5,5,5]$ \\
 \section{Experiments}
 \label{sec:experiments}
 
-\begin{figure*}[ht]
-\vskip 0.2in
-\begin{center}
-\centerline{\includegraphics[width=1.0\textwidth]{./figs/utd_comparison.pdf}}
-\caption{\textbf{Normalizing the latent-space enables higher UTD} \our's (blue) sample efficiency improves when the UTD ratio is increased from $1 \rightarrow 8$. TCRL (which has an un-normalized latent space) does not see an improvement in sample efficiency when when the UTD ratio is increased. Results are for four DMC tasks. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
-\label{fig:normalization_enables_higher_utd}
-\end{center}
-\vskip -0.2in
-\end{figure*}
+% \begin{figure*}[ht]
+% \vskip 0.2in
+% \begin{center}
+% \centerline{\includegraphics[width=1.0\textwidth]{./figs/utd_comparison.pdf}}
+% \caption{\textbf{Normalizing the latent-space enables higher UTD} \our's (blue) sample efficiency improves when the UTD ratio is increased from $1 \rightarrow 8$. TCRL (which has an un-normalized latent space) does not see an improvement in sample efficiency when when the UTD ratio is increased. Results are for four DMC tasks. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
+% \label{fig:normalization_enables_higher_utd}
+% \end{center}
+% \vskip -0.2in
+% \end{figure*}
 
-\textbf{Normalizing the latent-space enables higher UTD}
-We first show how using bounded latent states enables us to increase the UTD ratio to see improvements in sample efficiency.
-\cref{fig:normalization_enables_higher_utd} shows that as the UTD ratio is increased from $1$ to $8$ \our's sample efficiency
-continues to improve.
-In contrast, when increasing the UTD ratio for TCRL no improvements are observed.
+% \textbf{Normalizing the latent-space enables higher UTD}
+% We first show how using bounded latent states enables us to increase the UTD ratio to see improvements in sample efficiency.
+% \cref{fig:normalization_enables_higher_utd} shows that as the UTD ratio is increased from $1$ to $8$ \our's sample efficiency
+% continues to improve.
+% In contrast, when increasing the UTD ratio for TCRL no improvements are observed.
 
 
 
@@ -643,10 +643,21 @@ In contrast, when increasing the UTD ratio for TCRL no improvements are observed
 In \cref{fig:normalization_improves_sample_efficiency},
 
 
+
 \begin{figure*}[ht]
 \vskip 0.2in
 \begin{center}
-\centerline{\includegraphics[width=1.0\textwidth]{./figs/utd_comparison.pdf}}
+\centerline{\includegraphics[width=1.0\textwidth]{./figs/normalization-ablation.pdf}}
+\caption{\textbf{Ablation of normalization}. \our XXXXXX We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
+\label{fig:multi-task-pretraining}
+\end{center}
+\vskip -0.2in
+\end{figure*}
+
+\begin{figure*}[ht]
+\vskip 0.2in
+\begin{center}
+\centerline{\includegraphics[width=0.3\textwidth]{example-image}}
 \caption{\textbf{\our's task-agnostic representation helps for multi-task RL}. \our XXXXXX We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
 \label{fig:multi-task-pretraining}
 \end{center}
