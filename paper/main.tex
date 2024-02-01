@@ -357,7 +357,7 @@ Learning representations for RL has been investigated for decades
 \citep{abelOptimalBehaviorApproximate2016,mannorDynamicAbstractionReinforcement2004,liUnifiedTheoryState2006,andreStateAbstractionProgrammable2002,deardenAbstractionApproximateDecisiontheoretic1997,singhReinforcementLearningSoft1994,higginsDefinitionDisentangledRepresentations2018,vanhoofStableReinforcementLearning2016,watterEmbedControlLocally2015,ghoshRepresentationsStableOffPolicy2020}.
 However, these approaches are usually limited to simple environments.
 Some approaches used unsupervised learning (\eg VAE \citep{kingmaAutoEncoding2014} with reconstruction loss) to acquire representations
-\cite{finnDeepSpatialAutoencoders2016,higginsDARLAImprovingZeroShot2017,langeAutonomousReinforcementLearning2012,watterEmbedControlLocally2015}.
+\citep{finnDeepSpatialAutoencoders2016,higginsDARLAImprovingZeroShot2017,langeAutonomousReinforcementLearning2012,watterEmbedControlLocally2015}.
 More recently, self-supervised learning (SSL) approaches (which do not reconstruct observations)
 attempt to learn good features without labels \cite{anandUnsupervisedStateRepresentation2019}.
 Alternative approaches leverage contrastive losses to learn representations \cite{laskinCURLContrastiveUnsupervised2020}.
@@ -534,125 +534,30 @@ Alternative approaches leverage contrastive losses to learn representations \cit
 
 \end{tikzpicture}
 \caption{\textbf{\our's model architecture} \our learns a representation soley with the latent-state consistency loss, \ie a self-predictive loss, see \cref{eq:rep-loss}. We follow Finite Scalar Quantization (FSQ) \cite{mentzerFiniteScalarQuantization2023} and bound the domain of our latent representation, \ie we normalize it. To this end, our normalization results in an implicit codebook whose size we can control. We denote our normalization scheme by \cube.}
-\label{diagram-self-predictive}
+\label{fig:diagram-self-predictive}
 \vskip -0.2in
 \end{figure}
 
 
 To the best of our knowledge, all prior works learn representations with objectives that depend on
-predicting the reward and/or value in the latent space \citet{zhaoSimplifiedTemporalConsistency2023,hansenTemporalDifferenceLearning2022,zhangLearningInvariantRepresentations2020,zhaoSimplifiedTemporalConsistency2023,hansenTemporalDifferenceLearning2022,geladaDeepMDPLearningContinuous2019,rezaei-shoshtariContinuousMDPHomomorphisms2022}.
+predicting the reward and/or value in the latent space
+\citep{zhangLearningInvariantRepresentations2020,zhaoSimplifiedTemporalConsistency2023,hansenTemporalDifferenceLearning2022,geladaDeepMDPLearningContinuous2019,rezaei-shoshtariContinuousMDPHomomorphisms2022}.
 % use a latent-state consistency loss based upon the Cosine
 % For example, \citet{zhaoSimplifiedTemporalConsistency2023} use a latent-state consistency loss based upon the Cosine
 % similarity loss plus the MSE of reward predictions in the latent space.
 % The cosine similarity loss provides training stability whilst the reward prediction prevents representation collapse.
 As such, these methods learn task-specific representations.
-% \citet{geladaDeepMDPLearningContinuous2019,zhangLearningInvariantRepresentations2020,rezaei-shoshtariContinuousMDPHomomorphisms2022}
-use SSL losses based on bisimulation metrics \citep{larsenBisimulationProbabilisticTesting1989}.
-As such, their encoders group states into clusters whilst preserving some properties
-(\eg optimal value, all values, all action values from each state) \citep{liUnifiedTheoryState2006}.
-These methods use latent-space dynamic models to learn latent representations which encode only task-relevant information.
-% Interestingly, the dynamics models are only used for representation learning and are not used for model-based planning.
-DeepMDP \citep{geladaDeepMDPLearningContinuous2019} combines its representation learning with
-distributional Q learning  \citep[C51,][]{bellemareDistributionalPerspectiveReinforcement2017},
-whilst DBC \citep{zhangLearningInvariantRepresentations2020} combine its method with SAC.
 
 
-In this paper, we propose a simple representation learning technique that can be combined with any model-free RL method.
-Normalization based upon Finite Scalar Quantization
-Importantly, our representation {\em (i)} significantly speeds up learning, {\em (ii)} prevents representation collapse,
+In this paper, we propose a simple representation learning technique that can be combined with any model-free RL method
+(we use TD3 \citep{fujimotoAddressingFunctionApproximation2018}).
+See \cref{fig:diagram-self-predictive} for an overview of our (extremely simple) representation learning method.
+It is based soley on a self-predictive loss.
+In contrast to prior works, we normalize our latent representation using the technique from Finite Scalar Quantization
+\citep{mentzerFiniteScalarQuantization2023}.
+As a result, our latent space is associated with an \textit{implicit} codebook, whose size we can control.
+Importantly, our representation {\em (i)} significantly speeds up learning, {\em (ii)} is simple to implement,
 and {\em (iii)} is task-agnostic.
-
-% In recent years, it has become common to
-
-
-%\end{document}
-
-
-\section{Related Work}
-\label{related_work}
-
-
-
-\textbf{Sample-efficiency in deep RL}
-Many approaches have been proposed to improve sample efficiency in deep RL.
-As \citet{laskinCURLContrastiveUnsupervised2020} highlighted, these can generally be divided into two streams of research:
-{\em (i)} auxillary tasks on the agent's observations and {\em (ii)} world models that predict the future
-\citep{haRecurrentWorldModels2018,hafnerLearning2019,hansenTemporalDifferenceLearning2022}.
-In this work, we are interested in the first class of methods, which use auxillary tasks to improve sample efficiency.
-
-\textbf{Representation learning for RL}
-Learning representations for RL has been investigated for decades
-\citep{abelOptimalBehaviorApproximate2016,mannorDynamicAbstractionReinforcement2004,liUnifiedTheoryState2006,andreStateAbstractionProgrammable2002,deardenAbstractionApproximateDecisiontheoretic1997,singhReinforcementLearningSoft1994,higginsDefinitionDisentangledRepresentations2018,vanhoofStableReinforcementLearning2016,watterEmbedControlLocally2015,ghoshRepresentationsStableOffPolicy2020}.
-However, these approaches are usually limited to simple environments.
-Some approaches used unsupervised learning (\eg VAE \citep{kingmaAutoEncoding2014} with reconstruction loss) to acquire representations
-\cite{finnDeepSpatialAutoencoders2016,higginsDARLAImprovingZeroShot2017,langeAutonomousReinforcementLearning2012,watterEmbedControlLocally2015}.
-More recently, self-supervised learning (SSL) approaches (which do not reconstruct observations)
-attempt to learn good features without labels \cite{anandUnsupervisedStateRepresentation2019}.
-Alternative approaches leverage contrastive losses to learn representations \cite{laskinCURLContrastiveUnsupervised2020}.
-
-\citet{yaratsImprovingSampleEfficiency2021} learn a compact representation with a deterministic autoencoder and then train a
-SAC agent \citep{haarnojaSoft2018} with the representation. They name their method SAC-AE.
-Interestingly, SAC-AE matches the performance of model-based methods like PlaNet \citep{hafnerLearning2019}
-and SLAC \citep{leeStochasticLatentActorCritic2020}, whilst being considerably simpler to implement.
-
-\textbf{Bisimulation}
-DeepMDP \citep{geladaDeepMDPLearningContinuous2019},
-deep bisimulation for control (DBC) \citep{zhangLearningInvariantRepresentations2020}
-and DHGP \citep{rezaei-shoshtariContinuousMDPHomomorphisms2022}
-% \citet{geladaDeepMDPLearningContinuous2019,zhangLearningInvariantRepresentations2020,rezaei-shoshtariContinuousMDPHomomorphisms2022}
-use SSL losses based on bisimulation metrics \citep{larsenBisimulationProbabilisticTesting1989}.
-As such, their encoders group states into clusters whilst preserving some properties
-(\eg optimal value, all values, all action values from each state) \citep{liUnifiedTheoryState2006}.
-These methods use latent-space dynamic models to learn latent representations which encode only task-relevant information.
-% Interestingly, the dynamics models are only used for representation learning and are not used for model-based planning.
-DeepMDP \citep{geladaDeepMDPLearningContinuous2019} combines its representation learning with
-distributional Q learning  \citep[C51,][]{bellemareDistributionalPerspectiveReinforcement2017},
-whilst DBC \citep{zhangLearningInvariantRepresentations2020} combine its method with SAC.
-
-
-% \cite{zhaoSimplifiedTemporalConsistency2023}
-% \cite{hansenTemporalDifferenceLearning2022}
-
-% \cite{higginsDefinitionDisentangledRepresentations2018,vanhoofStableReinforcementLearning2016,watterEmbedControlLocally2015} use VAE \citep{kingmaAutoEncoding2014}
-
-% \citet{zhangLearningInvariantRepresentations2020} to learn a latent representation which encode only
-% task-relevant information.
-% Their method is named deep bisimulation for control (DBC) and they combine their representation learning method with SAC.
-
-
-\textbf{Primacy bias}
-Primacy bias in deep RL \citep{nikishinPrimacyBiasDeep2022}
-is where an agent overfits on early data and loses its ability to learn from new data,
-which arises due to the plasticity in NNs \citep{lyleUnderstandingPlasticityNeural2023} \todo{earlier citation of plasticiy in NNs??}.
-\citet{nikishinPrimacyBiasDeep2022} showed that periodically resetting the agent's parameters can help alleviate primacy bias.
-\citet{doroSampleEfficientReinforcementLearning2022} built on top of this insight and showed that resetting the
-agent's parameters not only alleviates primacy bias but also
-enables the number of parameter update's per environment interaction to be increased.
-They refer to this as the replay ratio but it has also been referred to as the update to data
-ratio (UTD) \citep{chenRandomizedEnsembledDouble2021}.
-\citet{nikishinDeepReinforcementLearning2023} propose an alternative approach to overcome primacy bias which
-freezes the current NN and creates a new one which learns the changes in predictions.
-
-
-When leveraging latent representations for RL (\eg SLAC \citep{leeStochasticLatentActorCritic2020},
-SAC-AE \citep{yaratsImprovingSampleEfficiency2021}) this issue is exacerbated.
-Not only do the agents networks (\eg actor/critic) overfit on early data, but as the encoder is updated during training, the
-inputs (latent states) that the networks are trained on change.
-As such, the networks are overfit on latent states which no longer exist in the ``latent'' data set.
-
-
-
-\textbf{Misc}
-\citet{obando-ceronSmallBatchDeep2023a} show that reducing the batch size not only improves
-performance and wall-time gains, but also appears to have knock-on effects on exploration and asymptotic behaviour.
-
-\citet{lyuOffPolicyRLAlgorithms2023} show that performing multiple parameter updates for a given batch.
-Their method, name sample multiple reuse (SMR), improves sample efficiency
-They say not to use if for image-based environments like Atari.
-
-
-Simplical embeddings
-\cite{lavoieSimplicialEmbeddingsSelfSupervised2022}
 
 
 \section{Method}
