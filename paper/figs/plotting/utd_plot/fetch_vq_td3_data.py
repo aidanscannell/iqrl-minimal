@@ -179,6 +179,7 @@ def fetch_results(run_path, run_name_list, keys, agent_name):
         history["time"] = 0
         history["env"] = env_name
         history["seed"] = wandb_run.config["seed"]
+        breakpoint()
         history["agent"] = agent_name
         history["utd_ratio"] = wandb_run.config["agent"]["utd_ratio"]
 

@@ -15,19 +15,22 @@ plt.rcParams["font.size"] = 13
 plt.rcParams["legend.fontsize"] = 12
 plt.rcParams["legend.loc"] = "lower right"
 COLORS = {
-    "TCRL": "#e41a1c",
+    "TCRL": "#4daf4a",
     "SAC": "#377eb8",
     "REDQ": "#984ea3",
     "TD-MPC": "#ff7f00",
-    "VQ-TD3": "magenta",
+    "iFSQ-RL": "#e41a1c",
+    # "iFSQ-RL d=1024": "magenta",
+    # "iFSQ-RL d=512": "grey",
+    # "iFSQ-RL d=128": "#e41a1c",
 }
 # %%
 main_envs = [
     "acrobot-swingup",
     "cheetah-run",
-    # "fish-swim",
+    "fish-swim",
     "quadruped-walk",
-    "humanoid-run",
+    # "humanoid-run",
     "walker-walk",
     "humanoid-walk",
     "dog-walk",
@@ -44,35 +47,42 @@ def plot(df, key="episode_reward"):
 
     fig, axs = plt.subplots(nrow, ncol, figsize=(4 * ncol, 3.5 * nrow))
 
+    # breakpoint()
+    # df["env_step"] = df["env_step"] / 1000
     for idx, env in enumerate(main_envs):
         data = df[df["env"] == env]
+        # breakpoint()
+        # data[data["agent"] == "iFSQ-RL"] = data[data["agent"] == "iFSQ-RL"].iloc[::2]
         row = idx // ncol
         col = idx % ncol
         ax = axs[row, col]
         hue_order = data.agent.unique()
 
-        if idx == 4:
+        if idx == 3:
             sns.lineplot(
+                # x=int("env_step" / 1000),
                 x="env_step",
+                # x="env_step",
+                # x="episode",
                 y=key,
                 data=data,
                 errorbar=("ci", 95),
                 hue="agent",
-                hue_order=hue_order,
+                # hue_order=hue_order,
                 palette=COLORS,
                 legend="auto",
                 ax=ax,
             )
             ax.legend().set_title(None)
         else:
-            # breakpoint()
             sns.lineplot(
+                # x="episode",
                 x="env_step",
                 y=key,
                 data=data,
                 errorbar=("ci", 95),
                 hue="agent",
-                hue_order=hue_order,
+                # hue_order=hue_order,
                 palette=COLORS,
                 legend=False,
                 ax=ax,
@@ -82,7 +92,7 @@ def plot(df, key="episode_reward"):
         ax.set_xlabel("Environment Steps (1e3)")
         ax.set_ylabel("Episode Return")
     plt.tight_layout()
-    plt.savefig(f"main_plot_new.pdf")
+    plt.savefig(f"../../baselines_comparison.pdf")
     # plt.show()
 
 
@@ -113,7 +123,7 @@ df = [
     pd.read_csv(f"{data_path}/tdmpc_main.csv"),
     df_redq,
     pd.read_csv(f"{data_path}/sac_main.csv"),
-    pd.read_csv(f"{data_path}/vq_td3_main.csv"),
+    pd.read_csv(f"{data_path}/ifsq-rl.csv"),
 ]
 plot(pd.concat(df))
 
