@@ -202,6 +202,60 @@
 
 \usetikzlibrary{shapes.geometric,positioning,calc}
 
+% Arno's cube hack
+\newcommand{\cube}{%
+\resizebox{1em}{.9em}{
+\begin{tikzpicture}[baseline=-1ex,cube/.style={very thick,black},
+            grid/.style={very thin,gray},
+            axis/.style={->,black,thick}]
+ \begin{scope}[every node/.append style={yslant=-0.5},yslant=-0.5]
+ [cube/.style={very thick,black},
+            axis/.style={->,blue,thick}]
+   \shade[right color=gray!10, left color=black!50] (0,0) rectangle +(3,3);
+   \node at (0.5,2.5) {};
+   \node at (1.5,2.5) {};
+   \node at (2.5,2.5) {};
+   \node at (0.5,1.5) {};
+   \node at (1.5,1.5) {};
+   \node at (2.5,1.5) {};
+   \node at (0.5,0.5) {};
+   \node at (1.5,0.5) {};
+   \node at (2.5,0.5) {};
+   \draw (0,0) grid (3,3);
+ \end{scope}
+ 
+ \begin{scope}[every node/.append style={yslant=0.5},yslant=0.5]
+   \shade[right color=gray!70,left color=gray!10] (3,-3) rectangle +(3,3);
+   \node at (3.5,-0.5) {};
+   \node at (4.5,-0.5) {};
+   \node at (5.5,-0.5) {};
+   \node at (3.5,-1.5) {};
+   \node at (4.5,-1.5) {};
+   \node at (5.5,-1.5) {};
+   \node at (3.5,-2.5) {};
+   \node at (4.5,-2.5) {};
+   \node at (5.5,-2.5) {};
+   \draw (3,-3) grid (6,0);
+ \end{scope}
+
+ \begin{scope}[every node/.append style={
+     yslant=0.5,xslant=-1},yslant=0.5,xslant=-1
+   ]
+   \shade[bottom color=gray!10, top color=black!80] (6,3) rectangle +(-3,-3);
+   \node at (3.5,2.5) {};
+   \node at (3.5,1.5) {};
+   \node at (3.5,0.5) {};
+   \node at (4.5,2.5) {};
+   \node at (4.5,1.5) {};
+   \node at (4.5,0.5) {};
+   \node at (5.5,2.5) {};
+   \node at (5.5,1.5) {};
+   \node at (5.5,0.5) {};
+   \draw (3,0) grid (6,3);  
+ \end{scope}
+\end{tikzpicture}}}
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % BEGIN DOCUMENT
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -452,14 +506,14 @@ and {\em (iii)} is task-agnostic.
   \node[anchor=north] (o0) at (i0.north) {\color{white}$o_{\sub}$};
   \node[anchor=north] (o1) at (i1.north) {\color{white}$o_{\subs{1}}$};
   \node[anchor=north] (o2) at (i2.north) {\color{white}$o_{\subs{2}}$};
-    
+        
   % Draw arrows
   \draw[arr] (i0) -- (e0);
   \draw[arr] (i1) -- (e1);
   \draw[arr] (i2) -- (e2);
-  \draw[arr] (z0) -- (z1);
-  \draw[arr] (z1) -- (z2);
-  \draw[arr] (e0) -- (z0);
+  \draw[arr] (z0) -- node[below,font=\tiny] {Dynamics} (z1);
+  \draw[arr] (z1) -- node[below,font=\tiny] {Dynamics} (z2);
+  \draw[arr] (e0) -- node[above,font=\tiny,rotate=90,yshift=6pt] {Normalization} (z0);
   \draw[arr] (e1) -- (zh1);
   \draw[arr] (e2) -- (zh2);
   \draw[arr] (a0) -- (z1);
@@ -467,8 +521,13 @@ and {\em (iii)} is task-agnostic.
   \draw[darr] (zh1) -- (z1);
   \draw[darr] (zh2) -- (z2); 
   
+  % Add normalization
+  \node[circle,fill=white,inner sep=0] at ($(e0)!.5!(z0)$) {\cube};
+  \node[circle,fill=white,inner sep=0] at ($(e1)!.5!(zh1)$) {\cube};  
+  \node[circle,fill=white,inner sep=0] at ($(e2)!.5!(zh2)$) {\cube};    
+  
 \end{tikzpicture}
-\caption{Self-predictice loss}
+\caption{Self-predictice loss We denote our normalization scheme by \cube.}
 \label{diagram-self-predictive}
 \vskip -0.2in
 \end{figure}
