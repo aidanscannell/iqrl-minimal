@@ -12,8 +12,9 @@ ddpg_data = {
         #### Project=False ####
         # GOOD performance d=128
         "quadruped-walk": ["8zgkcuhs", "egk6qxco", "oh1xhyqt", "hm3ihqzo", "p4slb4q9"],
-        "cheetah-run": ["l4c3phty", "96xm0zx5", "6tul0lmk", "y7c9k82p", "zx6ykgj9"],
-        # POOR performance d=512
+        "cheetah-run": ["8x29ibzc", "9k7936z8", "e7afvv6h", "81pbgf97", "qfqv9wz3"],
+        # "cheetah-run": ["l4c3phty", "96xm0zx5", "6tul0lmk", "y7c9k82p", "zx6ykgj9"],
+        # POOR performance d=512 project=False
         "acrobot-swingup": ["c6qmc8yx", "spwng8k4", "wgurvdan", "4xfe6bez", "95l445ci"],
         # "cheetah-run": ["7kg8xyj8", "gujw41jb", "r9cu6yvh", "lh1kdlht", "8gymqblt"],
         # "fish-swim": ["izb29vhj", "xlgm5s8v", "xc1nf2ss", "ezhafy1m", "5tw9ini4"],
