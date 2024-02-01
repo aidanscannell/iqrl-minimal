@@ -332,9 +332,37 @@
 % \printAffiliationsAndNotice{\icmlEqualContribution} % otherwise use the standard text.
 
 \begin{abstract}
-This document provides a basic paper template and submission guidelines.
-Abstracts must be a single paragraph, ideally between 4--6 sentences long.
-Gross violations will trigger corrections at the camera-ready phase.
+  % Deep reinforcement learning (RL) has shown much promise for solving real-world continuous control problems.
+  % Whilst deep reinforcement learning (RL) is a competitive approach for solving real-world continuous control problems, it
+  % is limited by its sample-efficiency.
+  % Recent works have shown that learning representations can improve sample efficiency in RL, whilst also
+  % handling complex/high-dimensional observation spaces.
+  Learning representations for reinforcement learning (RL) has shown much promise for continuous control.
+  Not only can it handle complex observation spaces but it can also improve sample efficiency.
+  % Recent works have shown that learning representations can improve sample efficiency in RL.
+  A particularly promising approach is to use a self-supervised loss, known as the latent-state consistency loss.
+  It requires an encoder which maps observations to latent states and a transition model which predicts
+  next latent states.
+  It then minimizes the distance between the next state predicted by the transition model and
+  the next state predicted by the encoder.
+  Typically it is combined with other loss terms such as reward or value prediction.
+  This prevents representation collapse at the cost of learning a task-specific representation.
+  In this work, we show that a careful consideration of the latent space enables us to {\em (i)} learn
+  a task-agnostic representation and {\em (ii)} prevent representation collapse, whilst using only the latent-state
+  consistency loss.
+  % the leverage the latent-state
+  % Typically these approaches have unbounded latent spaces and are combined with auxillary loss terms such as minimizing the
+  % error of reward or value predictions in the latent space.
+  % of an encoder which maps observations to latent states and a transition model which predicts
+  % next latent states given a latent state and an action.
+  % However, most of th
+  We empirically show that our method prevents representation collapse as it maintains matrix rank.
+  Our representation learning approach is {\em (i)} simple, {\em (ii)} can be combined with any model-free RL algorithm
+  and, {\em (iii)} obtains state-of-the-art results in continuous control benchmarks from DeepMind Control Suite.
+  % Moreover, it kk
+% This document provides a basic paper template and submission guidelines.
+% Abstracts must be a single paragraph, ideally between 4--6 sentences long.
+% Gross violations will trigger corrections at the camera-ready phase.
 \end{abstract}
 
 
