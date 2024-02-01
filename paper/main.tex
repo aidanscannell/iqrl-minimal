@@ -754,17 +754,17 @@ Our representation learning is based solely on the latent-state consistency loss
 %&= \E_{(s_{t}, a_{t}, s_{t+1}) \sim \mathcal{D}}
 % &= \E_{\tau \sim \mathcal{D}}
 % \left[ \sum_{h=0}^{H-1} \gamma^{h} \| d_{\phi}(e_{\theta}(s_{t}), a_{t}) - e_{\bar{\theta}}(s_{t+1}) \|_{2}^{2} \right]
-&= \sum_{h=0}^{H-1} \gamma^{h} \| d_{\phi}(e_{\theta}(s_{t}), a_{t}) - e_{\bar{\theta}}(s_{t+1}) \|_{2}^{2}
+&= \sum_{h=0}^{H-1} \gamma^{h} \| d_{\phi}(e_{\theta}(s_{t}), a_{t}) - e_{\bar{\theta}}(s_{t+1}) \|_{2}^{2},
 \end{align}
 %
 which minimizes the distance between the next state predicted by the transition model $d_{\phi}(e_{\phi}(z_{t}), a_{t})$
 and the next state predicted by the momentum encoder $e_{\bar{\phi}}(z_{t+1})$.
-The prediction $d_{\phi}(e_{\phi}(z_{t}), a_{t})$ uses the online encoder which is trained jointly with the transition model.
+The prediction $d_{\phi}(e_{\phi}(z_{t}), a_{t})$ uses the online encoder which is being trained jointly with the transition model.
 The target $e_{\bar{\phi}}(z_{t+1})$ is calculated with the momentum encoder which uses an exponential moving average (EMA)
 of the encoder's weights $\bar{\theta} \leftarrow \tau \bar{\theta} + (1-\tau)\theta$.
 The target network update rate is denoted $\tau$.
 Unlike previous works, we normalize the latent vector
-%
+
 \textbf{Finite Scalar Quantization}
 We follow Finite Scalar Quantization (FSQ, \cite{mentzerFiniteScalarQuantization2023})
 and bound each dimension of our latent space.
