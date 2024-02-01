@@ -40,7 +40,7 @@ ae_min_delta: 0.0
 latent_dim: 512
 project_latent: False
 ae_tau: 0.005
-ae_normalize: True
+ae_normalize: False
 simplex_dim: 8
 use_fsq: True
 fsq_levels: [8, 8]
