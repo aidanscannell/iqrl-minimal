@@ -64,6 +64,8 @@
 
 % \newcommand{\our}{\textsc{vq-td3}\xspace}
 % \newcommand{\our}{\textsc{iFSQ-RL}\xspace}
+\newcommand{\ourrew}{\textsc{iQRL+rew}\xspace}
+\newcommand{\ourcosrew}{\textsc{iQRL+cos+rew}\xspace}
 \newcommand{\our}{\textsc{iQRL}\xspace}
 
 % Latin
@@ -332,36 +334,96 @@
 % \printAffiliationsAndNotice{\icmlEqualContribution} % otherwise use the standard text.
 
 \begin{abstract}
-  % Arno's proposal
-  In reinforcement learning (RL) for continuous control, we propose  an efficient representation learning method using a latent-state consistency loss. This approach employs an encoder and a transition model to map observations to latent states and predict future states, respectively. By minimizing discrepancies between these states, we achieve task-agnostic representations and prevent representation collapse using only the consistency loss. Our method is straightforward, compatible with any model-free RL algorithm, and demonstrates state-of-the-art performance in continuous control benchmarks from DeepMind Control Suite.\looseness-1
-
-
-
-  % Deep reinforcement learning (RL) has shown much promise for solving real-world continuous control problems.
-  % Whilst deep reinforcement learning (RL) is a competitive approach for solving real-world continuous control problems, it
-  % is limited by its sample-efficiency.
-  % Recent works have shown that learning representations can improve sample efficiency in RL, whilst also
-  % handling complex/high-dimensional observation spaces.
-  Learning representations for reinforcement learning (RL) has shown much promise for continuous control.
-  Not only can it handle complex observation spaces but it can also improve sample efficiency.
-  A particularly promising approach is to use a self-supervised loss, known as the latent-state consistency loss.
-  It requires an encoder which maps observations to latent states and a transition model which predicts
-  next latent states.
-  It then minimizes the distance between the next state predicted by the transition model and
-  the next state predicted by the encoder.
-  Typically it is combined with other loss terms such as reward or value prediction.
-  This prevents representation collapse at the cost of learning a task-specific representation.
-  In this work, we show that a careful consideration of the latent space enables us to {\em (i)} learn
-  a task-agnostic representation and {\em (ii)} prevent representation collapse, whilst using only the latent-state
-  consistency loss.
-  We empirically show that our method prevents representation collapse as it maintains matrix rank.
-  Our representation learning approach is {\em (i)} simple, {\em (ii)} can be combined with any model-free RL algorithm
-  and, {\em (iii)} obtains state-of-the-art results in continuous control benchmarks from DeepMind Control Suite.
-  % Moreover, it kk
-% This document provides a basic paper template and submission guidelines.
-% Abstracts must be a single paragraph, ideally between 4--6 sentences long.
-% Gross violations will trigger corrections at the camera-ready phase.
+  In reinforcement learning (RL) for continuous control, we propose an
+  efficient representation learning method using only a latent-state
+  consistency loss. Our approach employs an encoder and a transition
+  model to map observations to latent states and predict future
+  states, respectively. We achieve high performance and prevent
+  representation collapse by normalizing, quantizing, and bounding the
+  latent representation. Our method is straightforward, compatible
+  with any model-free RL algorithm, and demonstrates state-of-the-art
+  performance in continuous control benchmarks from DeepMind Control
+  Suite.
 \end{abstract}
+
+%% \begin{abstract}
+%%   Learning representations for reinforcement learning (RL) has shown
+%%   much promise for continuous control. Representations not only can
+%%   handle complex observation spaces but also improve sample
+%%   efficiency. A particularly promising approach is to use a
+%%   self-supervised latent-state consistency loss with observation to
+%%   latent state mapping, together with next latent state, reward, and
+%%   value predictions. Reward and value predictions prevent
+%%   representation collapse at the cost of learning a task-specific
+%%   representation.  We show how to use only the latent-state
+%%   consistency loss to {\em (i)} learn a task-agnostic representation
+%%   and {\em (ii)} prevent representation collapse by normalizing and
+%%   bounding the latent representation. In experiments, our approach
+%%   which be combined with any model-free RL algorithm obtains
+%%   state-of-the-art results in continuous control benchmarks from
+%%   DeepMind Control Suite.
+%% \end{abstract}
+
+%% \begin{abstract}
+%%   % Deep reinforcement learning (RL) has shown much promise for solving real-world continuous control problems.
+%%   % Whilst deep reinforcement learning (RL) is a competitive approach for solving real-world continuous control problems, it
+%%   % is limited by its sample-efficiency.
+%%   % Recent works have shown that learning representations can improve sample efficiency in RL, whilst also
+%%   % handling complex/high-dimensional observation spaces.
+%%   Learning representations for reinforcement learning (RL) has shown much promise for continuous control.
+%%   Not only can it handle complex observation spaces but it can also improve sample efficiency.
+%%   % Recent works have shown that learning representations can improve sample efficiency in RL.
+%%   A particularly promising approach is to use a self-supervised loss, known as the latent-state consistency loss.
+%%   It requires an encoder which maps observations to latent states and a transition model which predicts
+%%   next latent states.
+%%   It then minimizes the distance between the next state predicted by the transition model and
+%%   the next state predicted by the encoder.
+%%   Typically it is combined with other loss terms such as reward or value prediction.
+%%   This prevents representation collapse at the cost of learning a task-specific representation.
+%%   In this work, we show that a careful consideration of the latent space enables us to {\em (i)} learn
+%%   a task-agnostic representation and {\em (ii)} prevent representation collapse, whilst using only the latent-state
+%%   consistency loss.
+%%   % the leverage the latent-state
+%%   % Typically these approaches have unbounded latent spaces and are combined with auxillary loss terms such as minimizing the
+%%   % error of reward or value predictions in the latent space.
+%%   % of an encoder which maps observations to latent states and a transition model which predicts
+%%   % next latent states given a latent state and an action.
+%%   % However, most of th
+%%   We empirically show that our method prevents representation collapse as it maintains matrix rank.
+%%   Our representation learning approach is {\em (i)} simple, {\em (ii)} can be combined with any model-free RL algorithm
+%%   and, {\em (iii)} obtains state-of-the-art results in continuous control benchmarks from DeepMind Control Suite.
+%%   % Moreover, it kk
+%% % This document provides a basic paper template and submission guidelines.
+%% % Abstracts must be a single paragraph, ideally between 4--6 sentences long.
+%% % Gross violations will trigger corrections at the camera-ready phase.
+%% \end{abstract}
+
+
+\section{Introduction}
+\label{intro}
+
+Reinforcement learning (RL) \citep{sutton2018reinforcement} has shown much promise in games, animation and robotics.
+However, applying RL in real-world environments is challenging. The problem is two-fold,
+{\em (i)}, handling high dimensional/complex observation spaces is non-trivial and {\em (ii)}
+deep RL typically requires millions of data points which can be unpractical (or costly), \ie it is very sample inefficient.
+
+% Given such a latent space,
+% Whilst these latent states are often lower dimensional this is not always
+Many approaches have been proposed to improve sample efficiency in deep RL.
+As \citet{laskinCURLContrastiveUnsupervised2020} highlighted, these can generally be divided into two streams of research:
+{\em (i)} auxillary tasks on the agent's observations and {\em (ii)} world models that predict the future
+\citep{haRecurrentWorldModels2018,hafnerLearning2019,hansenTemporalDifferenceLearning2022}.
+In this work, we are interested in the first class of methods, which use auxillary tasks to improve sample efficiency.
+In particular, methods for compressing observations into latent states.%, aka representation learning.
+
+Learning representations for RL has been investigated for decades
+\citep{abelOptimalBehaviorApproximate2016,mannorDynamicAbstractionReinforcement2004,liUnifiedTheoryState2006,andreStateAbstractionProgrammable2002,deardenAbstractionApproximateDecisiontheoretic1997,singhReinforcementLearningSoft1994,higginsDefinitionDisentangledRepresentations2018,vanhoofStableReinforcementLearning2016,watterEmbedControlLocally2015,ghoshRepresentationsStableOffPolicy2020}.
+However, these approaches are usually limited to simple environments.
+Some approaches used unsupervised learning (\eg VAE \citep{kingmaAutoEncoding2014} with reconstruction loss) to acquire representations
+\citep{finnDeepSpatialAutoencoders2016,higginsDARLAImprovingZeroShot2017,langeAutonomousReinforcementLearning2012,watterEmbedControlLocally2015}.
+More recently, self-supervised learning (SSL) approaches (which do not reconstruct observations)
+attempt to learn good features without labels \cite{anandUnsupervisedStateRepresentation2019}.
+Alternative approaches leverage contrastive losses to learn representations \cite{laskinCURLContrastiveUnsupervised2020}.
 
 \begin{figure}[t!]
 \centering\scriptsize
@@ -606,7 +668,7 @@ This helps to prevent representation collapse at the cost of learning a task-spe
 In this paper, we propose a simple representation learning technique that can be combined with any model-free RL method
 (we use TD3 \citep{fujimotoAddressingFunctionApproximation2018}).
 See \cref{fig:diagram-self-predictive} for an overview of our (extremely simple) representation learning method.
-It is based soley on the latent-state consistency loss, \ie a commonly use self-supervised loss for RL.
+It is based soley on the latent-state consistency loss, \ie a commonly used self-supervised loss for continuous RL.
 In contrast to prior works, we normalize our latent representation using the technique from Finite Scalar Quantization
 \citep{mentzerFiniteScalarQuantization2023}.
 As a result, our latent space is bounded and associated with an \textit{implicit} codebook, whose size we can control.
@@ -687,7 +749,7 @@ Typically the latent state $z_{t} \in \R^{d}$
 However, in our work we bound the domain of the latent space, \ie $z_{t} \in [-L, L]^{d}$.
 
 \textbf{Representation learning}
-Our representation learning is based soley on the temporal consistency loss,
+Our representation learning is based solely on the temporal consistency loss,
 However, unlike previous works, we normalize the latent vector
 Our representation learning consists of an encoder $e_{\theta}$ (which maps observations to
 latent states) and a transition model $d_{\phi}$ which maps
@@ -813,37 +875,63 @@ In \cref{fig:normalization_improves_sample_efficiency},
 \end{figure*}
 
 \begin{figure*}[ht]
-\vskip 0.2in
-\begin{center}
-\centerline{\includegraphics[width=1.0\textwidth]{./figs/reward-ablation.pdf}}
-\caption{\textbf{Reward prediction is not necessary for representation learning}. \our XXXXXX We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
-\label{fig:reward-ablation}
-\end{center}
-\vskip -0.2in
+	\vskip 0.2in
+	\begin{center}
+		\centerline{\includegraphics[width=\textwidth]{./figs/task-agnostic-ablation.pdf}}
+		\caption{\textbf{\our's task-agnostic representation helps for multi-task RL}. We evaluate whether pre-training \our on the walk tasks in the DeepMind Control Suite help for learning the run task on the same environment. The pre-training proves to be beneficial on all evaluated environments. If the representation is task-specific (the reward prediction term is included), the pre-training can be clearly detrimental. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
+		\label{fig:multi-task-pretraining}
+	\end{center}
+	\vskip -0.2in
 \end{figure*}
 
 \begin{figure*}[ht]
 \vskip 0.2in
 \begin{center}
-\centerline{\includegraphics[width=\textwidth]{./figs/task-agnostic-ablation.pdf}}
-\caption{\textbf{\our's task-agnostic representation helps for multi-task RL}. \our XXXXXX We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
-\label{fig:multi-task-pretraining}
+\centerline{\includegraphics[width=1.0\textwidth]{./figs/reward-ablation.pdf}}
+\caption{\textbf{Reward prediction is not necessary for representation learning}. We compare \our to variants of our method with a reward prediction term included in the representation learning loss. \our performs on par with the best method on all environments except Fish Swim, where it is slightly behind our version of TCRL. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
+\label{fig:reward-ablation}
 \end{center}
 \vskip -0.2in
 \end{figure*}
 
+\textbf{Reward predict is not necessary for representation learning}
+Unlike prior methods such as TCLR \cite{zhaoSimplifiedTemporalConsistency2023}, TD-MPC \cite{hansenTemporalDifferenceLearning2022}, and Dreamer-V2 \cite{hafnerMasteringAtariDiscrete2022}, our representation learning loss (Equation~\ref{eq:rep-loss}) does not include a term for learning to predict the reward or the value. Instead, we rely solely on the temporal consistency loss. To analyze the impact of not including the reward prediction term, we perform an ablation study, where we compare our method to three variants of our method:
+\begin{itemize}
+	\item \ourrew, where we add a reward prediction head into our model architecture by re-defining the dynamics as $\hat{z}_{t+1}, \hat{r}_t = d_{\phi} (z_{t}, a_{t})$ (see Equation~\ref{eq:transition}), and include a reward prediction term (discounted MSE Loss) in the representation loss:
+	\begin{align*}
+		\mathcal{L}_\text{rew} = \sum_{h=0}^{H-1} \gamma^h \| \hat{r}_{t+h} - r_{t+h}\|_2^2,
+	\end{align*}
+	where $\tilde{r}_{t+h}$ is the ground-truth H-step reward and $\hat{r}_{t+h}$ the predicted H-step rewards.
+	\item \ourcosrew, where in addition to the reward prediction head in \ourrew, we additionally convert the self-supervised MSE loss (see Equation~\ref{eq:rep-loss}) for the temporal consistency into a cosine similarity, similarly to TCRL:
+	\begin{align*} \label{eq:rep-loss}
+		\hat{z}_{t+h} &= d_{\phi}(e_{\theta}(s_{t}), a_{t}) \\
+		\tilde{z}_{t+h} &= e_{\bar{\theta}}(s_{t+1}) \\
+		\mathcal{L}_{\text{rep}}(\theta, \phi; \tau)
+		&= - \sum_{h=0}^{H-1} \gamma^{h} \left ( \frac{\hat{z}_{t+h}}{\| \hat{z}_{t+h} \|_2} \right )^T \left ( \frac{\tilde{z}_{t+h}}{\| \tilde{z}_{t+h} \|_2} \right )
+	\end{align*}
+	\item TCRL-ours, where in addition to \ourcosrew, we remove the FSQ normalization scheme to make the method equal to TCRL with some minor improvements to the method, such as using nstep-TD3 \cite{fujimotoAddressingFunctionApproximation2018} as the base algorithm instead of DDPG with Double Q and nstep returns, using the neural network architecture from \citet{hansen2023td}, and performing policy smoothing \cite{fujimotoAddressingFunctionApproximation2018}.
+\end{itemize}
+The results for this ablation study are shown in Figure~\ref{fig:reward-ablation}. 
+The plots show that our method, \our, without a reward prediction term in the loss, has equal or superior performance to the comparison methods with the exception of Fish Swim, where the unnormalized TCRL-ours outperforms all the methods with normalization. Even then, \our performs equally to the normalized variants of our method with the reward prediction. Our results imply that learning to predict the reward is not necessary for learning a suitable latent representation. The upside of not including the reward prediction head is that it makes learning the representation learning task-agnostic, which we believe to be   important for downstream applications such as learning in an incremental multi-task setting.
 
-\textbf{\our's representation is helpful for multi-task RL}
-In contrast to TCRL and TD-MPC, \our learns a representation that is task-agnostic.
-As such, \our's task-agnostic representations can be used to speed-up learning in the incremental multi-task setting.
-That is, leverage information learned from solving one task to aid learning another task in the same environment.
-For example, pre-training our representation in walker-walk and then using this to speed up training in walker-walk.
-In \cref{fig:multi-task-pretraining} we show that \our benefits from pre-training the representation in walker-walk
-before training on walker-run.
-In contrast, TCRL does not see this improvement.
-This is because its representation loss contains a reward prediction term which makes its representation task-specific.
-These results demonstrate that confirms task-agnostic representation
+\textbf{\our's task-agnostic representation is helpful for multi-task RL}
+In contrast to TCRL \cite{zhaoSimplifiedTemporalConsistency2023} and TD-MPC \cite{hansenTemporalDifferenceLearning2022}, \our learns a representation that is task-agnostic, that is, there are no task-specific components such as reward or value prediction in the representation loss formula (see Equation~\ref{eq:rep-loss}). The potential upside of \our's task-agnostic representations is that they can be used to speed-up learning in the incremental multi-task setting. That is, we can leverage the representation learned from solving one task to aid learning another tasks in the same domain. For instance, we can pre-train a representation in Walker Walk, and use it to speed up the training process in Walker Run. The only requirement is that the action and observation spaces must match. In addition, we assume that the transition dynamics are unchanged, but the reward may change.
 
+We evaluate whether pre-training representations is beneficial on three environments. We start by pre-training \our on Walker Walk, Quadruped Walk and Humanoid Walk. In addition, we replicate the pre-training on Walker Walk and Quadruped Walk by adding a reward prediction term to the representation loss. Then, we keep the encoder and the dynamics function from the pre-training, and perform training on the target tasks, which are Walker Run, Quadruped Run, and Humanoid-Run. We compare the pre-trained agents to training \our on these tasks from scratch. The results for this experiment can be found in Figure~\ref{fig:multi-task-pretraining}.
+
+The plots in \cref{fig:multi-task-pretraining} show that when the encoder and the dynamics function have been pre-trained, the agent learns quicker than when it is traind from scratch. This effect is particularly visible in Quadruped Run and Humanoid Run. In contrast, when the reward term has been included in the pre-training objective, making the representation task-specific, the pre-training proves to be harmful on Quadruped Run. This results strongly indicate that the task-agnostic representations are highly beneficial in the continual and lifelong learning settings.
+
+% we show that \our can benefit from pre-training the representation in a different environment with the same dynamics. In contrast, if the representation learning objective used 
+
+%pre-training objective contains 
+
+%That is, leveraging information learned from solving one task to aid learning another task in the same environment.
+%For example, pre-training our representation in walker-walk and then using this to speed up training in walker-walk.
+%In \cref{fig:multi-task-pretraining} we show that \our benefits from pre-training the representation in walker-walk
+%before training on walker-run.
+%In contrast, TCRL does not see this improvement.
+%This is because its representation loss contains a reward prediction term which makes its representation task-specific.
+%These results demonstrate that confirms task-agnostic representation
 
 % \begin{figure*}[ht]
 % \vskip 0.2in
@@ -862,13 +950,7 @@ These results demonstrate that confirms task-agnostic representation
 %     \item Show task-agnostic representation is good for incremental task learning. Compare NTC-TD3/TCRL-ours/TCRL
 % \end{itemize}
 
-\subsection{Ablations}
-
-\textbf{Reward predict is not necessary for representation learning}
-Next, we test if using reward prediction aids representation learning.
-\cref{fig:reward-ablation} shows that
-
-\textbf{Reconstruction loss has detrimental impact}
+\textbf{Reconstruction loss has a detrimental impact}
 Recent work \citep{zhaoSimplifiedTemporalConsistency2023,hansenTemporalDifferenceLearning2022}
 has shown that incorporating a reconstruction term into the representation loss can have a negative impact on performance.
 To provide a thorough analysis of \our, we include results where we add a reconstruction term to our
