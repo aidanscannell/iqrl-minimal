@@ -334,36 +334,96 @@
 % \printAffiliationsAndNotice{\icmlEqualContribution} % otherwise use the standard text.
 
 \begin{abstract}
-  % Arno's proposal
-  In reinforcement learning (RL) for continuous control, we propose  an efficient representation learning method using a latent-state consistency loss. This approach employs an encoder and a transition model to map observations to latent states and predict future states, respectively. By minimizing discrepancies between these states, we achieve task-agnostic representations and prevent representation collapse using only the consistency loss. Our method is straightforward, compatible with any model-free RL algorithm, and demonstrates state-of-the-art performance in continuous control benchmarks from DeepMind Control Suite.\looseness-1
-
-
-
-  % Deep reinforcement learning (RL) has shown much promise for solving real-world continuous control problems.
-  % Whilst deep reinforcement learning (RL) is a competitive approach for solving real-world continuous control problems, it
-  % is limited by its sample-efficiency.
-  % Recent works have shown that learning representations can improve sample efficiency in RL, whilst also
-  % handling complex/high-dimensional observation spaces.
-  Learning representations for reinforcement learning (RL) has shown much promise for continuous control.
-  Not only can it handle complex observation spaces but it can also improve sample efficiency.
-  A particularly promising approach is to use a self-supervised loss, known as the latent-state consistency loss.
-  It requires an encoder which maps observations to latent states and a transition model which predicts
-  next latent states.
-  It then minimizes the distance between the next state predicted by the transition model and
-  the next state predicted by the encoder.
-  Typically it is combined with other loss terms such as reward or value prediction.
-  This prevents representation collapse at the cost of learning a task-specific representation.
-  In this work, we show that a careful consideration of the latent space enables us to {\em (i)} learn
-  a task-agnostic representation and {\em (ii)} prevent representation collapse, whilst using only the latent-state
-  consistency loss.
-  We empirically show that our method prevents representation collapse as it maintains matrix rank.
-  Our representation learning approach is {\em (i)} simple, {\em (ii)} can be combined with any model-free RL algorithm
-  and, {\em (iii)} obtains state-of-the-art results in continuous control benchmarks from DeepMind Control Suite.
-  % Moreover, it kk
-% This document provides a basic paper template and submission guidelines.
-% Abstracts must be a single paragraph, ideally between 4--6 sentences long.
-% Gross violations will trigger corrections at the camera-ready phase.
+  In reinforcement learning (RL) for continuous control, we propose an
+  efficient representation learning method using only a latent-state
+  consistency loss. Our approach employs an encoder and a transition
+  model to map observations to latent states and predict future
+  states, respectively. We achieve high performance and prevent
+  representation collapse by normalizing, quantizing, and bounding the
+  latent representation. Our method is straightforward, compatible
+  with any model-free RL algorithm, and demonstrates state-of-the-art
+  performance in continuous control benchmarks from DeepMind Control
+  Suite.
 \end{abstract}
+
+%% \begin{abstract}
+%%   Learning representations for reinforcement learning (RL) has shown
+%%   much promise for continuous control. Representations not only can
+%%   handle complex observation spaces but also improve sample
+%%   efficiency. A particularly promising approach is to use a
+%%   self-supervised latent-state consistency loss with observation to
+%%   latent state mapping, together with next latent state, reward, and
+%%   value predictions. Reward and value predictions prevent
+%%   representation collapse at the cost of learning a task-specific
+%%   representation.  We show how to use only the latent-state
+%%   consistency loss to {\em (i)} learn a task-agnostic representation
+%%   and {\em (ii)} prevent representation collapse by normalizing and
+%%   bounding the latent representation. In experiments, our approach
+%%   which be combined with any model-free RL algorithm obtains
+%%   state-of-the-art results in continuous control benchmarks from
+%%   DeepMind Control Suite.
+%% \end{abstract}
+
+%% \begin{abstract}
+%%   % Deep reinforcement learning (RL) has shown much promise for solving real-world continuous control problems.
+%%   % Whilst deep reinforcement learning (RL) is a competitive approach for solving real-world continuous control problems, it
+%%   % is limited by its sample-efficiency.
+%%   % Recent works have shown that learning representations can improve sample efficiency in RL, whilst also
+%%   % handling complex/high-dimensional observation spaces.
+%%   Learning representations for reinforcement learning (RL) has shown much promise for continuous control.
+%%   Not only can it handle complex observation spaces but it can also improve sample efficiency.
+%%   % Recent works have shown that learning representations can improve sample efficiency in RL.
+%%   A particularly promising approach is to use a self-supervised loss, known as the latent-state consistency loss.
+%%   It requires an encoder which maps observations to latent states and a transition model which predicts
+%%   next latent states.
+%%   It then minimizes the distance between the next state predicted by the transition model and
+%%   the next state predicted by the encoder.
+%%   Typically it is combined with other loss terms such as reward or value prediction.
+%%   This prevents representation collapse at the cost of learning a task-specific representation.
+%%   In this work, we show that a careful consideration of the latent space enables us to {\em (i)} learn
+%%   a task-agnostic representation and {\em (ii)} prevent representation collapse, whilst using only the latent-state
+%%   consistency loss.
+%%   % the leverage the latent-state
+%%   % Typically these approaches have unbounded latent spaces and are combined with auxillary loss terms such as minimizing the
+%%   % error of reward or value predictions in the latent space.
+%%   % of an encoder which maps observations to latent states and a transition model which predicts
+%%   % next latent states given a latent state and an action.
+%%   % However, most of th
+%%   We empirically show that our method prevents representation collapse as it maintains matrix rank.
+%%   Our representation learning approach is {\em (i)} simple, {\em (ii)} can be combined with any model-free RL algorithm
+%%   and, {\em (iii)} obtains state-of-the-art results in continuous control benchmarks from DeepMind Control Suite.
+%%   % Moreover, it kk
+%% % This document provides a basic paper template and submission guidelines.
+%% % Abstracts must be a single paragraph, ideally between 4--6 sentences long.
+%% % Gross violations will trigger corrections at the camera-ready phase.
+%% \end{abstract}
+
+
+\section{Introduction}
+\label{intro}
+
+Reinforcement learning (RL) \citep{sutton2018reinforcement} has shown much promise in games, animation and robotics.
+However, applying RL in real-world environments is challenging. The problem is two-fold,
+{\em (i)}, handling high dimensional/complex observation spaces is non-trivial and {\em (ii)}
+deep RL typically requires millions of data points which can be unpractical (or costly), \ie it is very sample inefficient.
+
+% Given such a latent space,
+% Whilst these latent states are often lower dimensional this is not always
+Many approaches have been proposed to improve sample efficiency in deep RL.
+As \citet{laskinCURLContrastiveUnsupervised2020} highlighted, these can generally be divided into two streams of research:
+{\em (i)} auxillary tasks on the agent's observations and {\em (ii)} world models that predict the future
+\citep{haRecurrentWorldModels2018,hafnerLearning2019,hansenTemporalDifferenceLearning2022}.
+In this work, we are interested in the first class of methods, which use auxillary tasks to improve sample efficiency.
+In particular, methods for compressing observations into latent states.%, aka representation learning.
+
+Learning representations for RL has been investigated for decades
+\citep{abelOptimalBehaviorApproximate2016,mannorDynamicAbstractionReinforcement2004,liUnifiedTheoryState2006,andreStateAbstractionProgrammable2002,deardenAbstractionApproximateDecisiontheoretic1997,singhReinforcementLearningSoft1994,higginsDefinitionDisentangledRepresentations2018,vanhoofStableReinforcementLearning2016,watterEmbedControlLocally2015,ghoshRepresentationsStableOffPolicy2020}.
+However, these approaches are usually limited to simple environments.
+Some approaches used unsupervised learning (\eg VAE \citep{kingmaAutoEncoding2014} with reconstruction loss) to acquire representations
+\citep{finnDeepSpatialAutoencoders2016,higginsDARLAImprovingZeroShot2017,langeAutonomousReinforcementLearning2012,watterEmbedControlLocally2015}.
+More recently, self-supervised learning (SSL) approaches (which do not reconstruct observations)
+attempt to learn good features without labels \cite{anandUnsupervisedStateRepresentation2019}.
+Alternative approaches leverage contrastive losses to learn representations \cite{laskinCURLContrastiveUnsupervised2020}.
 
 \begin{figure}[t!]
 \centering\scriptsize
@@ -613,9 +673,9 @@ In contrast to prior works, we normalize our latent representation using the tec
 \citep{mentzerFiniteScalarQuantization2023}.
 As a result, our latent space is bounded and associated with an \textit{implicit} codebook, whose size we can control.
 % As a result, our latent space is associated with an \textit{implicit} codebook, whose size we can control.
-Importantly, our method {\em (i)} prevents representation collapse (as it learns a high-rank representation),
+Importantly, our method {\em (i)} alleviates representation collapse,
 {\em (ii)} demonstrates state-of-the-art sample efficiency in continuous control benchmarks,
-{\em (iii)} is simple to implement, and {\em (iii)} learns a task-agnostic
+{\em (iii)} is simple to implement, and {\em (iv)} learns a task-agnostic
 representation which could be helpful in downstream tasks.
 
 
@@ -669,7 +729,20 @@ The discount factor is denoted $\gamma \in [0, 1]$.
 &\text{Value: } & q_{t} &= Q_{\psi} (z_{t}, a_{t}) \label{eq:value} \\
 &\text{Policy: } & a_{t} &\sim \pi_{\eta} (z_{t}) . \label{eq:policy}
 \end{align}
-Central to our method is the latent state $z_{t}$
+The encoder $e_{\theta}$  and latent-space dynamics model $d_{\phi}$ are responsible for representation learning.
+The encoder $e_{\theta}$ maps observations $o_{t}$ to latent states $z_{t}$ and is responsible for learning a representation
+which can aid RL.
+The latent-space dynamics model $d_{\phi}$ predicts next latent states $z_{t+1}$ given a latent state $z_{t}$ and an action $a_{t}$.
+It's sole purpose is to aid representation learning by making the latent states temporally consistent.
+Note that we do not use it for model-based RL.
+Once we have the representation learned by our encoder, we map all observations to the latent space and perform model-free RL
+in this latent space.
+Throughout this paper, we use Twin Delayed Deep Deterministic Policy Gradient
+(TD3), \citep{fujimotoAddressingFunctionApproximation2018}).
+It consists of two state-action value functions $\{Q_{\psi_{1}},Q_{\psi_{2}} \}$, known as critics, and a deterministic
+actor $\pi_{\eta}$.
+Following prior works \citep{yaratsMasteringVisualContinuous2021} we use a linear exploration noise schedule
+which decays from $1$ to $0.1$ during training.
 
 \textbf{Bounding the latent space}
 Typically the latent state $z_{t} \in \R^{d}$
