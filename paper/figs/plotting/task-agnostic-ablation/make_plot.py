@@ -14,15 +14,17 @@ plt.rcParams["figure.dpi"] = 400
 plt.rcParams["font.size"] = 13
 plt.rcParams["legend.fontsize"] = 12
 plt.rcParams["legend.loc"] = "lower right"
+#plt.rcParams["text.usetex"] = True
+
 COLORS = {
     # "TCRL": "#e41a1c",
     # "SAC": "#377eb8",
     # "REDQ": "#984ea3",
     # "TD-MPC": "#ff7f00",
     # "VQ-TD3": "magenta",
-    "iFSQ-RL": "#e41a1c",
-    "iFSQ-RL-spec-trf": "#377eb8",
-    "iFSQ-RL-agn-trf": "#ff7f00",
+    "iQRL": "#e41a1c",
+    "iQRL-pretrained": "#377eb8",
+    "iQRL+rew-pretrained": "#ff7f00",
 }
 # %%
 main_envs = [
@@ -35,7 +37,7 @@ main_envs = [
     "quadruped-run",
     # "humanoid-walk",
     "humanoid-run",
-    "hopper-hop",
+    # "hopper-hop",
     # "dog-walk",
     # "dog-run",
 ]
@@ -60,7 +62,7 @@ rename = {a: b for a, b in zip(keys, titles)}
 def plot(df, key="episode_reward"):
     # breakpoint()
     envs = np.sort(df.env.unique())
-    ncol = 4
+    ncol = 3
     # assert envs.shape[0] % ncol == 0
     # nrow = len(main_envs) // ncol
     nrow = 1

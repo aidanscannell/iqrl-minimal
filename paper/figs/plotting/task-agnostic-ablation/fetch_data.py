@@ -139,15 +139,23 @@ def fetch_results(run_path, run_name_list, keys):
         history["time"] = 0
         history["env"] = env_name
         history["seed"] = wandb_run.config["seed"]
-        history = history[history["env_step"] <= 2e6]
+
+        if env_name == "hopper-hop":
+            pass
+        elif env_name == "humanoid-run":
+            history = history[history["env_step"] <= 2e6]
+        elif env_name in ["walker-run", "quadruped-run"]:
+            history = history[history["env_step"] <= 500000]
+        else:
+            raise NotImplementedError
 
         # history["agent"] = agent_name
         if not wandb_run.config["load_pretrained_agent"]:
-            history["name"] = "iFSQ-RL"
+            history["name"] = "iQRL"
         elif wandb_run.config["agent"]["reward_loss"]:
-            history["name"] = "iFSQ-RL-spec-trf"
+            history["name"] = "iQRL-pretrained"
         else:
-            history["name"] = "iFSQ-RL-agn-trf"
+            history["name"] = "iQRL+rew-pretrained"
             # history["name"] = f"no-norm $d={wandb_run.config['agent']['latent_dim']}$"
         history["utd_ratio"] = wandb_run.config["agent"]["utd_ratio"]
 

@@ -348,12 +348,12 @@ def fetch_results(run_path, run_name_list, keys, agent_name=None):
         history["env"] = env_name
         history["seed"] = wandb_run.config["seed"]
         if not wandb_run.config["agent"]["reward_loss"]:
-            history["name"] = "iFSQ-RL"
+            history["name"] = "iQRL"
         elif not wandb_run.config["agent"]["use_cosine_similarity_dynamics"]:
-            history["name"] = "iFSQ-RL-rew"
+            history["name"] = "iQRL+rew"
         elif wandb_run.config["agent"]["use_cosine_similarity_dynamics"] and \
                 wandb_run.config["agent"]["use_fsq"]:
-            history["name"] = "iFSQ-RL-cos-rew"
+            history["name"] = "iQRL+cos+rew"
         elif (not wandb_run.config["agent"]["use_fsq"]) and \
                 wandb_run.config["agent"]["latent_dim"] > 50:
             history["name"] = "TCRL-ours"
