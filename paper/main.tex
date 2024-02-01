@@ -418,9 +418,9 @@ and {\em (iii)} is task-agnostic.
   \newlength{\nodedistv}\setlength{\nodedistv}{2.5cm}
   
   % Styles (this tunes colours etc.)
-  \tikzstyle{mynode}=[fill=white,draw=black!80,rounded corners=1pt,font=\tiny,inner sep=0]
-  \tikzstyle{trap}=[mynode,trapezium,minimum width=1.5em, minimum height=2em,
-                    trapezium left angle=-70, trapezium right angle=-70]
+  \tikzstyle{mynode}=[fill=white,draw=black!80,rounded corners=1pt,font=\tiny,inner sep=0,align=center]
+  \tikzstyle{trap}=[mynode,trapezium,text width=6.5em, minimum height=2em,
+                    trapezium left angle=-70, trapezium right angle=-70,inner sep=2pt]
   \tikzstyle{blob}=[mynode,circle,minimum width=2.4em,minimum height=2.4em]
   \tikzstyle{polval}=[mynode,minimum width=6em,minimum height=2em,align=center,text=white,fill=black!60,inner sep=2pt]
   \tikzstyle{arr}=[line width=1pt,black,->]
@@ -431,9 +431,9 @@ and {\em (iii)} is task-agnostic.
   \node[blob] (z1) at (1\nodedist,0) {$\hat\vz_{\subs{1}}$};
   \node[blob] (z2) at (2\nodedist,0) {$\hat\vz_{\subs{2}}$};
 
-  \node[trap] (e0) at (0\nodedist,\nodedistv) {$e_\phi$};
-  \node[trap] (e1) at (1\nodedist,\nodedistv) {$e_{\bar\phi}$};
-  \node[trap] (e2) at (2\nodedist,\nodedistv) {$e_{\bar\phi}$};
+  \node[trap] (e0) at (0\nodedist,\nodedistv) {Encoder \\ $e_\phi$};
+  \node[trap] (e1) at (1\nodedist,\nodedistv) {Momentum enc.\\$e_{\bar\phi}$};
+  \node[trap] (e2) at (2\nodedist,\nodedistv) {Momentum enc.\\$e_{\bar\phi}$};
 
   \node[blob] (zh1) at ($(z1)!0.5!(e1)$) {$\bar\vz_{\subs{1}}$};
   \node[blob] (zh2) at ($(z2)!0.5!(e2)$) {$\bar\vz_{\subs{2}}$};
@@ -443,15 +443,15 @@ and {\em (iii)} is task-agnostic.
   \coordinate (m1) at ($(z1)!.5!(z2)$);
   \node[blob] (a1) at ($(m1)!(zh2)!(m1)$) {$\va_{\subs{1}}$};
   
-  \node[mynode,above of=e0] (i0) {\includegraphics[width=4.7em]{figs/humanoid-1}};
-  \node[mynode,above of=e1] (i1) {\includegraphics[width=4.7em]{figs/humanoid-2}};
-  \node[mynode,above of=e2] (i2) {\includegraphics[width=4.7em]{figs/humanoid-3}};
+  \node[mynode,minimum width=8em,minimum height=8em,outer sep=0,above of=e0,node distance=6em,path picture={\node at (path picture bounding box.center){\includegraphics[height=10em]{figs/humanoid-1}};}] (i0) {};
+  
+  \node[mynode,minimum width=8em,minimum height=8em,outer sep=0,above of=e1,node distance=6em,path picture={\node at (path picture bounding box.center){\includegraphics[height=10em]{figs/humanoid-3}};}] (i1) {};
+  
+  \node[mynode,minimum width=8em,minimum height=8em,outer sep=0,above of=e2,node distance=6em,path picture={\node at (path picture bounding box.center){\includegraphics[height=10em]{figs/humanoid-3}};}] (i2) {};
   
   \node[anchor=north] (o0) at (i0.north) {\color{white}$o_{\sub}$};
   \node[anchor=north] (o1) at (i1.north) {\color{white}$o_{\subs{1}}$};
   \node[anchor=north] (o2) at (i2.north) {\color{white}$o_{\subs{2}}$};
-  
-  \node[above of=i1,align=center] (lab0) {\normalsize\bf 1.\ Learn representation};
     
   % Draw arrows
   \draw[arr] (i0) -- (e0);
@@ -473,7 +473,7 @@ and {\em (iii)} is task-agnostic.
 \vskip -0.2in
 \end{figure}
 
-\end{document}
+%\end{document}
 
 
 \section{Related Work}
