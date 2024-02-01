@@ -153,9 +153,9 @@ def fetch_results(run_path, run_name_list, keys):
         if not wandb_run.config["load_pretrained_agent"]:
             history["name"] = "iQRL"
         elif wandb_run.config["agent"]["reward_loss"]:
-            history["name"] = "iQRL-pretrained"
-        else:
             history["name"] = "iQRL+rew-pretrained"
+        else:
+            history["name"] = "iQRL-pretrained"
             # history["name"] = f"no-norm $d={wandb_run.config['agent']['latent_dim']}$"
         history["utd_ratio"] = wandb_run.config["agent"]["utd_ratio"]
 
