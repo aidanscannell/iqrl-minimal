@@ -339,21 +339,46 @@ Gross violations will trigger corrections at the camera-ready phase.
 \section{Introduction}
 \label{intro}
 
-Reinforcement learning (RL) has potential...
+Reinforcement learning (RL) \citep{sutton2018reinforcement} has shown much promise in games, animation and robotics.
+However, applying RL in real-world environments is challenging. The problem is two-fold,
+{\em (i)}, handling high dimensional/complex observation spaces is non-trivial and {\em (ii)}
+deep RL typically requires millions of data points which can be unpractical (or costly), \ie it is very sample inefficient.
 
-However, applying RL in real-world environments with high dimensional/complex observation spaces is challenging.
+% Given such a latent space,
+% Whilst these latent states are often lower dimensional this is not always
+Many approaches have been proposed to improve sample efficiency in deep RL.
+As \citet{laskinCURLContrastiveUnsupervised2020} highlighted, these can generally be divided into two streams of research:
+{\em (i)} auxillary tasks on the agent's observations and {\em (ii)} world models that predict the future
+\citep{haRecurrentWorldModels2018,hafnerLearning2019,hansenTemporalDifferenceLearning2022}.
+In this work, we are interested in the first class of methods, which use auxillary tasks to improve sample efficiency.
+In particular, methods for compressing observations into latent states.%, aka representation learning.
 
-Compressing observations in latent state space.
-Hand crafted features
+Learning representations for RL has been investigated for decades
+\citep{abelOptimalBehaviorApproximate2016,mannorDynamicAbstractionReinforcement2004,liUnifiedTheoryState2006,andreStateAbstractionProgrammable2002,deardenAbstractionApproximateDecisiontheoretic1997,singhReinforcementLearningSoft1994,higginsDefinitionDisentangledRepresentations2018,vanhoofStableReinforcementLearning2016,watterEmbedControlLocally2015,ghoshRepresentationsStableOffPolicy2020}.
+However, these approaches are usually limited to simple environments.
+Some approaches used unsupervised learning (\eg VAE \citep{kingmaAutoEncoding2014} with reconstruction loss) to acquire representations
+\cite{finnDeepSpatialAutoencoders2016,higginsDARLAImprovingZeroShot2017,langeAutonomousReinforcementLearning2012,watterEmbedControlLocally2015}.
+More recently, self-supervised learning (SSL) approaches (which do not reconstruct observations)
+attempt to learn good features without labels \cite{anandUnsupervisedStateRepresentation2019}.
+Alternative approaches leverage contrastive losses to learn representations \cite{laskinCURLContrastiveUnsupervised2020}.
 
-Learning features with representation learning.
-These methods typically learn task-specific representations
-as they train the representation to predict rewards and/or values
-\citep{zhaoSimplifiedTemporalConsistency2023,hansenTemporalDifferenceLearning2022}
+To the best of our knowledge, all prior works learn representations with objectives that depend on
+predicting the reward and/or value in the latent space \citet{zhaoSimplifiedTemporalConsistency2023,hansenTemporalDifferenceLearning2022,zhangLearningInvariantRepresentations2020,zhaoSimplifiedTemporalConsistency2023,hansenTemporalDifferenceLearning2022,geladaDeepMDPLearningContinuous2019,rezaei-shoshtariContinuousMDPHomomorphisms2022}.
+% use a latent-state consistency loss based upon the Cosine
+% For example, \citet{zhaoSimplifiedTemporalConsistency2023} use a latent-state consistency loss based upon the Cosine
+% similarity loss plus the MSE of reward predictions in the latent space.
+% The cosine similarity loss provides training stability whilst the reward prediction prevents representation collapse.
+As such, these methods learn task-specific representations.
+% \citet{geladaDeepMDPLearningContinuous2019,zhangLearningInvariantRepresentations2020,rezaei-shoshtariContinuousMDPHomomorphisms2022}
+use SSL losses based on bisimulation metrics \citep{larsenBisimulationProbabilisticTesting1989}.
+As such, their encoders group states into clusters whilst preserving some properties
+(\eg optimal value, all values, all action values from each state) \citep{liUnifiedTheoryState2006}.
+These methods use latent-space dynamic models to learn latent representations which encode only task-relevant information.
+% Interestingly, the dynamics models are only used for representation learning and are not used for model-based planning.
+DeepMDP \citep{geladaDeepMDPLearningContinuous2019} combines its representation learning with
+distributional Q learning  \citep[C51,][]{bellemareDistributionalPerspectiveReinforcement2017},
+whilst DBC \citep{zhangLearningInvariantRepresentations2020} combine its method with SAC.
 
-For example, \citet{zhaoSimplifiedTemporalConsistency2023} use a latent-state consistency loss based upon the Cosine
-similarity loss plus the MSE of reward predictions in the latent space.
-The cosine similarity loss provides training stability whilst the reward prediction prevents representation collapse.
 
 In this paper, we propose a simple representation learning technique that can be combined with any model-free RL method.
 Normalization based upon Finite Scalar Quantization
@@ -740,6 +765,13 @@ Proposed $\mathcal{L}$ & $[8,6,5]$ & $[8,5,5,5]$ & $[7,5,5,5,5]$ \\
 
 \section{Experiments}
 \label{sec:experiments}
+In this section, we evaluate \our in a wide variety of continuous control tasks from the DeepMind Control (DMC) suite.
+We aim to answer the following questions:
+\begin{itemize}
+    \item How does \our compare to state-of-the-art model-free and model-based algorithms?
+    \item Is learning a representation with only latent-state consistency really better than including reward predictions and value predictions?
+    \item Can \our's task-agnostic representation aid task-adaptation with its pre-trained representation?
+\end{itemize}
 
 % \begin{figure*}[ht]
 % \vskip 0.2in
@@ -788,12 +820,23 @@ In \cref{fig:normalization_improves_sample_efficiency},
 \begin{figure*}[ht]
 \vskip 0.2in
 \begin{center}
+\centerline{\includegraphics[width=1.0\textwidth]{./figs/reward-ablation.pdf}}
+\caption{\textbf{Reward prediction is not necessary for representation learning}. \our XXXXXX We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
+\label{fig:reward-ablation}
+\end{center}
+\vskip -0.2in
+\end{figure*}
+
+\begin{figure*}[ht]
+\vskip 0.2in
+\begin{center}
 \centerline{\includegraphics[width=\textwidth]{./figs/task-agnostic-ablation.pdf}}
 \caption{\textbf{\our's task-agnostic representation helps for multi-task RL}. \our XXXXXX We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
 \label{fig:multi-task-pretraining}
 \end{center}
 \vskip -0.2in
 \end{figure*}
+
 
 \textbf{\our's representation is helpful for multi-task RL}
 In contrast to TCRL and TD-MPC, \our learns a representation that is task-agnostic.
@@ -817,23 +860,37 @@ These results demonstrate that confirms task-agnostic representation
 % \vskip -0.2in
 % \end{figure*}
 
-\begin{itemize}
-    \item Show normalised latent leads to higher sample efficiency. Show results for NTC-TD3/TC-TD3/TD3/SAC/TCRL/TD-MPC with UTD=1.
-    \item Show normalised latent works with higher UTD. Compare NTC-TD3/TC-TD3/TCRL.
-    \item Show task-agnostic representation is good for incremental task learning. Compare NTC-TD3/TCRL-ours/TCRL
-\end{itemize}
 
-\text{Ablations}
+% \begin{itemize}
+%     \item Show normalised latent leads to higher sample efficiency. Show results for NTC-TD3/TC-TD3/TD3/SAC/TCRL/TD-MPC with UTD=1.
+%     \item Show normalised latent works with higher UTD. Compare NTC-TD3/TC-TD3/TCRL.
+%     \item Show task-agnostic representation is good for incremental task learning. Compare NTC-TD3/TCRL-ours/TCRL
+% \end{itemize}
+
+\subsection{Ablations}
+
+\textbf{Reward predict is not necessary for representation learning}
+Next, we test if using reward prediction aids representation learning.
+\cref{fig:reward-ablation} shows that
+
+\textbf{Reconstruction loss has detrimental impact}
+Recent work \citep{zhaoSimplifiedTemporalConsistency2023,hansenTemporalDifferenceLearning2022}
+has shown that incorporating a reconstruction term into the representation loss can have a negative impact on performance.
+To provide a thorough analysis of \our, we include results where we add a reconstruction term to our
+representation loss \cref{eq:rep-loss}.
+We perform reconstruction at each time step in the horizon.
+\cref{fig:multi-task-pretraining} shows that in no environments does reconstruction aid learning.
+Moreover, in the quadruped-run and dog-walk environments incorporating a reconstruction term has a detrimental impact on
+overall performance.
 
 
-
-\begin{itemize}
-  \item Show un-normalised isn't as good.
-  \item Compare different size latent spaces? Different levels $[8,5]$ vs $[8,6,5]$ vs $[8,5,5,5]$ vs $[7,5,5,5,5]$
-  \item Target encoder vs online encoder for mapping states to latents for TD3.
-  \item Show cosine similarity slows training.
-  \item Show adding reconstruction loss hurts performance.
-\end{itemize}
+% \begin{itemize}
+%   \item Show un-normalised isn't as good.
+%   \item Compare different size latent spaces? Different levels $[8,5]$ vs $[8,6,5]$ vs $[8,5,5,5]$ vs $[7,5,5,5,5]$
+%   \item Target encoder vs online encoder for mapping states to latents for TD3.
+%   \item Show cosine similarity slows training.
+%   \item Show adding reconstruction loss hurts performance.
+% \end{itemize}
 
 
 
