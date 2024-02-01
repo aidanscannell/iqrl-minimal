@@ -676,15 +676,15 @@ This is because its representation loss contains a reward prediction term which 
 These results demonstrate that confirms task-agnostic representation
 
 
-\begin{figure*}[ht]
-\vskip 0.2in
-\begin{center}
-\centerline{\includegraphics[width=1.0\textwidth]{./figs/fsq_levels_comparison.pdf}}
-\caption{\textbf{Comparison of different FSQ levels $\mathcal{L}$}. Results are for four DMC tasks. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
-\label{fig:fsq_levels_comparison}
-\end{center}
-\vskip -0.2in
-\end{figure*}
+% \begin{figure*}[ht]
+% \vskip 0.2in
+% \begin{center}
+% \centerline{\includegraphics[width=1.0\textwidth]{./figs/fsq_levels_comparison.pdf}}
+% \caption{\textbf{Comparison of different FSQ levels $\mathcal{L}$}. Results are for four DMC tasks. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
+% \label{fig:fsq_levels_comparison}
+% \end{center}
+% \vskip -0.2in
+% \end{figure*}
 
 \begin{itemize}
     \item Show normalised latent leads to higher sample efficiency. Show results for NTC-TD3/TC-TD3/TD3/SAC/TCRL/TD-MPC with UTD=1.
@@ -745,7 +745,6 @@ For further details please check the code which is available at XXXXXXX.
 Hyperparameter & Value & Description \\
 \midrule
 \textbf{Training} & & \\
-\hline
 Max episode length & 1000 &  Max episode length \\
 Num episodes & $500$ (easy) & Number of training episodes \\
              & $1000$ (medium) & \\
@@ -756,10 +755,9 @@ Eval every episodes & $5$ & \\
 Num eval episodes & $10$ & \\
 \hline
 \textbf{TD3} & & \\
-\hline
 Actor update freq & $2$  & update actor less frequently than critic \\
 Batch size & $256$ & \\
-Buffer size & $1e6$ & \\
+Buffer size & $10^{6}$ & \\
 Exploration noise & $\mathrm{Linear}(1.0,0.1,50)$ (easy) & \\
                   & $\mathrm{Linear}(1.0,0.1,150)$ (medium) & \\
                   & $\mathrm{Linear}(1.0,0.1,500)$ (hard) & \\
@@ -772,7 +770,6 @@ Policy noise & $0.2$ & \\
 UTD ratio & $1$ & \\
 \hline
 \textbf{Encoder} &  & \\
-\hline
 Discount $\gamma$ & $0.99$ & \\
 Encoder learning rate & $10^{-4}$ & \\
 Encoder MLP dims & $[256]$ & \\
@@ -788,16 +785,18 @@ Latent dimension ($d$) & $1024$ & \\
 \vskip -0.1in
 \end{table}
 
-\section{Full results}
-\begin{figure*}[ht]
-\vskip 0.2in
-\begin{center}
-\centerline{\includegraphics[width=0.97\textwidth]{./figs/all_mujoco_envs.pdf}}
-\caption{Comparison to SAC/TCRL with UTD=1.}
-\label{fig:main_plot}
-\end{center}
-\vskip -0.2in
-\end{figure*}
+% \section{Full results}
+% \begin{figure*}[ht]
+% \vskip 0.2in
+% \begin{center}
+% \centerline{\includegraphics[width=0.97\textwidth]{./figs/all_mujoco_envs.pdf}}
+% \caption{Comparison to SAC/TCRL with UTD=1.}
+% \label{fig:main_plot}
+% \end{center}
+% \vskip -0.2in
+% \end{figure*}
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
