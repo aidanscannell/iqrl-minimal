@@ -344,7 +344,6 @@
   % handling complex/high-dimensional observation spaces.
   Learning representations for reinforcement learning (RL) has shown much promise for continuous control.
   Not only can it handle complex observation spaces but it can also improve sample efficiency.
-  % Recent works have shown that learning representations can improve sample efficiency in RL.
   A particularly promising approach is to use a self-supervised loss, known as the latent-state consistency loss.
   It requires an encoder which maps observations to latent states and a transition model which predicts
   next latent states.
@@ -355,12 +354,6 @@
   In this work, we show that a careful consideration of the latent space enables us to {\em (i)} learn
   a task-agnostic representation and {\em (ii)} prevent representation collapse, whilst using only the latent-state
   consistency loss.
-  % the leverage the latent-state
-  % Typically these approaches have unbounded latent spaces and are combined with auxillary loss terms such as minimizing the
-  % error of reward or value predictions in the latent space.
-  % of an encoder which maps observations to latent states and a transition model which predicts
-  % next latent states given a latent state and an action.
-  % However, most of th
   We empirically show that our method prevents representation collapse as it maintains matrix rank.
   Our representation learning approach is {\em (i)} simple, {\em (ii)} can be combined with any model-free RL algorithm
   and, {\em (iii)} obtains state-of-the-art results in continuous control benchmarks from DeepMind Control Suite.
@@ -369,33 +362,6 @@
 % Abstracts must be a single paragraph, ideally between 4--6 sentences long.
 % Gross violations will trigger corrections at the camera-ready phase.
 \end{abstract}
-
-
-\section{Introduction}
-\label{intro}
-
-Reinforcement learning (RL) \citep{sutton2018reinforcement} has shown much promise in games, animation and robotics.
-However, applying RL in real-world environments is challenging. The problem is two-fold,
-{\em (i)}, handling high dimensional/complex observation spaces is non-trivial and {\em (ii)}
-deep RL typically requires millions of data points which can be unpractical (or costly), \ie it is very sample inefficient.
-
-% Given such a latent space,
-% Whilst these latent states are often lower dimensional this is not always
-Many approaches have been proposed to improve sample efficiency in deep RL.
-As \citet{laskinCURLContrastiveUnsupervised2020} highlighted, these can generally be divided into two streams of research:
-{\em (i)} auxillary tasks on the agent's observations and {\em (ii)} world models that predict the future
-\citep{haRecurrentWorldModels2018,hafnerLearning2019,hansenTemporalDifferenceLearning2022}.
-In this work, we are interested in the first class of methods, which use auxillary tasks to improve sample efficiency.
-In particular, methods for compressing observations into latent states.%, aka representation learning.
-
-Learning representations for RL has been investigated for decades
-\citep{abelOptimalBehaviorApproximate2016,mannorDynamicAbstractionReinforcement2004,liUnifiedTheoryState2006,andreStateAbstractionProgrammable2002,deardenAbstractionApproximateDecisiontheoretic1997,singhReinforcementLearningSoft1994,higginsDefinitionDisentangledRepresentations2018,vanhoofStableReinforcementLearning2016,watterEmbedControlLocally2015,ghoshRepresentationsStableOffPolicy2020}.
-However, these approaches are usually limited to simple environments.
-Some approaches used unsupervised learning (\eg VAE \citep{kingmaAutoEncoding2014} with reconstruction loss) to acquire representations
-\citep{finnDeepSpatialAutoencoders2016,higginsDARLAImprovingZeroShot2017,langeAutonomousReinforcementLearning2012,watterEmbedControlLocally2015}.
-More recently, self-supervised learning (SSL) approaches (which do not reconstruct observations)
-attempt to learn good features without labels \cite{anandUnsupervisedStateRepresentation2019}.
-Alternative approaches leverage contrastive losses to learn representations \cite{laskinCURLContrastiveUnsupervised2020}.
 
 \begin{figure}[t!]
 \centering\scriptsize
@@ -568,31 +534,66 @@ Alternative approaches leverage contrastive losses to learn representations \cit
 
 
 \end{tikzpicture}
-\caption{\textbf{\our's model architecture} \our learns a representation soley with the latent-state consistency loss, \ie a self-predictive loss, see \cref{eq:rep-loss}. We follow Finite Scalar Quantization (FSQ) \cite{mentzerFiniteScalarQuantization2023} and bound the domain of our latent representation, \ie we normalize it. To this end, our normalization results in an implicit codebook whose size we can control. We denote our normalization scheme by \cube.}
+\caption{\textbf{Overview of \our's representation learning} \our learns a representation soley with the latent-state consistency loss, \ie a self-predictive loss, see \cref{eq:rep-loss}. We follow Finite Scalar Quantization (FSQ) \cite{mentzerFiniteScalarQuantization2023} and bound the domain of our latent representation, \ie we normalize it. Our normalization results in an implicit codebook whose size we can control.
+  % Importantly, this prevents representation collapse without needing loss terms to minimize errors in reward and/or value predictions.
+  % As such, our representations are task-agnostic.
+  We denote our normalization scheme by \cube.}
 \label{fig:diagram-self-predictive}
 \vskip -0.2in
 \end{figure}
 
+\section{Introduction}
+\label{intro}
 
-To the best of our knowledge, all prior works learn representations with objectives that depend on
+Reinforcement learning (RL) \citep{sutton2018reinforcement} has shown much promise in games, animation and robotics.
+However, applying RL in real-world environments is challenging. The problem is two-fold,
+{\em (i)}, handling high dimensional/complex observation spaces is non-trivial and {\em (ii)}
+deep RL typically requires millions of data points which can be unpractical (or costly), \ie it is very sample inefficient.
+
+% Given such a latent space,
+% Whilst these latent states are often lower dimensional this is not always
+Many approaches have been proposed to improve sample efficiency in deep RL.
+As \citet{laskinCURLContrastiveUnsupervised2020} highlighted, these can generally be divided into two streams of research:
+{\em (i)} auxillary tasks on the agent's observations and {\em (ii)} world models that predict the future
+\citep{haRecurrentWorldModels2018,hafnerLearning2019,hansenTemporalDifferenceLearning2022}.
+In this work, we are interested in the first class of methods, which use auxillary tasks to improve sample efficiency.
+In particular, we focus on representation learning methods which compress observations into latent states.
+Nevertheless, our representation learning borrows ideas from world models as it uses multi-step predictions in a
+latent-space dynamics model to learn temporally consist representations \citep{zhaoSimplifiedTemporalConsistency2023}.
+% In particular, methods for compressing observations into latent states.%, aka representation learning.
+
+Learning representations for RL has been investigated for decades
+\citep{abelOptimalBehaviorApproximate2016,mannorDynamicAbstractionReinforcement2004,liUnifiedTheoryState2006,andreStateAbstractionProgrammable2002,deardenAbstractionApproximateDecisiontheoretic1997,singhReinforcementLearningSoft1994,higginsDefinitionDisentangledRepresentations2018,vanhoofStableReinforcementLearning2016,watterEmbedControlLocally2015,ghoshRepresentationsStableOffPolicy2020}.
+However, these approaches are usually limited to simple environments.
+Some approaches used unsupervised learning (\eg VAE \citep{kingmaAutoEncoding2014} with reconstruction loss) to acquire representations
+\citep{finnDeepSpatialAutoencoders2016,higginsDARLAImprovingZeroShot2017,langeAutonomousReinforcementLearning2012,watterEmbedControlLocally2015}.
+More recently, self-supervised learning (SSL) approaches (which do not reconstruct observations)
+attempt to learn good features without labels \cite{anandUnsupervisedStateRepresentation2019}.
+Alternative approaches leverage contrastive losses to learn representations \cite{laskinCURLContrastiveUnsupervised2020}.
+
+To the best of our knowledge, all prior works that learn representations with objectives that depend on
 predicting the reward and/or value in the latent space
 \citep{zhangLearningInvariantRepresentations2020,zhaoSimplifiedTemporalConsistency2023,hansenTemporalDifferenceLearning2022,geladaDeepMDPLearningContinuous2019,rezaei-shoshtariContinuousMDPHomomorphisms2022}.
+This is usually motivated by preventing representation collapse.
 % use a latent-state consistency loss based upon the Cosine
 % For example, \citet{zhaoSimplifiedTemporalConsistency2023} use a latent-state consistency loss based upon the Cosine
 % similarity loss plus the MSE of reward predictions in the latent space.
 % The cosine similarity loss provides training stability whilst the reward prediction prevents representation collapse.
-As such, these methods learn task-specific representations.
+However, learning representations using reward and/or value loss terms leads to the representations being task specific.
 
 
 In this paper, we propose a simple representation learning technique that can be combined with any model-free RL method
 (we use TD3 \citep{fujimotoAddressingFunctionApproximation2018}).
 See \cref{fig:diagram-self-predictive} for an overview of our (extremely simple) representation learning method.
-It is based soley on a self-predictive loss.
+It is based soley on the latent-state consistency loss, \ie a commonly use self-supervised loss for RL.
 In contrast to prior works, we normalize our latent representation using the technique from Finite Scalar Quantization
 \citep{mentzerFiniteScalarQuantization2023}.
-As a result, our latent space is associated with an \textit{implicit} codebook, whose size we can control.
-Importantly, our representation {\em (i)} significantly speeds up learning, {\em (ii)} is simple to implement,
-and {\em (iii)} is task-agnostic.
+As a result, our latent space is bounded and associated with an \textit{implicit} codebook, whose size we can control.
+% As a result, our latent space is associated with an \textit{implicit} codebook, whose size we can control.
+Importantly, our method {\em (i)} prevents representation collapse (as it learns a high-rank representation),
+{\em (ii)} demonstrates state-of-the-art sample efficiency in continuous control benchmarks,
+{\em (iii)} is simple to implement, and {\em (iii)} learns a task-agnostic
+representation which could be helpful in downstream tasks.
 
 
 \section{Method}
