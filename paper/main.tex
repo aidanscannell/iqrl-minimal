@@ -722,12 +722,13 @@ The discount factor is denoted $\gamma \in [0, 1]$.
 \end{algorithmic}
 \end{algorithm}
 
-\our has four parameterized components.
+\textbf{Method overview}
+\our has four main components which we wish to learn:
 \begin{align}
 &\text{Encoder: } & z_{t} &= e_{\theta} (s_{t}) \label{eq:encoder} \\
 &\text{Dynamics: } & \hat{z}_{t+1} &= d_{\phi} (z_{t}, a_{t}) \label{eq:transition} \\
 &\text{Value: } & q_{t} &= Q_{\psi} (z_{t}, a_{t}) \label{eq:value} \\
-&\text{Policy: } & a_{t} &\sim \pi_{\eta} (z_{t}) . \label{eq:policy}
+&\text{Policy: } & a_{t} &\sim \pi_{\eta} (z_{t}) . \label{eq:policy}.
 \end{align}
 The encoder $e_{\theta}$  and latent-space dynamics model $d_{\phi}$ are responsible for representation learning.
 The encoder $e_{\theta}$ maps observations $o_{t}$ to latent states $z_{t}$ and is responsible for learning a representation
@@ -744,16 +745,8 @@ actor $\pi_{\eta}$.
 Following prior works \citep{yaratsMasteringVisualContinuous2021} we use a linear exploration noise schedule
 which decays from $1$ to $0.1$ during training.
 
-\textbf{Bounding the latent space}
-Typically the latent state $z_{t} \in \R^{d}$
-However, in our work we bound the domain of the latent space, \ie $z_{t} \in [-L, L]^{d}$.
-
 \textbf{Representation learning}
-Our representation learning is based solely on the temporal consistency loss,
-However, unlike previous works, we normalize the latent vector
-Our representation learning consists of an encoder $e_{\theta}$ (which maps observations to
-latent states) and a transition model $d_{\phi}$ which maps
-Our representation learning adopts a self-supervised loss.
+Our representation learning is based solely on the latent-state consistency loss,
 %
 \begin{align} \label{eq:rep-loss}
   \mathcal{L}_{\text{rep}}(\theta, \phi; \tau)
@@ -764,12 +757,25 @@ Our representation learning adopts a self-supervised loss.
 &= \sum_{h=0}^{H-1} \gamma^{h} \| d_{\phi}(e_{\theta}(s_{t}), a_{t}) - e_{\bar{\theta}}(s_{t+1}) \|_{2}^{2}
 \end{align}
 %
+which minimizes the distance between the next state predicted by the transition model $d_{\phi}(e_{\phi}(z_{t}), a_{t})$
+and the next state predicted by the momentum encoder $e_{\bar{\phi}}(z_{t+1})$.
+The prediction $d_{\phi}(e_{\phi}(z_{t}), a_{t})$ uses the online encoder which is trained jointly with the transition model.
+The target $e_{\bar{\phi}}(z_{t+1})$ is calculated with the momentum encoder which uses an exponential moving average (EMA)
+of the encoder's weights $\bar{\theta} \leftarrow \tau \bar{\theta} + (1-\tau)\theta$.
+The target network update rate is denoted $\tau$.
+Unlike previous works, we normalize the latent vector
+%
 \textbf{Finite Scalar Quantization}
 We follow Finite Scalar Quantization (FSQ, \cite{mentzerFiniteScalarQuantization2023})
 and bound each dimension of our latent space.
 Given the output of our MLP encoder $z \in \R^{d}$,
 
 where each entry in  $f : z \rightarrow \left[ L/2 \right] \mathrm{tanh}(z))$
+
+\textbf{Bounding the latent space}
+Typically the latent state $z_{t} \in \R^{d}$
+However, in our work we bound the domain of the latent space, \ie $z_{t} \in [-L, L]^{d}$.
+
 
 % Thereby, we have zˆ ∈ C, where C is the implied codebook, given by the product of these per-channel
 % codebook sets, with |C| = L
