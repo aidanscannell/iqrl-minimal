@@ -20,6 +20,9 @@ COLORS = {
     "REDQ": "#984ea3",
     "TD-MPC": "#ff7f00",
     "iFSQ-RL": "#e41a1c",
+    # "iFSQ-RL d=1024": "magenta",
+    # "iFSQ-RL d=512": "grey",
+    # "iFSQ-RL d=128": "#e41a1c",
 }
 # %%
 main_envs = [
@@ -44,6 +47,7 @@ def plot(df, key="episode_reward"):
 
     fig, axs = plt.subplots(nrow, ncol, figsize=(4 * ncol, 3.5 * nrow))
 
+    # breakpoint()
     # df["env_step"] = df["env_step"] / 1000
     for idx, env in enumerate(main_envs):
         data = df[df["env"] == env]
@@ -54,7 +58,7 @@ def plot(df, key="episode_reward"):
         ax = axs[row, col]
         hue_order = data.agent.unique()
 
-        if idx == 4:
+        if idx == 3:
             sns.lineplot(
                 # x=int("env_step" / 1000),
                 x="env_step",
@@ -64,7 +68,7 @@ def plot(df, key="episode_reward"):
                 data=data,
                 errorbar=("ci", 95),
                 hue="agent",
-                hue_order=hue_order,
+                # hue_order=hue_order,
                 palette=COLORS,
                 legend="auto",
                 ax=ax,
@@ -78,7 +82,7 @@ def plot(df, key="episode_reward"):
                 data=data,
                 errorbar=("ci", 95),
                 hue="agent",
-                hue_order=hue_order,
+                # hue_order=hue_order,
                 palette=COLORS,
                 legend=False,
                 ax=ax,
@@ -119,7 +123,7 @@ df = [
     pd.read_csv(f"{data_path}/tdmpc_main.csv"),
     df_redq,
     pd.read_csv(f"{data_path}/sac_main.csv"),
-    pd.read_csv(f"{data_path}/vq_td3_main.csv"),
+    pd.read_csv(f"{data_path}/ifsq-rl.csv"),
 ]
 plot(pd.concat(df))
 

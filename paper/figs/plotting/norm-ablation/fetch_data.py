@@ -177,6 +177,20 @@ ddpg_data = {
             "lh1kdlht",  # seed=4
             "8gymqblt",  # seed=5
         ],
+        "acrobot-swingup": [
+            # no norm
+            "vkbkcrjm",
+            "nx50by5c",
+            "4iy9ahwx",
+            "frc6lm7a",
+            "e730qvy7",
+            # norm
+            "c6qmc8yx",
+            "spwng8k4",
+            "wgurvdan",
+            "4xfe6bez",
+            "95l445ci",
+        ],
         # 'humanoid-walk': ['2xa4zh7i', 'u01r5cd8', '2dm45ezi', '2ywqbphi', '33kix5gc', ],
         # "dog-walk": ["gtrhfxn3"],
         # "dog-run": ["ukzsy2t5"],

@@ -40,6 +40,13 @@ ddpg_data = {
             "j8apohl8",  # seed=4
             "5w8halqc",  # seed=5
         ],
+        "quadruped-run-d=128": [
+            "csjhne6n",
+            "bm5kosik",
+            "kum2pe4f",
+            "s9p9y44s",
+            "4gsq88ju",
+        ],
         "quadruped-run": [
             ##### Project=True
             # # reconstruction
@@ -62,11 +69,11 @@ ddpg_data = {
             "sats7q1b",  # seed=4
             "foax0pto",  # seed=5
             # no reconstruction
-            "g16tux3h",  # seed=1
-            "82tqwdmq",  # seed=2
-            "msec1uul",  # seed=3
-            "jd6nsd17",  # seed=4
-            "i09us6qm",  # seed=5
+            # "g16tux3h",  # seed=1
+            # "82tqwdmq",  # seed=2
+            # "msec1uul",  # seed=3
+            # "jd6nsd17",  # seed=4
+            # "i09us6qm",  # seed=5
         ],
         "walker-run": [
             ##### Project=True
@@ -96,6 +103,13 @@ ddpg_data = {
             "w65qql3j",  # seed=4
             "wkge5rid",  # seed=5
         ],
+        "cheetah-run-d128": [
+            "l4c3phty",
+            "96xm0zx5",
+            "6tul0lmk",
+            "y7c9k82p",
+            "zx6ykgj9",
+        ],
         "cheetah-run": [
             ##### Project=True
             # # reconstruction
@@ -118,11 +132,25 @@ ddpg_data = {
             "ndtfn06e",  # seed=5
             # no reconstruction
             ##### Project=False
-            "7kg8xyj8",  # seed=1
-            "gujw41jb",  # seed=2
-            "r9cu6yvh",  # seed=3
-            "lh1kdlht",  # seed=4
-            "8gymqblt",  # seed=5
+            # "7kg8xyj8",  # seed=1
+            # "gujw41jb",  # seed=2
+            # "r9cu6yvh",  # seed=3
+            # "lh1kdlht",  # seed=4
+            # "8gymqblt",  # seed=5
+        ],
+        "acrobot-swingup": [
+            # reconstruction
+            "6sfcsm49",
+            "4zz2hrn9",
+            "ab4rl6yl",
+            "4ewms37u",
+            "1q4nt70m",
+            # no reconstruction
+            "c6qmc8yx",
+            "spwng8k4",
+            "wgurvdan",
+            "4xfe6bez",
+            "95l445ci",
         ],
         "dog-walk": [
             # # reconstruction (project_latent=True)

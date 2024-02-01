@@ -25,10 +25,10 @@ COLORS = {
 }
 # %%
 main_envs = [
-    # "acrobot-swingup",
+    "acrobot-swingup",
     # "cheetah-run",
     # "walker-walk",
-    "walker-run",
+    # "walker-run",
     "hopper-stand",
     # "fish-swim",
     "quadruped-run",

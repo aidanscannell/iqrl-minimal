@@ -10,11 +10,15 @@ ddpg_data = {
         # "walker-walk": ["4wydf2sz", "n7l8xac6", "l7nqlsid", "yrwwmyq2", "bpdxi4jw"],
         # "quadruped-walk": ["6gf2r90u", "uvq2ctjr", "4x1r1nqg", "lji8f92s", "eiafkell"],
         #### Project=False ####
+        # GOOD performance d=128
+        "quadruped-walk": ["8zgkcuhs", "egk6qxco", "oh1xhyqt", "hm3ihqzo", "p4slb4q9"],
+        "cheetah-run": ["l4c3phty", "96xm0zx5", "6tul0lmk", "y7c9k82p", "zx6ykgj9"],
+        # POOR performance d=512
         "acrobot-swingup": ["c6qmc8yx", "spwng8k4", "wgurvdan", "4xfe6bez", "95l445ci"],
-        "cheetah-run": ["7kg8xyj8", "gujw41jb", "r9cu6yvh", "lh1kdlht", "8gymqblt"],
+        # "cheetah-run": ["7kg8xyj8", "gujw41jb", "r9cu6yvh", "lh1kdlht", "8gymqblt"],
         # "fish-swim": ["izb29vhj", "xlgm5s8v", "xc1nf2ss", "ezhafy1m", "5tw9ini4"],
         "walker-walk": ["9xh1l0n1", "9ujhx4vn", "pojcknc3", "2xehepzn", "fvzzgcw2"],
-        "quadruped-walk": ["17h2zwdq", "s6i2xtt3", "fu8wchfa", "tzwhqglg", "7n7tivxv"],
+        # "quadruped-walk": ["17h2zwdq", "s6i2xtt3", "fu8wchfa", "tzwhqglg", "7n7tivxv"],
         "humanoid-walk": [
             "wur1u276",
             "l8da5827",
@@ -51,6 +55,8 @@ ddpg_data = {
             "kprj5q9u",
             "r232jms2",
             # "aox6spn2", # crashed
+            "5ubkon5e",
+            "65wmol3k",
         ],  # project=False
         # "dog-run": [
         #     "7hty9mrz",
@@ -135,6 +141,7 @@ def fetch_results(run_path, run_name_list, keys, agent_name):
         history["env"] = env_name
         history["seed"] = seed
         history["agent"] = agent_name
+        # history["agent"] = agent_name + f" d={wandb_run.config['agent']['latent_dim']}"
 
         data.append(history)
         # breakpoint()
@@ -156,7 +163,7 @@ data = pd.concat(
 
 # %%
 
-data.to_csv("./vq_td3_main.csv")
+data.to_csv("./ifsq-rl.csv")
 
 
 # %%
