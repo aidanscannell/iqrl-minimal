@@ -5,3 +5,7 @@ defaults:
 
 env_id: "fish"
 dmc_task: "upright"
+
+agent:
+  nstep: 3
+  project_latent: True
