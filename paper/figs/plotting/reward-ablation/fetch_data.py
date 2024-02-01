@@ -166,11 +166,14 @@ ddpg_data = {
 #            "92xdroib",
 #            "a31ojzbq",
 #            "w6nbzm8s",
-            "qan3qdrz",
-            "qzatnvv6",
-            "1ml0gf0u",
-            "s6bm3ob5",
-            "fjxj3a9c",
+            # MY bad runs
+            #"qan3qdrz",
+            #"qzatnvv6",
+            #"1ml0gf0u",
+            #"s6bm3ob5",
+            #"fjxj3a9c",
+            # Aidan
+            "3duujm1p", "kl6xd92o", "s4t5viko", "flcmnkt7", "1zjl534e",
             # iFSQL-RL+rew
 #            "p2sktykm",
 #            "ehfdb1w6",
@@ -329,7 +332,11 @@ rename = {a: b for a, b in zip(keys, titles)}
 def fetch_results(run_path, run_name_list, keys, agent_name=None):
     data = []
     for run_name in run_name_list:
-        wandb_run = api.run(run_path + run_name)
+        if run_name in ["3duujm1p", "kl6xd92o", "s4t5viko", "flcmnkt7", "1zjl534e"]:
+            print("Tulee")
+            wandb_run = api.run("aalto-ml/lifelong-td3-tc/" + run_name)
+        else:
+            wandb_run = api.run(run_path + run_name)
         # history = wandb_run.history(keys=keys, pandas=True)
         # breakpoint()
         history = wandb_run.history(keys=keys)

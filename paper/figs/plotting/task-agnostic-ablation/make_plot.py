@@ -14,7 +14,7 @@ plt.rcParams["figure.dpi"] = 400
 plt.rcParams["font.size"] = 13
 plt.rcParams["legend.fontsize"] = 12
 plt.rcParams["legend.loc"] = "lower right"
-#plt.rcParams["text.usetex"] = True
+plt.rcParams["text.usetex"] = True
 
 COLORS = {
     # "TCRL": "#e41a1c",
