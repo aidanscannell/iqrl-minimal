@@ -4,23 +4,33 @@ ddpg_data = {
     "path": ddpg_path,
     "data": {
         # 'acrobot-swingup': ['1eiys0vf', '1yedk0zx', '1pbg10k5', 'zgb6ndd1', '2dh8jyh9',],
-        # "cheetah-run": ["6bzzn892"],  # "lcmbhw37"],
+        #### NEW ####
+        "acrobot-swingup": ["lkjyy7t0", "tek7m4yi", "7vqw7n3a", "4v4cxbjf", "omf199u5"],
+        "cheetah-run": ["nwusiqnt", "pxbu4024", "ysrel1rl", "kmj3y2ww", "bc6sqbdl"],
+        "fish-swim": ["5rhervdh", "btrclty9", "royfiwdl", "2bvv2o87", "krfia2hj"],
+        "walker-walk": ["4wydf2sz", "n7l8xac6", "l7nqlsid", "yrwwmyq2", "bpdxi4jw"],
+        "quadruped-walk": ["6gf2r90u", "uvq2ctjr", "4x1r1nqg", "lji8f92s", "eiafkell"],
         "humanoid-walk": ["lcmbhw37"],  # "lcmbhw37"],
-        "humanoid-run": ["jv7cfy2v"],
-        # 'fish-swim': ['1zrla7u4', '3rx4mc18', 'xwq0fu1r', 'smv9miz4', 'nu50jdp0', ],
-        "cartpole-swingup": ["w6eykaow"],  # UTD=1
-        "hopper-stand": ["3ozramwe"],  # UTD=1
-        "quadruped-walk": ["8q59zkws"],  # UTD=1
-        # "cheetah-run": ["mkmvf5md"],  # UTD=4
-        "cheetah-run": ["jc3gjwdg"],  # UTD=1
-        "walker-walk": ["26lcg142"],  # UTD=1
-        # "walker-walk": ["nrak2mn1"],  # UTD=4
-        "quadruped-run": ["478dl8sb"],  # UTD=1
-        # 'humanoid-walk': ['2xa4zh7i', 'u01r5cd8', '2dm45ezi', '2ywqbphi', '33kix5gc', ],
-        # "dog-walk": ["gtrhfxn3"],
-        "dog-run": ["ukzsy2t5"],
         "dog-walk": ["sjqd8i9u"],
         "dog-run": ["zhsh5oyd"],
+        #### OLD ####
+        # "cheetah-run": ["6bzzn892"],  # "lcmbhw37"],
+        # "humanoid-walk": ["lcmbhw37"],  # "lcmbhw37"],
+        # "humanoid-run": ["jv7cfy2v"],
+        # 'fish-swim': ['1zrla7u4', '3rx4mc18', 'xwq0fu1r', 'smv9miz4', 'nu50jdp0', ],
+        # "cartpole-swingup": ["w6eykaow"],  # UTD=1
+        # "hopper-stand": ["3ozramwe"],  # UTD=1
+        # "quadruped-walk": ["8q59zkws"],  # UTD=1
+        # "cheetah-run": ["mkmvf5md"],  # UTD=4
+        # "cheetah-run": ["jc3gjwdg"],  # UTD=1
+        # "walker-walk": ["26lcg142"],  # UTD=1
+        # "walker-walk": ["nrak2mn1"],  # UTD=4
+        # "quadruped-run": ["478dl8sb"],  # UTD=1
+        # 'humanoid-walk': ['2xa4zh7i', 'u01r5cd8', '2dm45ezi', '2ywqbphi', '33kix5gc', ],
+        # "dog-walk": ["gtrhfxn3"],
+        # "dog-run": ["ukzsy2t5"],
+        # "dog-walk": ["sjqd8i9u"],
+        # "dog-run": ["zhsh5oyd"],
     },
 }
 
@@ -91,7 +101,7 @@ data = pd.concat(
             run_path=ddpg_data["path"],
             run_name_list=ddpg_data["data"][env],
             keys=keys,
-            agent_name="VQ-TD3",
+            agent_name="iFSQ-RL",
         )
         for env in ddpg_data["data"].keys()
     ]

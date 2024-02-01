@@ -15,19 +15,19 @@ plt.rcParams["font.size"] = 13
 plt.rcParams["legend.fontsize"] = 12
 plt.rcParams["legend.loc"] = "lower right"
 COLORS = {
-    "TCRL": "#e41a1c",
+    "TCRL": "#4daf4a",
     "SAC": "#377eb8",
     "REDQ": "#984ea3",
     "TD-MPC": "#ff7f00",
-    "VQ-TD3": "magenta",
+    "iFSQ-RL": "#e41a1c",
 }
 # %%
 main_envs = [
     "acrobot-swingup",
     "cheetah-run",
-    # "fish-swim",
+    "fish-swim",
     "quadruped-walk",
-    "humanoid-run",
+    # "humanoid-run",
     "walker-walk",
     "humanoid-walk",
     "dog-walk",
@@ -46,6 +46,8 @@ def plot(df, key="episode_reward"):
 
     for idx, env in enumerate(main_envs):
         data = df[df["env"] == env]
+        # breakpoint()
+        # data[data["agent"] == "iFSQ-RL"] = data[data["agent"] == "iFSQ-RL"].iloc[::2]
         row = idx // ncol
         col = idx % ncol
         ax = axs[row, col]
