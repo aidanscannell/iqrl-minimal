@@ -31,7 +31,8 @@
 \usepackage{amsthm}
 
 % if you use cleveref..
-\usepackage[capitalize,noabbrev,nameinlink]{cleveref}
+% \usepackage[capitalize,noabbrev,nameinlink]{cleveref}
+\usepackage[capitalize,nameinlink]{cleveref}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % THEOREMS
@@ -62,7 +63,8 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % \newcommand{\our}{\textsc{vq-td3}\xspace}
-\newcommand{\our}{\textsc{iFSQ-RL}\xspace}
+% \newcommand{\our}{\textsc{iFSQ-RL}\xspace}
+\newcommand{\our}{\textsc{iQRL}\xspace}
 
 % Latin
 \usepackage{xspace}
@@ -563,38 +565,47 @@ and {\em (iii)} is task-agnostic.
 \section{Method}
 \label{sec:method}
 
-In this section, we detail our method, titled Vector Quantized TD3 (\our).
-\our is conceptually simple, it first learns a representation of the observation space and then,
-given this representation, it performs model-free RL (e.g. TD3) on this representation.
+In this section, we detail our method, titled \textit{implicitly Quantized Reinforcement Learning} (\our).
+\our is conceptually simple, it (1) learns a representation of the observation space and then,
+(2) performs model-free RL (e.g. TD3) on this representation.
 % It the first representation learning phase, it learns an encoder which maps observations $o \in \mathcal{O}$
 % to a latent space $z \in \mathcal{Z}$.
 % It first learns a representation of the observation space and then uses
-See \cref{alg:main_alg}.
+See \cref{fig:diagram-self-predictive} and \cref{alg:main_alg}.
 
-We consider Markov Decision Processes (MDPs, \citet{bellmanMarkovianDecisionProcess1957a}) $\mathcal{M} = (\mathcal{O}, \mathcal{A}, \mathcal{P}, \mathcal{R}, \gamma,\mathcal{T})$, where an agent receives
-observation $o_{t} \in \mathcal{O}$ at time step $t$ and performs an action $a_{t} \in \mathcal{A}$.
+We consider Markov Decision Processes (MDPs, \citet{bellmanMarkovianDecisionProcess1957a}) $\mathcal{M} = (\mathcal{O}, \mathcal{A}, \mathcal{P}, \mathcal{R}, \gamma)$,
+where an agent receives an observation $o_{t} \in \mathcal{O}$ at time step $t$ and performs an action $a_{t} \in \mathcal{A}$.
 The agent then obtains a reward $r_{t} = \mathcal{R} (o_{t}, a_{t})$ and obtains the next observation
 $o_{t+1} = P(\cdot \mid o_{t}, a_{t})$.
-discount factor $\gamma \in [0, 1]$
+The discount factor is denoted $\gamma \in [0, 1]$.
 
-
-\our has four parameterized components.
 \begin{algorithm}[tb]
    \caption{\our}
    \label{alg:main_alg}
+   \renewcommand{\algorithmiccomment}[1]{\hfill\textcolor{gray}{\(\triangleright\) #1}}
 \begin{algorithmic}
-   \STATE {\bfseries Input:} Encoder $e_{\theta}$, transition $d_{\phi}$, critics $Q_{\psi}$, policy $\pi_{\eta}$
+   \STATE {\bfseries Input:} Encoder $e_{\theta}$, transition $d_{\phi}$, critics $\{Q_{\psi_{1}}, Q_{\psi_{2}} \}$, policy $\pi_{\eta}$, learning rate $\alpha$, target network update rate $\tau$
    \FOR{$i$ {\bfseries to} $N_{\text{episodes}}$}
-    \STATE $\mathcal{D} \leftarrow \mathcal{D} \cup \{o_{t}, a_{t}, o_{t+1}, r_{t+1}\}^{T}_{t=0}$
-    \FOR{$i=1$ {\bfseries to} $T \times UTD$}
-        \STATE Representation update
-        \STATE TD3 update
+    \STATE Collect data in environment
+    \STATE $\qquad \mathcal{D} \leftarrow \mathcal{D} \cup \{o_{t}, a_{t}, o_{t+1}, r_{t+1}\}^{T}_{t=0}$
+    \FOR{$i=1$ {\bfseries to} $T$}
+        \STATE Update representation
+        \STATE $\qquad [\theta, \phi] \leftarrow [\theta, \phi] + \alpha \nabla \left( \mathcal{L}_{\text{rep}}(\theta, \phi; \mathcal{D}) \right)$  \COMMENT{\cref{eq:rep-loss}}
+        \STATE Update critic
+        \STATE \quad \quad $\psi \leftarrow \psi + \alpha \nabla \left( \mathcal{L}_{Q}(\psi; \mathcal{D}) \right)$ \COMMENT{\cref{eq:value-loss}}
+        \IF{i \% 2 == 0}
+          \STATE Update actor less frequently than critic
+          \STATE $\quad \quad \eta \leftarrow \psi + \alpha \nabla \left( \mathcal{L}_{\pi}(\psi; \mathcal{D}) \right)$  \COMMENT{\cref{eq:policy-loss}}
+          % \STATE $\bar{\eta} \leftarrow \tau \bar{\eta} + (1-\tau) \eta$
+        \ENDIF
+        \STATE Update target networks
+        \STATE $\quad \quad [\bar{\theta}, \bar{\phi}, \bar{\psi}] \leftarrow \tau [\bar{\theta}, \bar{\phi}, \bar{\psi}] + (1-\tau) [{\theta}, {\phi}, {\psi}]$
     \ENDFOR
    \ENDFOR
 \end{algorithmic}
 \end{algorithm}
 
-
+\our has four parameterized components.
 \begin{align}
 &\text{Encoder: } & z_{t} &= e_{\theta} (s_{t}) \label{eq:encoder} \\
 &\text{Dynamics: } & \hat{z}_{t+1} &= d_{\phi} (z_{t}, a_{t}) \label{eq:transition} \\
@@ -610,15 +621,16 @@ However, unlike previous works, we normalize the latent vector
 Our representation learning consists of an encoder $e_{\theta}$ (which maps observations to
 latent states) and a transition model $d_{\phi}$ which maps
 Our representation learning adopts a self-supervised loss.
-
+%
 \begin{align} \label{eq:rep-loss}
-  \mathcal{L}_{\text{rep}}(\theta, \phi; \mathcal{D})
+  \mathcal{L}_{\text{rep}}(\theta, \phi; \tau)
  % &= \E_{s_{t} \sim \mathcal{D}} \left[ \sum_{h=0}^{H-1} \| \hat{z}_{t+1} - z_{t+1} \|_{2}^{2} \right] \\
 %&= \E_{(s_{t}, a_{t}, s_{t+1}) \sim \mathcal{D}}
-&= \E_{\tau \sim \mathcal{D}}
-\left[ \sum_{h=0}^{H-1} \gamma^{h} \| d_{\phi}(e_{\theta}(s_{t}), a_{t}) - e_{\bar{\theta}}(s_{t+1}) \|_{2}^{2} \right]
+% &= \E_{\tau \sim \mathcal{D}}
+% \left[ \sum_{h=0}^{H-1} \gamma^{h} \| d_{\phi}(e_{\theta}(s_{t}), a_{t}) - e_{\bar{\theta}}(s_{t+1}) \|_{2}^{2} \right]
+&= \sum_{h=0}^{H-1} \gamma^{h} \| d_{\phi}(e_{\theta}(s_{t}), a_{t}) - e_{\bar{\theta}}(s_{t+1}) \|_{2}^{2}
 \end{align}
-
+%
 \textbf{Finite Scalar Quantization}
 We follow Finite Scalar Quantization (FSQ, \cite{mentzerFiniteScalarQuantization2023})
 and bound each dimension of our latent space.
@@ -664,7 +676,6 @@ Proposed $\mathcal{L}$ & $[8,6,5]$ & $[8,5,5,5]$ & $[7,5,5,5,5]$ \\
   \mathcal{L}_{Q}(\psi ; \mathcal{D}) &= \E_{\tau \sim \mathcal{D}} \left[ (Q_{\psi_{k}}(e_{\theta}(s_{t}), a_{t}) - y)^{2}  \right], \quad \forall k \in 1, 2 \\
   y &= \sum_{n=0}^{N-1} \gamma^{n} r_{t+n} + \gamma^{n} \min_{k \in \{1,2\}} Q_{\bar{\psi}_{k}}(e_{\bar{\theta}}(s_{t+n}), a_{t+n})
 \end{align}
-
 
 \begin{align} \label{eq:policy-loss}
  \mathcal{L}_{\pi}(\eta; \mathcal{D}) = \E_{(o_{t}, a_{t}) \sim \mathcal{D}} \left[ \min_{k\in\{1,2\}} Q_{\psi_{k}}(e_{\theta}(o_{t}), a_{t}) \right]
