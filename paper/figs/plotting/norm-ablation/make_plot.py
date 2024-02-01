@@ -21,8 +21,10 @@ COLORS = {
     # "TD-MPC": "#ff7f00",
     # "VQ-TD3": "magenta",
     "iFSQ-RL": "#e41a1c",
+    "No iFSQ": "#377eb8",
     "no-norm $d=50$": "#377eb8",
     "no-norm $d=512$": "#ff7f00",
+    "no-norm $d=1024$": "#984ea3",
 }
 # %%
 main_envs = [
@@ -30,11 +32,11 @@ main_envs = [
     "cheetah-run",
     # "walker-walk",
     "walker-run",
-    "hopper-stand",
+    # "hopper-stand",
     # "fish-swim",
     "quadruped-run",
+    "humanoid-walk",
     # "humanoid-run",
-    # "humanoid-walk",
     # "dog-walk",
     # "dog-run",
 ]

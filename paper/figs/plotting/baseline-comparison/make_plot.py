@@ -44,6 +44,7 @@ def plot(df, key="episode_reward"):
 
     fig, axs = plt.subplots(nrow, ncol, figsize=(4 * ncol, 3.5 * nrow))
 
+    # df["env_step"] = df["env_step"] / 1000
     for idx, env in enumerate(main_envs):
         data = df[df["env"] == env]
         # breakpoint()
@@ -55,7 +56,10 @@ def plot(df, key="episode_reward"):
 
         if idx == 4:
             sns.lineplot(
+                # x=int("env_step" / 1000),
                 x="env_step",
+                # x="env_step",
+                # x="episode",
                 y=key,
                 data=data,
                 errorbar=("ci", 95),
@@ -67,8 +71,8 @@ def plot(df, key="episode_reward"):
             )
             ax.legend().set_title(None)
         else:
-            # breakpoint()
             sns.lineplot(
+                # x="episode",
                 x="env_step",
                 y=key,
                 data=data,

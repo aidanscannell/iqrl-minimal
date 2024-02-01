@@ -3,13 +3,18 @@ ddpg_path = "aalto-ml/lifelong-td3-tc/"
 ddpg_data = {
     "path": ddpg_path,
     "data": {
-        # 'acrobot-swingup': ['1eiys0vf', '1yedk0zx', '1pbg10k5', 'zgb6ndd1', '2dh8jyh9',],
-        #### NEW ####
-        "acrobot-swingup": ["lkjyy7t0", "tek7m4yi", "7vqw7n3a", "4v4cxbjf", "omf199u5"],
-        "cheetah-run": ["nwusiqnt", "pxbu4024", "ysrel1rl", "kmj3y2ww", "bc6sqbdl"],
+        #### Project=True ####
+        # "acrobot-swingup": ["lkjyy7t0", "tek7m4yi", "7vqw7n3a", "4v4cxbjf", "omf199u5"],
+        # "cheetah-run": ["nwusiqnt", "pxbu4024", "ysrel1rl", "kmj3y2ww", "bc6sqbdl"],
         "fish-swim": ["5rhervdh", "btrclty9", "royfiwdl", "2bvv2o87", "krfia2hj"],
-        "walker-walk": ["4wydf2sz", "n7l8xac6", "l7nqlsid", "yrwwmyq2", "bpdxi4jw"],
-        "quadruped-walk": ["6gf2r90u", "uvq2ctjr", "4x1r1nqg", "lji8f92s", "eiafkell"],
+        # "walker-walk": ["4wydf2sz", "n7l8xac6", "l7nqlsid", "yrwwmyq2", "bpdxi4jw"],
+        # "quadruped-walk": ["6gf2r90u", "uvq2ctjr", "4x1r1nqg", "lji8f92s", "eiafkell"],
+        #### Project=False ####
+        "acrobot-swingup": ["c6qmc8yx", "spwng8k4", "wgurvdan", "4xfe6bez", "95l445ci"],
+        "cheetah-run": ["7kg8xyj8", "gujw41jb", "r9cu6yvh", "lh1kdlht", "8gymqblt"],
+        # "fish-swim": ["izb29vhj", "xlgm5s8v", "xc1nf2ss", "ezhafy1m", "5tw9ini4"],
+        "walker-walk": ["9xh1l0n1", "9ujhx4vn", "pojcknc3", "2xehepzn", "fvzzgcw2"],
+        "quadruped-walk": ["17h2zwdq", "s6i2xtt3", "fu8wchfa", "tzwhqglg", "7n7tivxv"],
         "humanoid-walk": [
             "wur1u276",
             "l8da5827",
@@ -45,7 +50,7 @@ ddpg_data = {
             "aikn5eix",
             "kprj5q9u",
             "r232jms2",
-            "aox6spn2",
+            # "aox6spn2", # crashed
         ],  # project=False
         # "dog-run": [
         #     "7hty9mrz",

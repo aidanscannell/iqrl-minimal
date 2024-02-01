@@ -14,68 +14,129 @@ ddpg_data = {
         # "cheetah-run": ["mkmvf5md"],  # UTD=4
         # : [,],
         "hopper-stand": [
+            ##### Project=True
+            # # reconstruction
+            # "25m4987b",  # seed=1
+            # "cet5h22j",  # seed=2
+            # "8o4v1gz1",  # seed=3
+            # "udj85ac1",  # seed=4
+            # "7k9kjfll",  # seed=5
+            # # no reconstruction
+            # "1wmalfbs",  # seed=1
+            # "rj3vhnbq",  # seed=2
+            # "j4iwbxq2",  # seed=3
+            # "jo9td3sx",  # seed=4
+            # "71nsurzh",  # seed=5
             # reconstruction
-            "25m4987b",  # seed=1
-            "cet5h22j",  # seed=2
-            "8o4v1gz1",  # seed=3
-            "udj85ac1",  # seed=4
-            "7k9kjfll",  # seed=5
+            "94skam71",  # seed=1
+            "hss7p9jr",  # seed=2
+            "oe1us2qh",  # seed=3
+            "nijlewdk",  # seed=4
+            "4m35m7d4",  # seed=5
             # no reconstruction
-            "1wmalfbs",  # seed=1
-            "rj3vhnbq",  # seed=2
-            "j4iwbxq2",  # seed=3
-            "jo9td3sx",  # seed=4
-            "71nsurzh",  # seed=5
+            "3rmiy5he",  # seed=1
+            "39j1gbp2",  # seed=2
+            "t4hf7g18",  # seed=3
+            "j8apohl8",  # seed=4
+            "5w8halqc",  # seed=5
         ],
         "quadruped-run": [
+            ##### Project=True
+            # # reconstruction
+            # "rw26pb1l",  # seed=1
+            # "jm549p6m",  # seed=2
+            # "7ll3mp6d",  # seed=3
+            # "ypgoji3k",  # seed=4
+            # "ll54kaha",  # seed=5
+            # # no reconstruction
+            # "w625abb9",  # seed=1
+            # "w1ssoh9i",  # seed=2
+            # "wtobbh3o",  # seed=3
+            # "4sj3p04r",  # seed=4
+            # "wtobbh3o",  # seed=5
+            ##### Project=False
             # reconstruction
-            "rw26pb1l",  # seed=1
-            "jm549p6m",  # seed=2
-            "7ll3mp6d",  # seed=3
-            "ypgoji3k",  # seed=4
-            "ll54kaha",  # seed=5
+            "3yyb8ibb",  # seed=1
+            "v0e4moj8",  # seed=2
+            "r9ld9h3r",  # seed=3
+            "sats7q1b",  # seed=4
+            "foax0pto",  # seed=5
             # no reconstruction
-            "w625abb9",  # seed=1
-            "w1ssoh9i",  # seed=2
-            "wtobbh3o",  # seed=3
-            "4sj3p04r",  # seed=4
-            "wtobbh3o",  # seed=5
+            "g16tux3h",  # seed=1
+            "82tqwdmq",  # seed=2
+            "msec1uul",  # seed=3
+            "jd6nsd17",  # seed=4
+            "i09us6qm",  # seed=5
         ],
         "walker-run": [
+            ##### Project=True
+            # # reconstruction
+            # "qh3xxjz0",  # seed=1
+            # "1hjix0d3",  # seed=2
+            # "7agg1jz9",  # seed=3
+            # "dnqzhj7e",  # seed=4
+            # "kabd20ca",  # seed=5
+            # # no reconstruction
+            # "93c29we8",  # seed=1
+            # "kxf7upys",  # seed=2
+            # "v6elb6zj",  # seed=3
+            # "3rs95mmd",  # seed=4
+            # "uub5tiz1",  # seed=5
+            ##### Project=False
             # reconstruction
-            "qh3xxjz0",  # seed=1
-            "1hjix0d3",  # seed=2
-            "7agg1jz9",  # seed=3
-            "dnqzhj7e",  # seed=4
-            "kabd20ca",  # seed=5
+            "1xghgx8k",  # seed=1
+            "u9530uao",  # seed=2
+            "def6c7jo",  # seed=3
+            "pv28an1a",  # seed=4
+            "rswp0leu",  # seed=5
             # no reconstruction
-            "93c29we8",  # seed=1
-            "kxf7upys",  # seed=2
-            "v6elb6zj",  # seed=3
-            "3rs95mmd",  # seed=4
-            "uub5tiz1",  # seed=5
+            "npwa34kk",  # seed=1
+            "8vt2l9wn",  # seed=2
+            "dnhbpv2d",  # seed=3
+            "w65qql3j",  # seed=4
+            "wkge5rid",  # seed=5
         ],
         "cheetah-run": [
+            ##### Project=True
+            # # reconstruction
+            # "bgimfets",  # seed=1
+            # "juw5xc9u",  # seed=2
+            # "0klyyvx0",  # seed=3
+            # "n44sclk6",  # seed=4
+            # "u5j8xtm1",  # seed=5
+            # # no reconstruction
+            # "nwusiqnt",  # seed=1
+            # "pxbu4024",  # seed=2
+            # "ysrel1rl",  # seed=3
+            # "kmj3y2ww",  # seed=4
+            # "bc6sqbdl",  # seed=5
             # reconstruction
-            "bgimfets",  # seed=1
-            "juw5xc9u",  # seed=2
-            "0klyyvx0",  # seed=3
-            "n44sclk6",  # seed=4
-            "u5j8xtm1",  # seed=5
+            "0jds01bs",  # seed=1
+            "8dqg9vxh",  # seed=2
+            "fubrnbti",  # seed=3
+            "q7ib7ovd",  # seed=4
+            "ndtfn06e",  # seed=5
             # no reconstruction
-            "nwusiqnt",  # seed=1
-            "pxbu4024",  # seed=2
-            "ysrel1rl",  # seed=3
-            "kmj3y2ww",  # seed=4
-            "bc6sqbdl",  # seed=5
+            ##### Project=False
+            "7kg8xyj8",  # seed=1
+            "gujw41jb",  # seed=2
+            "r9cu6yvh",  # seed=3
+            "lh1kdlht",  # seed=4
+            "8gymqblt",  # seed=5
         ],
         "dog-walk": [
-            # reconstruction (project_latent=True)
-            "lvpwhw2a",  # seed=1
-            "grfre0ts",  # seed=2
-            "vk2roup1",  # seed=3
-            "r02k6u8t",  # seed=4
-            "8hks5538",  # seed=5
+            # # reconstruction (project_latent=True)
+            # "lvpwhw2a",  # seed=1
+            # "grfre0ts",  # seed=2
+            # "vk2roup1",  # seed=3
+            # "r02k6u8t",  # seed=4
+            # "8hks5538",  # seed=5
+            # reconstruction (project_latent=False)
+            "9h63x0wt",  # seed=1
+            "mypst8od",  # seed=2
+            "cszonouz",  # seed=3
+            "sh2n9br7",  # seed=4
+            "wrggk81m",  # seed=5
             # no reconstruction
             # project=False
             "stawiad8",
