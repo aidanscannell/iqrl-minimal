@@ -157,7 +157,7 @@ data = pd.concat(
             run_path=ddpg_data["path"],
             run_name_list=ddpg_data["data"][env],
             keys=keys,
-            agent_name="iFSQ-RL",
+            agent_name="iQRL",
         )
         for env in ddpg_data["data"].keys()
     ]

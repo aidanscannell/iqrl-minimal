@@ -11,15 +11,16 @@ plt.style.use("seaborn-v0_8-whitegrid")
 import seaborn as sns
 
 plt.rcParams["figure.dpi"] = 400
-plt.rcParams["font.size"] = 13
-plt.rcParams["legend.fontsize"] = 12
+plt.rcParams["font.size"] = 15
+plt.rcParams["legend.fontsize"] = 14
 plt.rcParams["legend.loc"] = "lower right"
+plt.rcParams["text.usetex"] = True
 COLORS = {
     "TCRL": "#4daf4a",
     "SAC": "#377eb8",
     "REDQ": "#984ea3",
     "TD-MPC": "#ff7f00",
-    "iFSQ-RL": "#e41a1c",
+    "iQRL": "#e41a1c",
     # "iFSQ-RL d=1024": "magenta",
     # "iFSQ-RL d=512": "grey",
     # "iFSQ-RL d=128": "#e41a1c",
