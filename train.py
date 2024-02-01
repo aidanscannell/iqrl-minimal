@@ -5,6 +5,7 @@ import hydra
 import omegaconf
 from hydra.core.hydra_config import HydraConfig
 from hydra.utils import get_original_cwd
+from torch.linalg import cond, matrix_rank
 
 
 # from cfgs.base import TrainConfig
@@ -22,8 +23,8 @@ def train(cfg):
     import gymnasium as gym
     import numpy as np
     import torch
-    from utils.buffers import ReplayBuffer
     from stable_baselines3.common.evaluation import evaluate_policy
+    from utils.buffers import ReplayBuffer
     from utils.env import make_env
 
     logging.basicConfig(level=logging.DEBUG)
@@ -218,6 +219,37 @@ def train(cfg):
                     "elapsed_time": time.time() - start_time,
                 }
                 if cfg.use_wandb:
+                    # Log rank of latent
+                    def calc_rank(name, z):
+                        rank3 = matrix_rank(z, atol=1e-3, rtol=1e-3)
+                        rank2 = matrix_rank(z, atol=1e-2, rtol=1e-2)
+                        rank1 = matrix_rank(z, atol=1e-1, rtol=1e-1)
+                        condition = cond(z)
+                        info = {}
+                        for j, rank in enumerate([rank1, rank2, rank3]):
+                            info.update({f"{name}-rank-{j}": rank.item()})
+                            # wandb.log({f"{name}-rank-{j}": rank.item()})
+                        info.update({f"{name}-cond-num": condition.item()})
+                        # wandb.log({f"{name}-cond-num": condition.item()})
+                        return info
+
+                    try:
+                        batch = rb.sample(agent.td3.batch_size, val=False)
+                        z_batch = agent.encoder(batch.observations[0])
+                        rank_info = {}
+                        if cfg.agent.use_fsq:
+                            pre_norm_z_batch = agent.encoder.mlp(batch.observations[0])
+                            rank_info.update(
+                                calc_rank(name="z-pre-normed", z=pre_norm_z_batch)
+                            )
+                            z_batch = z_batch[0]  # always use z not indices
+                            z_batch = torch.flatten(z_batch, -2, -1)
+
+                        rank_info.update(calc_rank(name="z", z=z_batch))
+                        eval_metrics.update(rank_info)
+                    except:
+                        pass
+
                     wandb.log({"eval/": eval_metrics})
                     wandb.log(
                         {
