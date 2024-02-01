@@ -610,10 +610,13 @@ The discount factor is denoted $\gamma \in [0, 1]$.
 &\text{Encoder: } & z_{t} &= e_{\theta} (s_{t}) \label{eq:encoder} \\
 &\text{Dynamics: } & \hat{z}_{t+1} &= d_{\phi} (z_{t}, a_{t}) \label{eq:transition} \\
 &\text{Value: } & q_{t} &= Q_{\psi} (z_{t}, a_{t}) \label{eq:value} \\
-&\text{Policy: } & a_{t} &\sim \pi_{\eta} (z_{t}) , \label{eq:policy}
+&\text{Policy: } & a_{t} &\sim \pi_{\eta} (z_{t}) . \label{eq:policy}
 \end{align}
-Note that unlike TCRL \citep{zhaoSimplifiedTemporalConsistency2023}, our transition model does
-not predict the reward.
+Central to our method is the latent state $z_{t}$
+
+\textbf{Bounding the latent space}
+Typically the latent state $z_{t} \in \R^{d}$
+However, in our work we bound the domain of the latent space, \ie $z_{t} \in [-L, L]^{d}$.
 
 \textbf{Representation learning}
 Our representation learning is based soley on the temporal consistency loss,
@@ -680,6 +683,12 @@ Proposed $\mathcal{L}$ & $[8,6,5]$ & $[8,5,5,5]$ & $[7,5,5,5,5]$ \\
 \begin{align} \label{eq:policy-loss}
  \mathcal{L}_{\pi}(\eta; \mathcal{D}) = \E_{(o_{t}, a_{t}) \sim \mathcal{D}} \left[ \min_{k\in\{1,2\}} Q_{\psi_{k}}(e_{\theta}(o_{t}), a_{t}) \right]
 \end{align}
+
+
+Whilst our method resembles TCRL \citep{zhaoSimplifiedTemporalConsistency2023} it is important to note that
+our transition model does not predict the reward.
+As such, our method learns a task-agnostic representation.
+
 
 \section{Experiments}
 \label{sec:experiments}
