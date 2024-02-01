@@ -728,18 +728,21 @@ class VQ_TC_TD3(Agent):
                 if self.fsq_idx == 0:
                     z = torch.flatten(z, -2, -1)
                     z_next = torch.flatten(z_next, -2, -1)
-            latent_batch = ReplayBufferSamples(
-                observations=z.to(torch.float).detach(),
-                actions=batch.actions,
-                next_observations=z_next.to(torch.float).detach(),
-                dones=batch.dones,
-                timeouts=batch.timeouts,
-                rewards=batch.rewards,
-                next_state_discounts=batch.next_state_discounts,
-            )
 
             # TD3 on latent representation
-            info.update(self.td3.update_step(batch=latent_batch))
+            info.update(
+                self.td3.update_step(
+                    batch=ReplayBufferSamples(
+                        observations=z.to(torch.float).detach(),
+                        actions=batch.actions,
+                        next_observations=z_next.to(torch.float).detach(),
+                        dones=batch.dones,
+                        timeouts=batch.timeouts,
+                        rewards=batch.rewards,
+                        next_state_discounts=batch.next_state_discounts,
+                    )
+                )
+            )
 
             # Potentially reset ae/actor/critic NN params
             if self.reset_strategy == "every-x-param-updates":
@@ -1145,7 +1148,8 @@ class VQ_TC_TD3(Agent):
         if self.reconstruction_loss and not self.temporal_consistency:
             raise NotImplementedError("Doesn't handle leading dim of N-step?")
             x_rec = self.decoder(z)
-            rec_loss = (x_rec - x_train).abs().mean()
+            # rec_loss = ((x_rec - x_train)**2).mean()
+            # rec_loss = (x_rec - x_train).abs().mean()
         else:
             rec_loss = torch.zeros(1).to(self.device)
 
@@ -1168,7 +1172,8 @@ class VQ_TC_TD3(Agent):
                 # Calculate reconstruction loss for each time step
                 if self.reconstruction_loss:
                     x_rec = self.decoder(z)
-                    rec_loss += (x_rec - x_train[t]).abs().mean()
+                    # rec_loss += (x_rec - x_train[t]).abs().mean()
+                    rec_loss = ((x_rec - x_train[t]) ** 2).mean()
 
                 # Predict next latent
                 delta_z_pred = self.dynamics(z, a=batch.actions[t])
