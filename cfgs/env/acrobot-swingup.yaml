@@ -9,3 +9,4 @@ dmc_task: "swingup"
 agent:
   ae_tau: 0.0005
   nstep: 3
+  latent_dim: 512
