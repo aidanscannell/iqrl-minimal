@@ -14,7 +14,7 @@ plt.rcParams["figure.dpi"] = 400
 plt.rcParams["font.size"] = 13
 plt.rcParams["legend.fontsize"] = 12
 plt.rcParams["legend.loc"] = "lower right"
-#plt.rcParams["text.usetex"] = True
+plt.rcParams["text.usetex"] = True
 COLORS = {
     # "TCRL": "#e41a1c",
     # "SAC": "#377eb8",
@@ -29,8 +29,8 @@ COLORS = {
 }
 # %%
 main_envs = [
-    "acrobot-swingup",
     "cheetah-run",
+    "acrobot-swingup",
     # "walker-walk",
     "walker-run",
     "hopper-stand",
@@ -63,10 +63,10 @@ rename = {a: b for a, b in zip(keys, titles)}
 def plot(df, key="episode_reward"):
     # breakpoint()
     envs = np.sort(df.env.unique())
-    ncol = 6
+    ncol = 3
     # assert envs.shape[0] % ncol == 0
     # nrow = len(main_envs) // ncol
-    nrow = 1
+    nrow = 2
     # nrow = envs.shape[0] // ncol
 
     fig, axs = plt.subplots(nrow, ncol, figsize=(4 * ncol, 3.5 * nrow))
@@ -78,7 +78,7 @@ def plot(df, key="episode_reward"):
         row = idx // ncol
         col = idx % ncol
         # ax = axs[row, col]
-        ax = axs[col]
+        ax = axs[row, col]
         # hue_order = data.agent.unique()
         hue_order = data.name.unique()
         # hue_order = data.utd_ratio.unique()
@@ -86,34 +86,67 @@ def plot(df, key="episode_reward"):
 
         if idx == 0:
             sns.lineplot(
+                # x=int("env_step" / 1000),
                 x="env_step",
+                # x="env_step",
                 # x="episode",
                 y=key,
                 data=data,
                 errorbar=("ci", 95),
                 hue="name",
-                # style="utd_ratio",
-                hue_order=hue_order,
+                # hue_order=hue_order,
                 palette=COLORS,
                 legend="auto",
                 ax=ax,
             )
             ax.legend().set_title(None)
         else:
-            # breakpoint()
             sns.lineplot(
-                x="env_step",
                 # x="episode",
+                x="env_step",
                 y=key,
                 data=data,
                 errorbar=("ci", 95),
                 hue="name",
-                # style="utd_ratio",
-                hue_order=hue_order,
+                # hue_order=hue_order,
                 palette=COLORS,
                 legend=False,
                 ax=ax,
             )
+
+#        if idx == 0:
+#            print(data)
+#            print(ax)
+#            exit(0)
+#            sns.lineplot(
+#                x="env_step",
+#                # x="episode",
+#                y=key,
+#                data=data,
+#                errorbar=("ci", 95),
+#                hue="name",
+#                # style="utd_ratio",
+#                hue_order=hue_order,
+#                palette=COLORS,
+#                legend="auto",
+#                ax=ax,
+#            )
+#            ax.legend().set_title(None)
+#        else:
+#            # breakpoint()
+#            sns.lineplot(
+#                x="env_step",
+#                # x="episode",
+#                y=key,
+#                data=data,
+#                errorbar=("ci", 95),
+#                hue="name",
+#                # style="utd_ratio",
+#                hue_order=hue_order,
+#                palette=COLORS,
+#                legend=False,
+#                ax=ax,
+#            )
 
         ax.set_title(" ".join([ele.capitalize() for ele in env.split("-")]))
         ax.set_xlabel("Environment Steps (1e3)")
