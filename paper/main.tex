@@ -339,9 +339,10 @@
   consistency loss. Our approach employs an encoder and a transition
   model to map observations to latent states and predict future
   states, respectively. We achieve high performance and prevent
-  representation collapse by normalizing, quantizing, and bounding the
-  latent representation. Our method is straightforward, compatible
-  with any model-free RL algorithm, and demonstrates state-of-the-art
+  representation collapse by normalizing the quantized latent
+  representation such that rank in the presentation is empirically
+  preserved. Our method is straightforward, compatible with any
+  model-free RL algorithm, and demonstrates state-of-the-art
   performance in continuous control benchmarks from DeepMind Control
   Suite.
 \end{abstract}
