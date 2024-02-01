@@ -529,7 +529,7 @@
 
 
 \end{tikzpicture}
-\caption{\textbf{Overview of \our's representation learning} \our learns a representation soley with the latent-state consistency loss, \ie a self-predictive loss, see \cref{eq:rep-loss}. We follow Finite Scalar Quantization (FSQ) \cite{mentzerFiniteScalarQuantization2023} and bound the domain of our latent representation, \ie we normalize it. Our normalization results in an implicit codebook whose size we can control.
+\caption{\textbf{Overview of \our's representation learning} \our learns a representation soley with the latent-state consistency loss, \ie a self-predictive loss, see \cref{eq:rep-loss}. We follow Finite Scalar Quantization (FSQ) \cite{mentzerFiniteScalarQuantization2023} and bound the domain of our latent representation, \ie we normalize it. Our normalization results in an implicit codebook (whose size we can control) and helps prevent representation collapse.
   % Importantly, this prevents representation collapse without needing loss terms to minimize errors in reward and/or value predictions.
   % As such, our representations are task-agnostic.
   We denote our normalization scheme by \cube.}
@@ -564,17 +564,38 @@ Some approaches used unsupervised learning (\eg VAE \citep{kingmaAutoEncoding201
 \citep{finnDeepSpatialAutoencoders2016,higginsDARLAImprovingZeroShot2017,langeAutonomousReinforcementLearning2012,watterEmbedControlLocally2015}.
 More recently, self-supervised learning (SSL) approaches (which do not reconstruct observations)
 attempt to learn good features without labels \cite{anandUnsupervisedStateRepresentation2019}.
-Alternative approaches leverage contrastive losses to learn representations \cite{laskinCURLContrastiveUnsupervised2020}.
+% Alternative approaches leverage contrastive losses to learn representations \cite{laskinCURLContrastiveUnsupervised2020}.
 
-To the best of our knowledge, all prior works that learn representations with objectives that depend on
-predicting the reward and/or value in the latent space
+
+Recently, TD-MPC \citep{hansenTemporalDifferenceLearning2022} and TCRL \citep{zhaoSimplifiedTemporalConsistency2023}
+have obtained state-of-the-art performance on continuous control benchmarks by learning
+representations with self-supervised losses.
+In particular, they leverage the latent-state consistency loss.
+This requires an encoder $e_{\theta}$ which maps observations $o_{t}$ to latent states $z_{t}$ and a transition model $d_{\phi}$ which predicts
+next latent states $z_{t+1}$ given an a latent state $z_{t}$ and an action $a_{t}$.
+It then minimizes the distance between the next state predicted by the transition model $d_{\phi}(e_{\phi}(z_{t}), a_{t})$
+and the next state predicted by the target encoder $e_{\bar{\phi}}(z_{t+1})$.
+Self-supervised losses are susceptible to a problem known as representation collapse, where the encoder learns a constant
+representation \cite{jingUnderstandingDimensionalCollapse2021}.
+As such, it is common to combine the latent-state consistency loss with other loss terms, such as
+minimizing the reward prediction error in the latent space
 \citep{zhangLearningInvariantRepresentations2020,zhaoSimplifiedTemporalConsistency2023,hansenTemporalDifferenceLearning2022,geladaDeepMDPLearningContinuous2019,rezaei-shoshtariContinuousMDPHomomorphisms2022}.
-This is usually motivated by preventing representation collapse.
+This helps to prevent representation collapse at the cost of learning a task-specific representation.
+% Typically it is combined with other loss terms such as reward or value prediction.
+
+% To the best of our knowledge, all prior works that learn representations with objectives that depend on
+% predicting the reward and/or value in the latent space
+% \citep{zhangLearningInvariantRepresentations2020,zhaoSimplifiedTemporalConsistency2023,hansenTemporalDifferenceLearning2022,geladaDeepMDPLearningContinuous2019,rezaei-shoshtariContinuousMDPHomomorphisms2022}.
+% This is usually motivated by preventing representation collapse.
+% To the best of our knowledge, all prior works that learn representations with objectives that depend on
+% predicting the reward and/or value in the latent space
+% \citep{zhangLearningInvariantRepresentations2020,zhaoSimplifiedTemporalConsistency2023,hansenTemporalDifferenceLearning2022,geladaDeepMDPLearningContinuous2019,rezaei-shoshtariContinuousMDPHomomorphisms2022}.
+% This is usually motivated by preventing representation collapse.
 % use a latent-state consistency loss based upon the Cosine
 % For example, \citet{zhaoSimplifiedTemporalConsistency2023} use a latent-state consistency loss based upon the Cosine
 % similarity loss plus the MSE of reward predictions in the latent space.
 % The cosine similarity loss provides training stability whilst the reward prediction prevents representation collapse.
-However, learning representations using reward and/or value loss terms leads to the representations being task specific.
+% However, learning representations using reward and/or value loss terms leads to the representations being task specific.
 
 
 In this paper, we propose a simple representation learning technique that can be combined with any model-free RL method
