@@ -13,12 +13,13 @@ ddpg_data = {
         # GOOD performance d=128
         "quadruped-walk": ["8zgkcuhs", "egk6qxco", "oh1xhyqt", "hm3ihqzo", "p4slb4q9"],
         "cheetah-run": ["8x29ibzc", "9k7936z8", "e7afvv6h", "81pbgf97", "qfqv9wz3"],
+        "walker-walk": ["8z9o8vp6", "roz89u0n", "h1by1w6s", "zfu00w22", "jvw4myex"],
         # "cheetah-run": ["l4c3phty", "96xm0zx5", "6tul0lmk", "y7c9k82p", "zx6ykgj9"],
         # POOR performance d=512 project=False
         "acrobot-swingup": ["c6qmc8yx", "spwng8k4", "wgurvdan", "4xfe6bez", "95l445ci"],
         # "cheetah-run": ["7kg8xyj8", "gujw41jb", "r9cu6yvh", "lh1kdlht", "8gymqblt"],
         # "fish-swim": ["izb29vhj", "xlgm5s8v", "xc1nf2ss", "ezhafy1m", "5tw9ini4"],
-        "walker-walk": ["9xh1l0n1", "9ujhx4vn", "pojcknc3", "2xehepzn", "fvzzgcw2"],
+        # "walker-walk": ["9xh1l0n1", "9ujhx4vn", "pojcknc3", "2xehepzn", "fvzzgcw2"],
         # "quadruped-walk": ["17h2zwdq", "s6i2xtt3", "fu8wchfa", "tzwhqglg", "7n7tivxv"],
         "humanoid-walk": [
             "wur1u276",
@@ -36,10 +37,10 @@ ddpg_data = {
         # ],  # project=True
         # "humanoid-walk": ["lcmbhw37"],  # "lcmbhw37"],
         "dog-walk": [
-            "stawiad8",
+            # "stawiad8",
             "iv8p110s",
-            "k454j543",
-            "nihkvll9",
+            # "k454j543",
+            # "nihkvll9",
             "jpkbw5h7",
         ],  # project=False
         # "dog-walk": [

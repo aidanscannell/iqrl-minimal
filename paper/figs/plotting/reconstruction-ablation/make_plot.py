@@ -26,13 +26,13 @@ COLORS = {
 # %%
 main_envs = [
     "acrobot-swingup",
-    # "cheetah-run",
+    "cheetah-run",
     # "walker-walk",
-    # "walker-run",
+    "walker-run",
     "hopper-stand",
-    # "fish-swim",
+    "fish-swim",
     "quadruped-run",
-    # "humanoid-run",
+    "humanoid-run",
     # "humanoid-walk",
     "dog-walk",
     # "dog-run",
@@ -60,8 +60,8 @@ def plot(df, key="episode_reward"):
     envs = np.sort(df.env.unique())
     ncol = 4
     # assert envs.shape[0] % ncol == 0
-    # nrow = len(main_envs) // ncol
-    nrow = 1
+    nrow = len(main_envs) // ncol
+    # nrow = 1
     # nrow = envs.shape[0] // ncol
 
     fig, axs = plt.subplots(nrow, ncol, figsize=(4 * ncol, 3.5 * nrow))
@@ -72,8 +72,8 @@ def plot(df, key="episode_reward"):
         data = df[df["env"] == env]
         row = idx // ncol
         col = idx % ncol
-        # ax = axs[row, col]
-        ax = axs[col]
+        ax = axs[row, col]
+        # ax = axs[col]
         # hue_order = data.agent.unique()
         hue_order = data.name.unique()
         # hue_order = data.utd_ratio.unique()
