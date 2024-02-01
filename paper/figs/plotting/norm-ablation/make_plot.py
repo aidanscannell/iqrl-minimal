@@ -11,17 +11,18 @@ plt.style.use("seaborn-v0_8-whitegrid")
 import seaborn as sns
 
 plt.rcParams["figure.dpi"] = 400
-plt.rcParams["font.size"] = 13
-plt.rcParams["legend.fontsize"] = 12
+plt.rcParams["font.size"] = 15
+plt.rcParams["legend.fontsize"] = 14
 plt.rcParams["legend.loc"] = "lower right"
+plt.rcParams["text.usetex"] = True
 COLORS = {
     # "TCRL": "#e41a1c",
     # "SAC": "#377eb8",
     # "REDQ": "#984ea3",
     # "TD-MPC": "#ff7f00",
     # "VQ-TD3": "magenta",
-    "iFSQ-RL": "#e41a1c",
-    "No iFSQ": "#377eb8",
+    "iQRL": "#e41a1c",
+    "iQRL-no-normalization": "#377eb8",
     "no-norm $d=50$": "#377eb8",
     "no-norm $d=512$": "#ff7f00",
     "no-norm $d=1024$": "#984ea3",
@@ -33,12 +34,12 @@ main_envs = [
     # "walker-walk",
     "walker-run",
     "hopper-stand",
-    # "fish-swim",
+    "fish-swim",
     "quadruped-run",
     "humanoid-walk",
     "humanoid-run",
     # "dog-walk",
-    "dog-run",
+    # "dog-run",
 ]
 
 # pet-pytorch

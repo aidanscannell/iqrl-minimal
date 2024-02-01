@@ -69,6 +69,14 @@ ddpg_data = {
             "ucvgujrp",
             "zqv19l3p",
         ],
+        "fish-swim-no-norm": [
+            "a2r96nmy",
+            "1cezxqig",
+            "15r32rsc",
+            "rxyyhje0",
+            "8pho3asn",
+        ],
+        "fish-swim": ["3duujm1p", "kl6xd92o", "s4t5viko", "flcmnkt7", "1zjl534e"],
         "humanoid-run": [
             # no-norm d=1024 project=False
             "uuyjutba",
@@ -312,9 +320,9 @@ def fetch_results(run_path, run_name_list, keys):
         history["seed"] = wandb_run.config["seed"]
         # history["agent"] = agent_name
         if wandb_run.config["agent"]["use_fsq"]:
-            history["name"] = "iFSQ-RL"
+            history["name"] = "iQRL"
         else:
-            history["name"] = f"No iFSQ"
+            history["name"] = "iQRL-no-normalization"
             # history["name"] = f"no-norm $d={wandb_run.config['agent']['latent_dim']}$"
         history["utd_ratio"] = wandb_run.config["agent"]["utd_ratio"]
 
