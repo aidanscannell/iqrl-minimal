@@ -541,7 +541,7 @@
   \newlength{\nodedistv}\setlength{\nodedistv}{2.5cm}
 
   % Styles (this tunes colours etc.)
-  \tikzstyle{mynode}=[fill=white,draw=black!80,rounded corners=1pt,font=\tiny,inner sep=0,align=center]
+  \tikzstyle{mynode}=[fill=black!5,draw=black!20,rounded corners=1pt,font=\tiny,inner sep=0,align=center,line width=1pt]
   \tikzstyle{trap}=[mynode,trapezium,text width=6.5em, minimum height=2em,
                     trapezium left angle=-70, trapezium right angle=-70,inner sep=2pt]
   \tikzstyle{blob}=[mynode,circle,minimum width=2.4em,minimum height=2.4em]
@@ -589,6 +589,7 @@
   \draw[arr] (a1) -- (z2);
   \draw[darr] (zh1) -- (z1);
   \draw[darr] (zh2) -- (z2);
+  \draw[arr,-] (z2) -- ($(e2.east)!(z2)!(e2.east)$);
 
   % Add normalization
   \node[circle,fill=white,inner sep=0] at ($(e0)!.5!(z0)$) {\cube};
@@ -603,7 +604,7 @@
 
 \end{tikzpicture}
 \vskip -0.1in
-\caption{\textbf{Overview of \our's representation learning} \our learns a representation solely with the latent-state consistency loss, \ie a self-predictive loss (see \cref{eq:rep-loss}). We follow Finite Scalar Quantization (FSQ) \cite{mentzerFiniteScalarQuantization2023} and bound the domain of our latent representation, \ie we normalize it (denoted by \cube). Our normalization results in an implicit codebook (whose size we can control) and helps prevent representation collapse.}
+\caption{\textbf{Overview of \our's representation learning} \our learns a representation solely with the latent-state consistency loss, \ie a self-predictive loss (see \cref{eq:rep-loss}). We follow Finite Scalar Quantization \citep[FSQ,][]{mentzerFiniteScalarQuantization2023} and bound the domain of our latent representation, \ie we normalize it (denoted by \cube). Our normalization results in an implicit codebook (whose size we can control) and helps prevent representation collapse.}
   % Importantly, this prevents representation collapse without needing loss terms to minimize errors in reward and/or value predictions.
   % As such, our representations are task-agnostic.
   %We denote our normalization scheme by \cube.}
@@ -616,7 +617,7 @@
 
 Reinforcement learning  \citep[RL, \eg][]{sutton2018reinforcement} has shown much promise in games, animation and robotics.
 However, applying RL in real-world environments is challenging. The problem is two-fold,
-{\em (i)}~handling high dimensional/complex observation spaces is non-trivial, and {\em (ii)}~deep RL typically requires millions of data points which can be unpractical (or costly), \ie it is very sample inefficient.
+{\em (i)}~handling high dimensional/complex observation spaces is non-trivial, and {\em (ii)}~deep RL typically requires millions of data points which can be unpractical (or costly), \ie it is very sample inefficient.\looseness-1
 
 % Given such a latent space,
 % Whilst these latent states are often lower dimensional this is not always
