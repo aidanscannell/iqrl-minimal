@@ -889,16 +889,16 @@ obtains a quantized $\tilde{z} \in \mathcal{C}$, where $\tilde{z}$ takes one of 
 This gives rise to an implicit codebook $\mathcal{C}$ given by the product of the per-channel codebook sets.
 % The size of the codebook $|\mathcal{C}| = L^{c}$ is given by the product of the
 % For example, specifying $c=3$ channels
-This idea generalizes to the case where the $i^{\text{th}}$ channel is mapped to $L_{i}$ values, giving a codebook of size $|\mathcal{C}| = L_{i}^{d_{i}}$.
+This idea generalizes to the case where the $i^{\text{th}}$ channel is mapped to $L_{i}$ values, giving a codebook of size $|\mathcal{C}| = L_{i}^{c_{i}}$.
 % Since quantization is performed by rounding to integers
 
 FSQ has the following hyperparameters: we must specify the number of channels $c$ and the number of levels per channel
-$\mathcal{L} = [L_{1},\ldots,L_{d}]$.
+$\mathcal{L} = [L_{1},\ldots,L_{c}]$.
 \cref{tab:fsq-levels} shows the recommended number of channels and number of levels per channel to obtain codebooks of different sizes \citep{mentzerFiniteScalarQuantization2023}.
 FSQ, relies on a simple, fixed grid partition in a much
 lower-dimensional space.
 In practice, we found codebooks of size $|\mathcal{C}|=2^{6}$ sufficient for most environments in the DeepMind Control suite.
-However, for the Dog Walk environment we used a codebook of size $|\mathcal{C}|=2^{9}$.
+However, for the Dog Walk environment we used a codebook of size $|\mathcal{C}|=2^{8}$.
 
 % Fig. 1 shows FSQ for d=3, L=3, implying a codebook
 % C = {(−1, −1, −1),(−1, −1, 0),(−1, −1, 1), . . . ,(1, 1, 1)}, where |C| = L
@@ -1184,14 +1184,14 @@ This paper presents work whose goal is to advance the field of continuous RL tha
 Hyperparameter & Value & Description \\
 \midrule
 \textbf{Training} & & \\
+Action repeat & 2 & \\
+Eval every episodes & $5$ & \\
 Max episode length & 1000 &  Max episode length \\
 Num episodes & $500$ (easy) & Number of training episodes \\
              & $1000$ (medium) & \\
              & $15000$ (hard) & \\
-Random episodes & $10$ & Number of random episodes at start \\
-Action repeat & 2 & \\
-Eval every episodes & $5$ & \\
 Num eval episodes & $10$ & \\
+Random episodes & $10$ & Number of random episodes at start \\
 \hline
 \textbf{TD3} & & \\
 Actor update freq & $2$  & update actor less frequently than critic \\
@@ -1213,7 +1213,7 @@ Discount $\gamma$ & $0.99$ & \\
 Encoder learning rate & $10^{-4}$ & \\
 Encoder MLP dims & $[256]$ & \\
 Encoder momentum coefficient ($\tau$) & 0.005 & \\
-FSQ levels & $[8, 5, 5, 5]$ & \\
+FSQ levels & $[8, 8]$ ($[8,6,5]$ in Dog) & \\
 Horizon $(H)$ & $5$ & Horizon for representation learning \\
 Latent dimension ($d$) & $128$ & \\
  \bottomrule
