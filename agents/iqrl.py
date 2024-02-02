@@ -395,7 +395,7 @@ class iQRL(Agent):
         # encoder_reset_params_freq: int = 10000,  # reset enc params after X param updates
         compile: bool = False,
         device: str = "cuda",
-        name: str = "TC_TD3",
+        name: str = "iQRL",
     ):
         super().__init__(
             observation_space=observation_space, action_space=action_space, name=name
@@ -704,7 +704,7 @@ class iQRL(Agent):
         num_updates = int(num_new_transitions * self.td3.utd_ratio)
         info = {}
 
-        logger.info(f"Performing {num_updates} VQ-TC-TD3 updates...")
+        logger.info(f"Performing {num_updates} iQRL updates...")
         reset_flag = 0
         for i in range(num_updates):
             batch = replay_buffer.sample(self.td3.batch_size, val=False)
@@ -796,7 +796,7 @@ class iQRL(Agent):
 
                 reset_flag = 0
 
-        logger.info("Finished training VQ-TC-TD3")
+        logger.info("Finished training iQRL")
 
         return info
 
@@ -824,7 +824,7 @@ class iQRL(Agent):
         num_updates = int(num_new_transitions * self.td3.utd_ratio)
         info = {}
 
-        logger.info(f"Performing {num_updates} VQ-TC-TD3 updates...")
+        logger.info(f"Performing {num_updates} iQRL updates...")
         reset_flag = 0
         for i in range(num_updates):
             batch = replay_buffer.sample(self.td3.batch_size, val=False)
@@ -960,7 +960,7 @@ class iQRL(Agent):
 
                 reset_flag = 0
 
-        logger.info("Finished training VQ-TC-TD3")
+        logger.info("Finished training iQRL")
 
         return info
 
