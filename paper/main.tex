@@ -678,19 +678,19 @@ This helps to prevent representation collapse at the cost of learning a task-spe
 \begin{algorithmic}
    \STATE {\bfseries Input:} Encoder $e_{\theta}$, transition $d_{\phi}$, critics $\{Q_{\psi_{1}}, Q_{\psi_{2}} \}$, policy $\pi_{\eta}$, learning rate $\alpha$, target network update rate $\tau$
    \FOR{$i$ {\bfseries to} $N_{\text{episodes}}$}
-    \STATE Collect data in environment
+    \STATE Collect data in environment:
     \STATE $\qquad \mathcal{D} \leftarrow \mathcal{D} \cup \{o_{t}, a_{t}, o_{t+1}, r_{t+1}\}^{T}_{t=0}$
     \FOR{$i=1$ {\bfseries to} $T$}
-        \STATE Update representation
+        \STATE Update representation:
         \STATE $\qquad [\theta, \phi] \leftarrow [\theta, \phi] + \alpha \nabla \left( \mathcal{L}_{\text{rep}}(\theta, \phi; \mathcal{D}) \right)$  \COMMENT{\cref{eq:rep-loss}}
         \STATE Update critic
         \STATE \quad \quad $\psi \leftarrow \psi + \alpha \nabla \left( \mathcal{L}_{Q}(\psi; \mathcal{D}) \right)$ \COMMENT{\cref{eq:value-loss}}
         \IF{i \% 2 == 0}
-          \STATE Update actor less frequently than critic
+          \STATE Update actor less frequently than critic:
           \STATE $\quad \quad \eta \leftarrow \psi + \alpha \nabla \left( \mathcal{L}_{\pi}(\psi; \mathcal{D}) \right)$  \COMMENT{\cref{eq:policy-loss}}
           % \STATE $\bar{\eta} \leftarrow \tau \bar{\eta} + (1-\tau) \eta$
         \ENDIF
-        \STATE Update target networks
+        \STATE Update target networks:
         \STATE $\quad \quad [\bar{\theta}, \bar{\phi}, \bar{\psi}] \leftarrow \tau [\bar{\theta}, \bar{\phi}, \bar{\psi}] + (1-\tau) [{\theta}, {\phi}, {\psi}]$
     \ENDFOR
    \ENDFOR
