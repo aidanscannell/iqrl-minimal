@@ -764,7 +764,7 @@ TD-MPC \cite{hansenTemporalDifferenceLearning2022} use a consistency loss to lea
 
 In this section, we detail our method, titled \textit{implicitly Quantized Reinforcement Learning} (\our).
 \our is conceptually simple, it {\em (i)}~learns a representation of the observation space and then,
-{\em (2)}~performs model-free RL (\eg, TD3) on this representation.
+{\em (ii)}~performs model-free RL (\eg, TD3) on this representation.
 % It the first representation learning phase, it learns an encoder which maps observations $o \in \mathcal{O}$
 % to a latent space $z \in \mathcal{Z}$.
 % It first learns a representation of the observation space and then uses
@@ -1204,7 +1204,7 @@ Learning rate & $3 \times 10^{-4}$ & \\
 MLP dims & $[512, 512]$ & \\
 Momentum coefficient ($\tau$) & $0.005$ & \\
 Noise clip & $0.3$ & \\
-N-step TD & $1$ & \\
+N-step TD & $1$ or $3$ & \\
 Policy noise & $0.2$ & \\
 UTD ratio & $1$ & \\
 \hline
