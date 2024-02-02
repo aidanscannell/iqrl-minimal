@@ -333,19 +333,24 @@
 \printAffiliationsAndNotice{}  % leave blank if no need to mention equal contribution
 % \printAffiliationsAndNotice{\icmlEqualContribution} % otherwise use the standard text.
 
+
 \begin{abstract}
-  In reinforcement learning (RL) for continuous control, we propose an
-  efficient representation learning method using only a latent-state
-  consistency loss. Our approach employs an encoder and a transition
-  model to map observations to latent states and predict future
-  states, respectively. We achieve high performance and prevent
-  representation collapse by normalizing the quantized latent
-  representation such that rank in the presentation is empirically
-  preserved. Our method is straightforward, compatible with any
-  model-free RL algorithm, and demonstrates state-of-the-art
-  performance in continuous control benchmarks from DeepMind Control
-  Suite.
+  Learning representations for reinforcement learning (RL) has shown much promise for continuous control. We propose an efficient representation learning method using only a self-supervised latent-state consistency loss. Our approach employs an encoder and a transition model to map observations to latent states and predict future states, respectively. We achieve high performance and prevent representation collapse by normalizing and bounding the latent representation such that rank in the representation is empirically preserved. Our method is straightforward, compatible with any model-free RL algorithm, and demonstrates state-of-the-art performance in continuous control benchmarks from DeepMind Control Suite.
 \end{abstract}
+
+% \begin{abstract}
+%   In reinforcement learning (RL) for continuous control, we propose an
+%   efficient representation learning method using only a latent-state
+%   consistency loss. Our approach employs an encoder and a transition
+%   model to map observations to latent states and predict future
+%   states, respectively. We achieve high performance and prevent
+%   representation collapse by normalizing the quantized latent
+%   representation such that rank in the presentation is empirically
+%   preserved. Our method is straightforward, compatible with any
+%   model-free RL algorithm, and demonstrates state-of-the-art
+%   performance in continuous control benchmarks from DeepMind Control
+%   Suite.
+% \end{abstract}
 
 %% \begin{abstract}
 %%   Learning representations for reinforcement learning (RL) has shown
