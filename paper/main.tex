@@ -714,6 +714,9 @@ representation which could be helpful in downstream tasks.
 \section{Related Work}
 \label{sec:related_work}
 
+Model-based RL (MBRL) can significantly improve on the sample efficiency of the model-free methods by reasoning about the world and maximizing the fraction of the information stream utilized for learning by utilizing the observations instead of simply trying to learn a policy or a value function to maximize the return \cite{haRecurrentWorldModels2018}. The world model can be used for planning \cite{allen1983planning, basye1992decision}. A prominent idea has been to to optimize the evidence lower bound of observation and reward sequences to learn world models that operate on the latent space of a learned Variational Autoencoder (VAE) \cite{kingmaAutoEncoding2014, igl2018deep}. These models rely on maximizing the conditional observation likelihood $p(o_t | s_t$), which is the reconstruction objective. The latent space of the model can be used for both planning with model-predictive control \cite{hafnerLearning2019} or policy learning in the imagination of the world model \cite{hafner2019dream}. \citet{finn2017deep} and \citet{ebert2018visual} show that it is possible to plan with models that have been taught to predict videos directly without a VAE-based latent space. Incorporating the model uncertainty into planning through ensembling or sampling can also have significant positive impact on the performance of model-based RL agents \cite{deisenrothPILCO2011, chua2018deep, janner2019trust, yu2020mopo, clavera2020model}.
+
+However, trying to maximize the ELBO or video reconstruction error to learn a world model can mislead the model to focus on learning task-irrelevant information, which distorts the optimization landscape. When the task is complex, planning with reconstruction-based world models struggles \cite{lutter2021learning}. Instead of relying on a reconstruction-based loss function, \citet{schwarzer2020data} propose a cosine similarity loss between predicted future latents and the true future latents, and performing Q-learning in the learned latent space. \citet{ma2021contrastive} propose relying on maximizing the mutual information between latent states and observations to learn a world model by deep reinforcement learning. They take the modify the classical world model learning objective by replacing the observation reconstruction loss with a contrastive learning term, which helps combat the model focusing on learning task-irrelevant information. \citet{kipf2019contrastive} use contrastive learning to learn a structured world model. These contrastive objectives significantly improve sample efficiency, but they are not only limited to model-based reinforcement learning. \citet{laskinCURLContrastiveUnsupervised2020} propose replacing the transition function with data augmentations to get a contrastive target, and performing model-free learning using the representation produced by the encoder trained with the contrastive target.
 
 \section{Method}
 \label{sec:method}
@@ -961,10 +964,10 @@ We aim to answer the following questions:
 
 
 
-\textbf{Normalizing the latent-space improves sample efficiency}
+\textbf{\our is simple, fast, and performant}
 In \cref{fig:normalization_improves_sample_efficiency}, we compare \our to the model-free baselines Soft-Actor Critic (SAC) \cite{haarnojaSoft2018} and Randomized Ensemble Double Q Learning (REDQ) \cite{chenRandomizedEnsembledDouble2021}, and the model-based TD-MPC \cite{hansenTemporalDifferenceLearning2022} and TCRL \cite{zhaoSimplifiedTemporalConsistency2023} on eight problems from the DeepMind Control Suite. The results show that our method, \our, performs on par with TD-MPC while being significantly simpler and quicker to train, as the loss term is simpler and no planning is needed unlike in TD-MPC. We even outperform TCRL, which is the most similar baseline to our work. We ablate the effect of the FSQ-based latent-space normalization scheme in \cref{fig:normalization-ablation}. The normalization is overall beneficial. 
 
-We analyze the impact of the latent-space normalization on the rank of the latent representations outputted by the learned encoder. We follow the methodology of \citet{ni2024bridging} for estimating the matrix rank. We plot the ranks in \cref{fig:rank-comparison-z1}. The latent state dimensions are 256, 128, 256, and 128 for Acrobot Swingup, Hopper Stand, Humanoid Run and Cheetah Run, respectively, and the plots show that the matrix rank stays close to the latent state dimension when our FSQ normalization scheme is applied. Without normalization, a dimensional collapse occurs, which can have significant harmful effects as the representational power of the latent state diminishes \cite{jingUnderstandingDimensionalCollapse2021}.
+\textbf{\our does not suffer from rank collapse} We analyze the impact of the latent-space normalization on the rank of the latent representations outputted by the learned encoder. We follow the methodology of \citet{ni2024bridging} for estimating the matrix rank. We plot the ranks in \cref{fig:rank-comparison-z1}. The latent state dimensions are 256, 128, 256, and 128 for Acrobot Swingup, Hopper Stand, Humanoid Run and Cheetah Run, respectively, and the plots show that the matrix rank stays close to the latent state dimension when our FSQ normalization scheme is applied. Without normalization, a dimensional collapse occurs, which can have significant harmful effects as the representational power of the latent state diminishes \cite{jingUnderstandingDimensionalCollapse2021}.
 
 
 
@@ -1035,6 +1038,17 @@ The plots in \cref{fig:multi-task-pretraining} show that when the encoder and th
 %     \item Show task-agnostic representation is good for incremental task learning. Compare NTC-TD3/TCRL-ours/TCRL
 % \end{itemize}
 
+
+\begin{figure*}[ht]
+	\vskip 0.2in
+	\begin{center}
+		\centerline{\includegraphics[width=1.0\textwidth]{./figs/reconstruction-loss-ablation.pdf}}
+		\caption{\textbf{Reconstruction loss has detrimental impact}. Unlike many methods, such as Dreamer-v3 \cite{hafner2023mastering}, \our neither has an observation decoder nor a reconstruction term in the loss function. We show that adding a reconstruction loss harms the performance of \our across all evaluation environments. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
+		\label{fig:reconstruction-loss-ablation}
+	\end{center}
+	\vskip -0.2in
+\end{figure*}
+
 \textbf{Reconstruction loss has a detrimental impact}
 Learning to minimize the observation reconstruction error has been widely applied in model-based reinforcement learning \cite{sutton2018reinforcement, haRecurrentWorldModels2018, hafnerLearning2019}, and an observation decoder has been a component of the most successful RL algorithms to date \cite{hafner2023mastering}. However, recent work \citep{zhaoSimplifiedTemporalConsistency2023,hansenTemporalDifferenceLearning2022}
 has shown that incorporating a reconstruction term into the representation loss can have a negative impact on performance. They hypothesize that learning to reconstruct the observations is inefficient as they can have irrelevant details and visuals like shading that are uncontrollable by the agent and do not affect the tasks.
@@ -1099,7 +1113,7 @@ This paper presents work whose goal is to advance the field of continuous RL tha
 
 \section{Hyperparameters}
 \cref{tab:hyperparameters} lists all of the hyperparameters for training \our.
-For further details please check the code which is available at XXXXXXX.
+For further details please check the code which is available in the submitted supplementary material and will be made public upon acceptance.
 
 \begin{table}[t]
 \caption{Hyperparameters for \our.}
@@ -1153,18 +1167,6 @@ Latent dimension ($d$) & $1024$ & \\
 \vskip -0.1in
 \end{table}
 
-\section{Further results}
-
-
-\begin{figure*}[ht]
-\vskip 0.2in
-\begin{center}
-\centerline{\includegraphics[width=1.0\textwidth]{./figs/reconstruction-loss-ablation.pdf}}
-\caption{\textbf{Reconstruction loss has detrimental impact}. Unlike many methods, such as Dreamer-v3 \cite{hafner2023mastering}, \our neither has an observation decoder nor a reconstruction term in the loss function. We show that adding a reconstruction loss harms the performance of \our across all evaluation environments. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
-\label{fig:multi-task-pretraining}
-\end{center}
-\vskip -0.2in
-\end{figure*}
 
 % \begin{figure*}[ht]
 % \vskip 0.2in
