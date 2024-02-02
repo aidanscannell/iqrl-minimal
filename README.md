@@ -33,7 +33,7 @@ export PATH="/scratch/project_462000462/iqrl/container/bin:$PATH"
 ```
 Then you can run experiments with 
 ``` sh
-python train.py -m ++use_wandb=True agent=iqrl ++capture_eval_video=False ++seed=1,2,3,4,5
+python train.py -m +env=walker-walk ++use_wandb=True ++capture_eval_video=False ++seed=1,2,3,4,5
 ```
 
 ## Citation
