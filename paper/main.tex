@@ -405,31 +405,31 @@
 %% \end{abstract}
 
 
-\section{Introduction}
-\label{intro}
+% \section{Introduction}
+% \label{intro}
 
-Reinforcement learning (RL) \citep{sutton2018reinforcement} has shown much promise in games, animation and robotics.
-However, applying RL in real-world environments is challenging. The problem is two-fold,
-{\em (i)}, handling high dimensional/complex observation spaces is non-trivial and {\em (ii)}
-deep RL typically requires millions of data points which can be unpractical (or costly), \ie it is very sample inefficient.
+% Reinforcement learning (RL) \citep{sutton2018reinforcement} has shown much promise in games, animation and robotics.
+% However, applying RL in real-world environments is challenging. The problem is two-fold,
+% {\em (i)}, handling high dimensional/complex observation spaces is non-trivial and {\em (ii)}
+% deep RL typically requires millions of data points which can be unpractical (or costly), \ie it is very sample inefficient.
 
-% Given such a latent space,
-% Whilst these latent states are often lower dimensional this is not always
-Many approaches have been proposed to improve sample efficiency in deep RL.
-As \citet{laskinCURLContrastiveUnsupervised2020} highlighted, these can generally be divided into two streams of research:
-{\em (i)} auxillary tasks on the agent's observations and {\em (ii)} world models that predict the future
-\citep{haRecurrentWorldModels2018,hafnerLearning2019,hansenTemporalDifferenceLearning2022}.
-In this work, we are interested in the first class of methods, which use auxillary tasks to improve sample efficiency.
-In particular, methods for compressing observations into latent states.%, aka representation learning.
+% % Given such a latent space,
+% % Whilst these latent states are often lower dimensional this is not always
+% Many approaches have been proposed to improve sample efficiency in deep RL.
+% As \citet{laskinCURLContrastiveUnsupervised2020} highlighted, these can generally be divided into two streams of research:
+% {\em (i)} auxillary tasks on the agent's observations and {\em (ii)} world models that predict the future
+% \citep{haRecurrentWorldModels2018,hafnerLearning2019,hansenTemporalDifferenceLearning2022}.
+% In this work, we are interested in the first class of methods, which use auxillary tasks to improve sample efficiency.
+% In particular, methods for compressing observations into latent states.%, aka representation learning.
 
-Learning representations for RL has been investigated for decades
-\citep{abelOptimalBehaviorApproximate2016,mannorDynamicAbstractionReinforcement2004,liUnifiedTheoryState2006,andreStateAbstractionProgrammable2002,deardenAbstractionApproximateDecisiontheoretic1997,singhReinforcementLearningSoft1994,higginsDefinitionDisentangledRepresentations2018,vanhoofStableReinforcementLearning2016,watterEmbedControlLocally2015,ghoshRepresentationsStableOffPolicy2020}.
-However, these approaches are usually limited to simple environments.
-Some approaches used unsupervised learning (\eg VAE \citep{kingmaAutoEncoding2014} with reconstruction loss) to acquire representations
-\citep{finnDeepSpatialAutoencoders2016,higginsDARLAImprovingZeroShot2017,langeAutonomousReinforcementLearning2012,watterEmbedControlLocally2015}.
-More recently, self-supervised learning (SSL) approaches (which do not reconstruct observations)
-attempt to learn good features without labels \cite{anandUnsupervisedStateRepresentation2019}.
-Alternative approaches leverage contrastive losses to learn representations \cite{laskinCURLContrastiveUnsupervised2020}.
+% Learning representations for RL has been investigated for decades
+% \citep{abelOptimalBehaviorApproximate2016,mannorDynamicAbstractionReinforcement2004,liUnifiedTheoryState2006,andreStateAbstractionProgrammable2002,deardenAbstractionApproximateDecisiontheoretic1997,singhReinforcementLearningSoft1994,higginsDefinitionDisentangledRepresentations2018,vanhoofStableReinforcementLearning2016,watterEmbedControlLocally2015,ghoshRepresentationsStableOffPolicy2020}.
+% However, these approaches are usually limited to simple environments.
+% Some approaches used unsupervised learning (\eg VAE \citep{kingmaAutoEncoding2014} with reconstruction loss) to acquire representations
+% \citep{finnDeepSpatialAutoencoders2016,higginsDARLAImprovingZeroShot2017,langeAutonomousReinforcementLearning2012,watterEmbedControlLocally2015}.
+% More recently, self-supervised learning (SSL) approaches (which do not reconstruct observations)
+% attempt to learn good features without labels \cite{anandUnsupervisedStateRepresentation2019}.
+% Alternative approaches leverage contrastive losses to learn representations \cite{laskinCURLContrastiveUnsupervised2020}.
 
 \begin{figure}[t!]
 \centering\scriptsize
