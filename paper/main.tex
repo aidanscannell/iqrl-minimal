@@ -1013,11 +1013,10 @@ Unlike prior methods such as TCLR \cite{zhaoSimplifiedTemporalConsistency2023}, 
 	where $r_{t+h}$ is the ground-truth H-step reward and $\hat{r}_{t+h}$ the predicted H-step rewards.
 	\item \ourcosrew, where in addition to the reward prediction head in \ourrew, we additionally convert the self-supervised MSE loss (see \cref{eq:rep-loss}) for the temporal consistency into a cosine similarity, similarly to TCRL:
 	\begin{align*} \label{eq:rep-loss}
-		\hat{z}_{t+h} &= d_{\phi}(\hat{z}_{t}, a_{t}) \\
-		\tilde{z}_{t+h} &= e_{\bar{\theta}}(s_{t+1}) \\
 		\mathcal{L}_{\text{rep}}(\theta, \phi; \tau)
 		&= - \sum_{h=0}^{H-1} \gamma^{h} \left ( \frac{\hat{z}_{t+h}}{\| \hat{z}_{t+h} \|_2} \right )^T \left ( \frac{\tilde{z}_{t+h}}{\| \tilde{z}_{t+h} \|_2} \right )
 	\end{align*}
+  where as before we have $\hat{z}_{t+h} = d_{\phi}(\hat{z}_{t}, a_{t})$ and $\tilde{z}_{t+h} = e_{\bar{\theta}}(s_{t+1})$.
 	\item TCRL-ours, where in addition to \ourcosrew, we remove the FSQ normalization scheme to make the method equal to TCRL with some minor improvements to the method, such as using nstep-TD3 \cite{fujimotoAddressingFunctionApproximation2018} as the base algorithm instead of DDPG with Double Q and nstep returns, using the neural network architecture from \citet{hansen2023td}, and performing policy smoothing \cite{fujimotoAddressingFunctionApproximation2018}.
 \end{itemize}
 The results for this ablation study are shown in \cref{fig:reward-ablation}. 
@@ -1070,7 +1069,7 @@ To provide a thorough analysis of \our, we include results where we add a recons
 	\mathcal{L}_o &= \mathbb{E}_{o_t\sim\mathcal{D}} [\| \hat{o}_t - o_t \|_2^2],
 \end{align*}
 where $g_\xi$ is a learned observation decoder that takes the latent state as the input and outputs the reconstructed observation. The decoder $g_\xi$ is a standard MLP. We perform reconstruction at each time step in the horizon.
-The results in \cref{fig:multi-task-pretraining} shows that in no environments does reconstruction aid learning, and in some environments, such as the difficult Dog Walk and Quadruped Run, including the reconstruction term has a significant detrimental effect on the overall performance, thus lending further support to the observations of \citet{zhaoSimplifiedTemporalConsistency2023} and \citet{hansenTemporalDifferenceLearning2022} about the lack of need for a reconstruction target in continuous control tasks.
+The results in \cref{fig:reconstruction-loss-ablation} shows that in no environments does reconstruction aid learning, and in some environments, such as the difficult Dog Walk and Quadruped Run, including the reconstruction term has a significant detrimental effect on the overall performance, thus lending further support to the observations of \citet{zhaoSimplifiedTemporalConsistency2023} and \citet{hansenTemporalDifferenceLearning2022} about the lack of need for a reconstruction target in continuous control tasks.
 %Moreover, in the quadruped-run and dog-walk environments incorporating a reconstruction term has a detrimental impact on
 %overall performance.
 
@@ -1091,19 +1090,23 @@ The results in \cref{fig:multi-task-pretraining} shows that in no environments d
 
 \section{Conclusion}
 \label{conclusion}
-We have presented \our, a simple technique for learning task-agnostic representations which can be combined with
-any model-free RL algorithm.
-In our experiments we compared against both state-of-the-art model-free RL methods and state-of--the-art model-based RL methods.
-
-Our results demonstrate state-of-the-art
-based on our empirical results, we suggest further
+We have presented \our, a simple technique for learning representations which demonstrates state-of-the-art performance in
+continuous control tasks.
+Importantly, our normalization and bounding of the latent space empirically preserves the representation's matrix rank,
+indicating that it alleviates representation collapse.
+Importantly, our method is {\em (i)} straightforward, {\em (ii)} compatible with any model-free RL algorithm,
+and {\em (iii)} learns a task-agnostic representation.
+% Moreover, it can be combined with any model-free RL algorithm
+% In our experiments we compared against both state-of-the-art model-free RL methods and state-of--the-art model-based RL methods.
+% Our results demonstrate state-of-the-art based on our empirical results, we suggest further
 
 \textbf{Limitations and future work}
 To the best of our knowledge, we are the first to present a method that learns a task-agnostic representation
 using only latent-state consistency. As such, we hope our method for learning task-agnostic representations paves the
 way for more research into multi-task and lifelong learning.
 Given that our method obtains an implicit codebook an obvious future direction is exploring if we can leverage the
-discretized latent-space. So far, we have only applied our representation learning loss to state-based tasks. Extending the method to handle even higher-dimensional visual tasks is an interesting direction. Furthermore, we have neither analyzed the scaling behavior of our world models nor how well \our performs in a multi-task setting. Utilizing the knowledge learned during with Internet-scale pre-training with large robotic datasets could make our method even more sample efficient. Exploring whether explicitly quantifying the model uncertainty by \eg\ using larger ensembles would help to adapt our method to a real-world robotics setting is also a promising direction for future work.
+discretized latent-space. So far, we have only applied our representation learning loss to state-based tasks. Extending the method to handle even higher-dimensional visual tasks is an interesting direction.
+% Furthermore, we have neither analyzed the scaling behavior of our world models nor how well \our performs in a multi-task setting. Utilizing the knowledge learned during with Internet-scale pre-training with large robotic datasets could make our method even more sample efficient. Exploring whether explicitly quantifying the model uncertainty by \eg\ using larger ensembles would help to adapt our method to a real-world robotics setting is also a promising direction for future work.
 
 
 % Arno recommends to have this here as a last thing (leaves a positive feeling)
