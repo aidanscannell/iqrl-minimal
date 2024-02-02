@@ -56,7 +56,7 @@
 
 % The \icmltitle you define below is probably too long as a header.
 % Therefore, a short form for the running title is supplied here:
-\icmltitlerunning{Sample-Efficient Reinforcement Learning with Implicitly Quantized Representations}
+\icmltitlerunning{Sample-Efficient RL with Implicitly Quantized Representations}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % CUSTOM (our stuff)
@@ -269,7 +269,7 @@
 % \icmltitle{Submission and Formatting Instructions for \\
 %            International Conference on Machine Learning (ICML 2024)}
 % \icmltitle{Sample-efficient Reinforcement Learning with Latent Representations}
-\icmltitle{Sample-efficient Reinforcement Learning \\ with Implicitly Quantized Representations}
+\icmltitle{Sample-Efficient Reinforcement Learning \\ with Implicitly Quantized Representations}
 
 % It is OKAY to include author information, even for blind
 % submissions: the style file will automatically remove it for you
@@ -597,7 +597,7 @@ Alternative approaches leverage contrastive losses to learn representations \cit
 
 
 \end{tikzpicture}
-\caption{\textbf{Overview of \our's representation learning} \our learns a representation soley with the latent-state consistency loss, \ie a self-predictive loss, see \cref{eq:rep-loss}. We follow Finite Scalar Quantization (FSQ) \cite{mentzerFiniteScalarQuantization2023} and bound the domain of our latent representation, \ie we normalize it. Our normalization results in an implicit codebook (whose size we can control) and helps prevent representation collapse.
+\caption{\textbf{Overview of \our's representation learning} \our learns a representation solely with the latent-state consistency loss, \ie a self-predictive loss, see \cref{eq:rep-loss}. We follow Finite Scalar Quantization (FSQ) \cite{mentzerFiniteScalarQuantization2023} and bound the domain of our latent representation, \ie we normalize it. Our normalization results in an implicit codebook (whose size we can control) and helps prevent representation collapse.
   % Importantly, this prevents representation collapse without needing loss terms to minimize errors in reward and/or value predictions.
   % As such, our representations are task-agnostic.
   We denote our normalization scheme by \cube.}
@@ -924,14 +924,14 @@ We analyze the impact of the latent-space normalization on the rank of the laten
 \end{figure*}
 
 \textbf{Reward predict is not necessary for representation learning}
-Unlike prior methods such as TCLR \cite{zhaoSimplifiedTemporalConsistency2023}, TD-MPC \cite{hansenTemporalDifferenceLearning2022}, and Dreamer-V2 \cite{hafnerMasteringAtariDiscrete2022}, our representation learning loss (Equation~\ref{eq:rep-loss}) does not include a term for learning to predict the reward or the value. Instead, we rely solely on the temporal consistency loss. To analyze the impact of not including the reward prediction term, we perform an ablation study, where we compare our method to three variants of our method:
+Unlike prior methods such as TCLR \cite{zhaoSimplifiedTemporalConsistency2023}, TD-MPC \cite{hansenTemporalDifferenceLearning2022}, and Dreamer-V2 \cite{hafnerMasteringAtariDiscrete2022}, our representation learning loss (\cref{eq:rep-loss}) does not include a term for learning to predict the reward or the value. Instead, we rely solely on the temporal consistency loss. To analyze the impact of not including the reward prediction term, we perform an ablation study, where we compare our method to three variants of our method:
 \begin{itemize}
-	\item \ourrew, where we add a reward prediction head into our model architecture by re-defining the dynamics as $\hat{z}_{t+1}, \hat{r}_t = d_{\phi} (z_{t}, a_{t})$ (see Equation~\ref{eq:transition}), and include a reward prediction term (discounted MSE Loss) in the representation loss:
+	\item \ourrew, where we add a reward prediction head into our model architecture by re-defining the dynamics as $\hat{z}_{t+1}, \hat{r}_t = d_{\phi} (z_{t}, a_{t})$ (see \cref{eq:transition}), and include a reward prediction term (discounted MSE Loss) in the representation loss:
 	\begin{align*}
 		\mathcal{L}_\text{rew} = \sum_{h=0}^{H-1} \gamma^h \| \hat{r}_{t+h} - r_{t+h}\|_2^2,
 	\end{align*}
 	where $\tilde{r}_{t+h}$ is the ground-truth H-step reward and $\hat{r}_{t+h}$ the predicted H-step rewards.
-	\item \ourcosrew, where in addition to the reward prediction head in \ourrew, we additionally convert the self-supervised MSE loss (see Equation~\ref{eq:rep-loss}) for the temporal consistency into a cosine similarity, similarly to TCRL:
+	\item \ourcosrew, where in addition to the reward prediction head in \ourrew, we additionally convert the self-supervised MSE loss (see \cref{eq:rep-loss}) for the temporal consistency into a cosine similarity, similarly to TCRL:
 	\begin{align*} \label{eq:rep-loss}
 		\hat{z}_{t+h} &= d_{\phi}(e_{\theta}(s_{t}), a_{t}) \\
 		\tilde{z}_{t+h} &= e_{\bar{\theta}}(s_{t+1}) \\
@@ -940,13 +940,13 @@ Unlike prior methods such as TCLR \cite{zhaoSimplifiedTemporalConsistency2023}, 
 	\end{align*}
 	\item TCRL-ours, where in addition to \ourcosrew, we remove the FSQ normalization scheme to make the method equal to TCRL with some minor improvements to the method, such as using nstep-TD3 \cite{fujimotoAddressingFunctionApproximation2018} as the base algorithm instead of DDPG with Double Q and nstep returns, using the neural network architecture from \citet{hansen2023td}, and performing policy smoothing \cite{fujimotoAddressingFunctionApproximation2018}.
 \end{itemize}
-The results for this ablation study are shown in Figure~\ref{fig:reward-ablation}. 
+The results for this ablation study are shown in \cref{fig:reward-ablation}. 
 The plots show that our method, \our, without a reward prediction term in the loss, has equal or superior performance to the comparison methods with the exception of Fish Swim, where the unnormalized TCRL-ours outperforms all the methods with normalization. Even then, \our performs equally to the normalized variants of our method with the reward prediction. Our results imply that learning to predict the reward is not necessary for learning a suitable latent representation. The upside of not including the reward prediction head is that it makes learning the representation learning task-agnostic, which we believe to be   important for downstream applications such as learning in an incremental multi-task setting.
 
 \textbf{\our's task-agnostic representation is helpful for multi-task RL}
-In contrast to TCRL \cite{zhaoSimplifiedTemporalConsistency2023} and TD-MPC \cite{hansenTemporalDifferenceLearning2022}, \our learns a representation that is task-agnostic, that is, there are no task-specific components such as reward or value prediction in the representation loss formula (see Equation~\ref{eq:rep-loss}). The potential upside of \our's task-agnostic representations is that they can be used to speed-up learning in the incremental multi-task setting. That is, we can leverage the representation learned from solving one task to aid learning another tasks in the same domain. For instance, we can pre-train a representation in Walker Walk, and use it to speed up the training process in Walker Run. The only requirement is that the action and observation spaces must match. In addition, we assume that the transition dynamics are unchanged, but the reward may change.
+In contrast to TCRL \cite{zhaoSimplifiedTemporalConsistency2023} and TD-MPC \cite{hansenTemporalDifferenceLearning2022}, \our learns a representation that is task-agnostic, that is, there are no task-specific components such as reward or value prediction in the representation loss formula (\cref{eq:rep-loss}). The potential upside of \our's task-agnostic representations is that they can be used to speed-up learning in the incremental multi-task setting. That is, we can leverage the representation learned from solving one task to aid learning another tasks in the same domain. For instance, we can pre-train a representation in Walker Walk, and use it to speed up the training process in Walker Run. The only requirement is that the action and observation spaces must match. In addition, we assume that the transition dynamics are unchanged, but the reward may change.
 
-We evaluate whether pre-training representations is beneficial on three environments. We start by pre-training \our on Walker Walk, Quadruped Walk and Humanoid Walk. In addition, we replicate the pre-training on Walker Walk and Quadruped Walk by adding a reward prediction term to the representation loss. Then, we keep the encoder and the dynamics function from the pre-training, and perform training on the target tasks, which are Walker Run, Quadruped Run, and Humanoid-Run. We compare the pre-trained agents to training \our on these tasks from scratch. The results for this experiment can be found in Figure~\ref{fig:multi-task-pretraining}.
+We evaluate whether pre-training representations is beneficial on three environments. We start by pre-training \our on Walker Walk, Quadruped Walk and Humanoid Walk. In addition, we replicate the pre-training on Walker Walk and Quadruped Walk by adding a reward prediction term to the representation loss. Then, we keep the encoder and the dynamics function from the pre-training, and perform training on the target tasks, which are Walker Run, Quadruped Run, and Humanoid-Run. We compare the pre-trained agents to training \our on these tasks from scratch. The results for this experiment can be found in \cref{fig:multi-task-pretraining}.
 
 The plots in \cref{fig:multi-task-pretraining} show that when the encoder and the dynamics function have been pre-trained, the agent learns quicker than when it is traind from scratch. This effect is particularly visible in Quadruped Run and Humanoid Run. In contrast, when the reward term has been included in the pre-training objective, making the representation task-specific, the pre-training proves to be harmful on Quadruped Run. This results strongly indicate that the task-agnostic representations are highly beneficial in the continual and lifelong learning settings.
 
