@@ -56,7 +56,7 @@
 
 % The \icmltitle you define below is probably too long as a header.
 % Therefore, a short form for the running title is supplied here:
-\icmltitlerunning{Sample-efficient Reinforcement Learning with Implicitly Quantized Representations}
+\icmltitlerunning{Sample-Efficient Reinforcement Learning with Implicitly Quantized Representations}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % CUSTOM (our stuff)
@@ -339,9 +339,10 @@
   consistency loss. Our approach employs an encoder and a transition
   model to map observations to latent states and predict future
   states, respectively. We achieve high performance and prevent
-  representation collapse by normalizing, quantizing, and bounding the
-  latent representation. Our method is straightforward, compatible
-  with any model-free RL algorithm, and demonstrates state-of-the-art
+  representation collapse by normalizing the quantized latent
+  representation such that rank in the presentation is empirically
+  preserved. Our method is straightforward, compatible with any
+  model-free RL algorithm, and demonstrates state-of-the-art
   performance in continuous control benchmarks from DeepMind Control
   Suite.
 \end{abstract}
@@ -875,6 +876,8 @@ We aim to answer the following questions:
 \textbf{Normalizing the latent-space improves sample efficiency}
 In \cref{fig:normalization_improves_sample_efficiency},
 
+We analyze the impact of the latent-space normalization on the rank of the latent representations outputted by the learned encoder. We follow the methodology of \citet{ni2024bridging} for estimating the matrix rank. We plot the ranks in \cref{fig:rank-comparison-z1}. The latent state dimensions are 256, 128, 256, and 128 for Acrobot Swingup, Hopper Stand, Humanoid Run and Cheetah Run, respectively, and the plots show that the matrix rank stays close to the latent state dimension when our FSQ normalization scheme is applied. Without normalization, a dimensional collapse occurs, which can have significant harmful effects as the representational power of the latent state diminishes \cite{jingUnderstandingDimensionalCollapse2021}.
+
 
 
 \begin{figure*}[ht]
@@ -890,9 +893,9 @@ In \cref{fig:normalization_improves_sample_efficiency},
 \begin{figure*}[ht]
 	\vskip 0.2in
 	\begin{center}
-		\centerline{\includegraphics[width=\textwidth]{./figs/task-agnostic-ablation.pdf}}
-		\caption{\textbf{\our's task-agnostic representation helps for multi-task RL}. We evaluate whether pre-training \our on the walk tasks in the DeepMind Control Suite help for learning the run task on the same environment. The pre-training proves to be beneficial on all evaluated environments. If the representation is task-specific (the reward prediction term is included), the pre-training can be clearly detrimental. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
-		\label{fig:multi-task-pretraining}
+		\centerline{\includegraphics[width=1.0\textwidth]{./figs/rank-comparison-z1.pdf}}
+		\caption{\textbf{Representation collapse without normalization}. We observe that the representation normalization of \our is crucial for avoiding representation collapse. When no normalization is applied to the latents, the matrix rank of the representations drops rapidly, which can have a harmful effect on the downstream performance. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
+		\label{fig:rank-comparison-z1}
 	\end{center}
 	\vskip -0.2in
 \end{figure*}
@@ -905,6 +908,16 @@ In \cref{fig:normalization_improves_sample_efficiency},
 \label{fig:reward-ablation}
 \end{center}
 \vskip -0.2in
+\end{figure*}
+
+\begin{figure*}[ht]
+	\vskip 0.2in
+	\begin{center}
+		\centerline{\includegraphics[width=\textwidth]{./figs/task-agnostic-ablation.pdf}}
+		\caption{\textbf{\our's task-agnostic representation helps for multi-task RL}. We evaluate whether pre-training \our on the walk tasks in the DeepMind Control Suite help for learning the run task on the same environment. The pre-training proves to be beneficial on all evaluated environments. If the representation is task-specific (the reward prediction term is included), the pre-training can be clearly detrimental. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
+		\label{fig:multi-task-pretraining}
+	\end{center}
+	\vskip -0.2in
 \end{figure*}
 
 \textbf{Reward predict is not necessary for representation learning}
@@ -990,6 +1003,9 @@ overall performance.
 
 \section{Conclusion}
 \label{conclusion}
+
+\section*{Broader Impact}
+This paper presents work whose goal is to advance the field of continuous RL that is applicable to, for instance, robotics. Therefore, it is possible that our methods could be employed in unforeseen harmful ways, such as autonomous drones for military or law enforcement use. There are even other potential societal consequences of our work, none which we feel must be specifically highlighted here.
 
 % In the unusual situation where you want a paper to appear in the
 % references without citing it in the main text, use \nocite
