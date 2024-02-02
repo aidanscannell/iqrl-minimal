@@ -764,6 +764,7 @@ The prediction $d_{\phi}(e_{\phi}(z_{t}), a_{t})$ uses the online encoder which 
 The target $e_{\bar{\phi}}(z_{t+1})$ is calculated with the momentum encoder which uses an exponential moving average (EMA)
 of the encoder's weights $\bar{\theta} \leftarrow \tau \bar{\theta} + (1-\tau)\theta$.
 The target network update rate is denoted $\tau$.
+
 Unlike previous works, we normalize the latent vector
 
 \textbf{Finite Scalar Quantization}
@@ -811,14 +812,20 @@ Proposed $\mathcal{L}$ & $[8,6,5]$ & $[8,5,5,5]$ & $[7,5,5,5,5]$ \\
 
 
 \textbf{Policy and value function learning}
-
+We learn the policy and value function using TD3, \citep{fujimotoAddressingFunctionApproximation2018})
+and follow \cite{yaratsMasteringVisualContinuous2021,zhaoSimplifiedTemporalConsistency2023}
+by augmenting the loss with n-step returns.
+The only difference to TD3 is that instead of using the original observations $o_{t}$, we map them through the
+encoder $z_{t} e_{\theta}(o_{t})$ and learn the value function and policy in the latent space.
+The value function is updated by minimizing the following objective:
 \begin{align} \label{eq:value-loss}
-  \mathcal{L}_{Q}(\psi ; \mathcal{D}) &= \E_{\tau \sim \mathcal{D}} \left[ (Q_{\psi_{k}}(e_{\theta}(s_{t}), a_{t}) - y)^{2}  \right], \quad \forall k \in 1, 2 \\
-  y &= \sum_{n=0}^{N-1} \gamma^{n} r_{t+n} + \gamma^{n} \min_{k \in \{1,2\}} Q_{\bar{\psi}_{k}}(e_{\bar{\theta}}(s_{t+n}), a_{t+n})
+  \mathcal{L}_{Q} &= \E_{\tau \sim \mathcal{D}} \left[ (Q_{\psi_{k}}(e_{\theta}(s_{t}), a_{t}) - y)^{2}  \right], \quad  \forall k \in 1, 2 \\
+  y &= \sum_{n=0}^{N-1} \gamma^{n} r_{t+n} + \gamma^{n} \min_{k \in \{1,2\}} Q_{\bar{\psi}_{k}}(e_{\bar{\theta}}(s_{t+n}), a_{t+n}), \nonumber
 \end{align}
+where the action is
 
 \begin{align} \label{eq:policy-loss}
- \mathcal{L}_{\pi}(\eta; \mathcal{D}) = \E_{(o_{t}, a_{t}) \sim \mathcal{D}} \left[ \min_{k\in\{1,2\}} Q_{\psi_{k}}(e_{\theta}(o_{t}), a_{t}) \right]
+ \mathcal{L}_{\pi} = \E_{(o_{t}, a_{t}) \sim \mathcal{D}} \left[ \min_{k\in\{1,2\}} Q_{\psi_{k}}(e_{\theta}(o_{t}), a_{t}) \right]
 \end{align}
 
 
