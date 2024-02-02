@@ -333,7 +333,6 @@ def fetch_results(run_path, run_name_list, keys, agent_name=None):
     data = []
     for run_name in run_name_list:
         if run_name in ["3duujm1p", "kl6xd92o", "s4t5viko", "flcmnkt7", "1zjl534e"]:
-            print("Tulee")
             wandb_run = api.run("aalto-ml/lifelong-td3-tc/" + run_name)
         else:
             wandb_run = api.run(run_path + run_name)
