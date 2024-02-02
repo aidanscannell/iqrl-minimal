@@ -33,7 +33,7 @@ main_envs = [
     "hopper-stand",
     "fish-swim",
     "quadruped-run",
-    "humanoid-run",
+    # "humanoid-run",
     # "humanoid-walk",
     "dog-walk",
     # "dog-run",
@@ -61,13 +61,16 @@ def plot(df, key="episode_reward"):
     envs = np.sort(df.env.unique())
     ncol = 4
     # assert envs.shape[0] % ncol == 0
-    nrow = len(main_envs) // ncol
+    # nrow = len(main_envs) // ncol
     # nrow = 1
+    nrow = 2
     # nrow = envs.shape[0] // ncol
 
     fig, axs = plt.subplots(nrow, ncol, figsize=(4 * ncol, 3.5 * nrow))
 
     df = df.rename(columns=rename)
+
+    axs[-1, -1].axis("off")
 
     for idx, env in enumerate(main_envs):
         data = df[df["env"] == env]
@@ -80,7 +83,7 @@ def plot(df, key="episode_reward"):
         # hue_order = data.utd_ratio.unique()
         # breakpoint()
 
-        if idx == 0:
+        if idx == 7:
             sns.lineplot(
                 x="env_step",
                 # x="episode",
