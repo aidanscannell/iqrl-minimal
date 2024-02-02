@@ -1,0 +1,17 @@
+# iQRL: implicitly Quantized Reinforcement Learning
+
+## Instructions
+Install dependencies:
+```sh
+conda env create -f environment.yml
+conda activate iqrl
+```
+Train the agent:
+``` sh
+python train.py +env=walker-walk
+```
+To log metrics with W&B:
+``` sh
+python train.py +env=walker-walk ++use_wandb=True
+```
+All tested tasks are listed in`cfgs/env`
