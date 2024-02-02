@@ -812,6 +812,16 @@ Proposed $\mathcal{L}$ & $[8,8]$ & $[8,6,5]$ & $[8,5,5,5]$ \\
 \vskip -0.1in
 \end{table}
 
+\begin{figure*}[ht]
+\vskip 0.2in
+\begin{center}
+\centerline{\includegraphics[width=1.0\textwidth]{./figs/normalization-ablation.pdf}}
+\caption{\textbf{Ablation of normalization}. We analyze the impact of our FSQ-based normalization scheme on the sample-efficiency of \our. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
+\label{fig:normalization-ablation}
+\end{center}
+\vskip -0.2in
+\end{figure*}
+
 \textbf{Normalization with implicit quantization}
 % However, this can lead to exploding gradients and
 Motivated by preventing representation collapse we seek a representation with high matrix rank.
@@ -870,6 +880,26 @@ However, for the dog-walk environment we used a codebook of size $|\mathcal{C}|=
 % i=1 Li
 
 
+\begin{figure*}[ht]
+\vskip 0.2in
+\begin{center}
+\centerline{\includegraphics[width=0.9\textwidth]{./figs/reward-ablation.pdf}}
+\caption{\textbf{Reward prediction is not necessary for representation learning}. We compare \our to variants of our method with a reward prediction term included in the representation learning loss. \our performs on par with the best method on all environments except Fish Swim, where it is slightly behind our version of TCRL. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
+\label{fig:reward-ablation}
+\end{center}
+\vskip -0.2in
+\end{figure*}
+
+\begin{figure*}[ht]
+	\vskip 0.2in
+	\begin{center}
+		\centerline{\includegraphics[width=1.0\textwidth]{./figs/rank-comparison-z1.pdf}}
+		\caption{\textbf{Representation collapse without normalization}. We observe that the representation normalization of \our is crucial for avoiding representation collapse. When no normalization is applied to the latents, the matrix rank of the representations drops rapidly, which can have a harmful effect on the downstream performance. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
+		\label{fig:rank-comparison-z1}
+	\end{center}
+	\vskip -0.2in
+\end{figure*}
+
 
 
 \textbf{Policy and value function learning}
@@ -900,15 +930,6 @@ That is, maximizing the Q-value using the clipped double Q learning trick to com
 % As such, our method learns a task-agnostic representation.
 
 
-\begin{figure*}[ht]
-\vskip 0.2in
-\begin{center}
-\centerline{\includegraphics[width=1.0\textwidth]{./figs/normalization-ablation.pdf}}
-\caption{\textbf{Ablation of normalization}. We analyze the impact of our FSQ-based normalization scheme on the sample-efficiency of \our. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
-\label{fig:normalization-ablation}
-\end{center}
-\vskip -0.2in
-\end{figure*}
 
 
 
@@ -947,30 +968,11 @@ We analyze the impact of the latent-space normalization on the rank of the laten
 
 
 
-\begin{figure*}[ht]
-	\vskip 0.2in
-	\begin{center}
-		\centerline{\includegraphics[width=1.0\textwidth]{./figs/rank-comparison-z1.pdf}}
-		\caption{\textbf{Representation collapse without normalization}. We observe that the representation normalization of \our is crucial for avoiding representation collapse. When no normalization is applied to the latents, the matrix rank of the representations drops rapidly, which can have a harmful effect on the downstream performance. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
-		\label{fig:rank-comparison-z1}
-	\end{center}
-	\vskip -0.2in
-\end{figure*}
-
-\begin{figure*}[ht]
-\vskip 0.2in
-\begin{center}
-\centerline{\includegraphics[width=1.0\textwidth]{./figs/reward-ablation.pdf}}
-\caption{\textbf{Reward prediction is not necessary for representation learning}. We compare \our to variants of our method with a reward prediction term included in the representation learning loss. \our performs on par with the best method on all environments except Fish Swim, where it is slightly behind our version of TCRL. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
-\label{fig:reward-ablation}
-\end{center}
-\vskip -0.2in
-\end{figure*}
 
 \begin{figure*}[ht]
 	\vskip 0.2in
 	\begin{center}
-		\centerline{\includegraphics[width=\textwidth]{./figs/task-agnostic-ablation.pdf}}
+		\centerline{\includegraphics[width=0.8\textwidth]{./figs/task-agnostic-ablation.pdf}}
 		\caption{\textbf{\our's task-agnostic representation helps for multi-task RL}. We evaluate whether pre-training \our on the walk tasks in the DeepMind Control Suite help for learning the run task on the same environment. The pre-training proves to be beneficial on all evaluated environments. If the representation is task-specific (the reward prediction term is included), the pre-training can be clearly detrimental. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
 		\label{fig:multi-task-pretraining}
 	\end{center}
@@ -1151,7 +1153,7 @@ Latent dimension ($d$) & $1024$ & \\
 \vskip -0.1in
 \end{table}
 
-\section{Full results}
+\section{Further results}
 
 
 \begin{figure*}[ht]
