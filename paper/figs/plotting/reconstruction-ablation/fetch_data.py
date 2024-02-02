@@ -1,5 +1,5 @@
 # %%
-ddpg_path = "aalto-ml/lifelong-td3-tc/"
+ddpg_path = "aalto-ml/iqrl-icml/"
 ddpg_data = {
     "path": ddpg_path,
     "data": {
@@ -327,7 +327,7 @@ data = pd.concat(
 
 # %%
 
-data.to_csv("./ifsq-rl.csv")
+data.to_csv("./iqrl.csv")
 
 
 # %%

@@ -70,6 +70,8 @@ def plot(df, key="episode_reward"):
 
     fig, axs = plt.subplots(nrow, ncol, figsize=(4 * ncol, 3.5 * nrow))
 
+    df["episode"] = df.apply(lambda row: int(row["env_step"] / 1000), axis=1)
+
     df = df.rename(columns=rename)
 
     for idx, env in enumerate(main_envs):
@@ -85,8 +87,8 @@ def plot(df, key="episode_reward"):
 
         if idx == 0:
             sns.lineplot(
-                x="env_step",
-                # x="episode",
+                # x="env_step",
+                x="episode",
                 y=key,
                 data=data,
                 errorbar=("ci", 95),
@@ -101,8 +103,8 @@ def plot(df, key="episode_reward"):
         else:
             # breakpoint()
             sns.lineplot(
-                x="env_step",
-                # x="episode",
+                # x="env_step",
+                x="episode",
                 y=key,
                 data=data,
                 errorbar=("ci", 95),
@@ -139,7 +141,7 @@ df = [
     # pd.read_csv(f"{data_path}/tdmpc_main.csv"),
     # df_redq,
     # pd.read_csv(f"{data_path}/sac_main.csv"),
-    pd.read_csv(f"{data_path}/ifsq-rl.csv"),
+    pd.read_csv(f"{data_path}/iqrl.csv"),
 ]
 plot(pd.concat(df))
 

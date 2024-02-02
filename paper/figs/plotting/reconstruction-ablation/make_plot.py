@@ -69,6 +69,8 @@ def plot(df, key="episode_reward"):
 
     fig, axs = plt.subplots(nrow, ncol, figsize=(4 * ncol, 3.5 * nrow))
 
+    df["episode"] = df.apply(lambda row: int(row["env_step"] / 1000), axis=1)
+
     df = df.rename(columns=rename)
 
     # axs[-1, -1].axis("off")
@@ -82,12 +84,11 @@ def plot(df, key="episode_reward"):
         # hue_order = data.agent.unique()
         hue_order = data.name.unique()
         # hue_order = data.utd_ratio.unique()
-        # breakpoint()
 
         if idx == 3:
             g = sns.lineplot(
-                x="env_step",
-                # x="episode",
+                # x="env_step",
+                x="episode",
                 y=key,
                 data=data,
                 errorbar=("ci", 95),
@@ -100,10 +101,9 @@ def plot(df, key="episode_reward"):
             )
             ax.legend().set_title(None)
         else:
-            # breakpoint()
             g = sns.lineplot(
-                x="env_step",
-                # x="episode",
+                # x="env_step",
+                x="episode",
                 y=key,
                 data=data,
                 errorbar=("ci", 95),
@@ -115,7 +115,7 @@ def plot(df, key="episode_reward"):
                 ax=ax,
             )
         if env == "cartpole-swingup":
-            g.set(xlim=(20000, 100000))
+            g.set(xlim=(20, 100))
 
         ax.set_title(" ".join([ele.capitalize() for ele in env.split("-")]))
         ax.set_xlabel("Environment Steps (1e3)")
@@ -142,7 +142,7 @@ df = [
     # pd.read_csv(f"{data_path}/tdmpc_main.csv"),
     # df_redq,
     # pd.read_csv(f"{data_path}/sac_main.csv"),
-    pd.read_csv(f"{data_path}/ifsq-rl.csv"),
+    pd.read_csv(f"{data_path}/iqrl.csv"),
 ]
 plot(pd.concat(df))
 

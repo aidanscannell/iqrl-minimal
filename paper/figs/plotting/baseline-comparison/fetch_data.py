@@ -1,5 +1,5 @@
 # %%
-ddpg_path = "aalto-ml/lifelong-td3-tc/"
+ddpg_path = "aalto-ml/iqrl-icml/"
 ddpg_data = {
     "path": ddpg_path,
     "data": {
@@ -13,7 +13,14 @@ ddpg_data = {
         # GOOD performance d=128
         "quadruped-walk": ["8zgkcuhs", "egk6qxco", "oh1xhyqt", "hm3ihqzo", "p4slb4q9"],
         "cheetah-run": ["8x29ibzc", "9k7936z8", "e7afvv6h", "81pbgf97", "qfqv9wz3"],
-        "walker-walk": ["8z9o8vp6", "roz89u0n", "h1by1w6s", "zfu00w22", "jvw4myex"],
+        # "walker-walk": ["8z9o8vp6", "roz89u0n", "h1by1w6s", "zfu00w22", "jvw4myex"], # only ran for 500k
+        "walker-walk": [
+            "xfzks8lu",
+            "6zlwsbuy",
+            "hqki86zv",
+            "j13po5c8",
+            "j4l1oh62",
+        ],  # 1M steps
         # "cheetah-run": ["l4c3phty", "96xm0zx5", "6tul0lmk", "y7c9k82p", "zx6ykgj9"],
         # POOR performance d=512 project=False
         "acrobot-swingup": ["c6qmc8yx", "spwng8k4", "wgurvdan", "4xfe6bez", "95l445ci"],
@@ -165,7 +172,7 @@ data = pd.concat(
 
 # %%
 
-data.to_csv("./ifsq-rl.csv")
+data.to_csv("./iqrl.csv")
 
 
 # %%

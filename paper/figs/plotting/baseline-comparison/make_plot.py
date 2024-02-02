@@ -48,36 +48,21 @@ def plot(df, key="episode_reward"):
     # nrow = envs.shape[0] // ncol
 
     fig, axs = plt.subplots(nrow, ncol, figsize=(4 * ncol, 3.5 * nrow))
-    # df = df[df["env_step"] < 1000000]
 
-    all_data = []
-    # df["env_step"] = df["env_step"] / 1000
+    df["episode"] = df.apply(lambda row: int(row["env_step"] / 1000), axis=1)
+
     for idx, env in enumerate(main_envs):
         idx += 1
         data = df[df["env"] == env]
-        # breakpoint()
-        # data[data["agent"] == "iFSQ-RL"] = data[data["agent"] == "iFSQ-RL"].iloc[::2]
         row = idx // ncol
         col = idx % ncol
         ax = axs[row, col]
         hue_order = data.agent.unique()
 
-        min_ep_length = 1e10
-        for agent in data.agent:
-            ep_length = np.max(df[df["agent"] == agent]["env_step"])
-            # print(f"ep_length {ep_length} for env {env}")
-            min_ep_length = min(min_ep_length, ep_length)
-            # min_ep_length=np.min(min_ep)
-        # print(f"min_ep_length {min_ep_length} for env {env}")
-        all_data += [df[df["env_step"] < min_ep_length]]
-        # breakpoint()
-
         if idx == 2:
             g = sns.lineplot(
-                # x=int("env_step" / 1000),
-                x="env_step",
                 # x="env_step",
-                # x="episode",
+                x="episode",
                 y=key,
                 data=data,
                 errorbar=("ci", 95),
@@ -90,8 +75,8 @@ def plot(df, key="episode_reward"):
             ax.legend().set_title(None)
         else:
             g = sns.lineplot(
-                # x="episode",
-                x="env_step",
+                # x="env_step",
+                x="episode",
                 y=key,
                 data=data,
                 errorbar=("ci", 95),
@@ -102,25 +87,23 @@ def plot(df, key="episode_reward"):
                 ax=ax,
             )
         if env == "quadruped-walk":
-            g.set(xlim=(0, 500000))
+            g.set(xlim=(0, 500))
         if env == "walker-walk":
-            g.set(xlim=(0, 250000))
+            g.set(xlim=(0, 250))
         if env == "dog-walk":
-            g.set(xlim=(0, 750000))
+            g.set(xlim=(0, 750))
         if env == "humanoid-walk":
-            g.set(xlim=(0, 3000000))
+            g.set(xlim=(0, 3000))
 
         ax.set_title(" ".join([ele.capitalize() for ele in env.split("-")]))
         ax.set_xlabel("Environment Steps (1e3)")
         ax.set_ylabel("Episode Return")
 
-    df = pd.concat(all_data)
-    df = df[df["env_step"] < 1000000]
+    df = df[df["episode"] < 1000]
+    # df = df[df["env"] != "walker-walk"]
     g = sns.lineplot(
-        # x=int("env_step" / 1000),
-        x="env_step",
         # x="env_step",
-        # x="episode",
+        x="episode",
         y=key,
         data=df,
         errorbar=("ci", 95),
@@ -135,7 +118,8 @@ def plot(df, key="episode_reward"):
     axs[0, 0].set_ylabel("Episode Return")
 
     plt.tight_layout()
-    plt.savefig(f"../../baselines_comparison.pdf")
+    plt.savefig(f"../../baselines_comparison_debug.pdf")
+    # plt.savefig(f"../../baselines_comparison.pdf")
     # plt.show()
 
 
@@ -166,7 +150,7 @@ df = [
     pd.read_csv(f"{data_path}/tdmpc_main.csv"),
     df_redq,
     pd.read_csv(f"{data_path}/sac_main.csv"),
-    pd.read_csv(f"{data_path}/ifsq-rl.csv"),
+    pd.read_csv(f"{data_path}/iqrl.csv"),
 ]
 plot(pd.concat(df))
 
