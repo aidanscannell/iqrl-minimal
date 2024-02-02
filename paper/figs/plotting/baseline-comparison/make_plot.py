@@ -59,7 +59,7 @@ def plot(df, key="episode_reward"):
         ax = axs[row, col]
         hue_order = data.agent.unique()
 
-        if idx == 3:
+        if idx == 4:
             g = sns.lineplot(
                 # x=int("env_step" / 1000),
                 x="env_step",
