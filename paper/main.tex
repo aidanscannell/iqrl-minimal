@@ -550,7 +550,7 @@
   \tikzstyle{darr}=[line width=1pt,black,<->,densely dotted]
 
   % Draw nodes
-  \node[blob] (z0) at (0\nodedist,0) {$\vz_{\sub}$};
+  \node[blob] (z0) at (0\nodedist,0) {$\vz_{\sub}\vphantom{\hat\vz_{\subs{1}}}$};
   \node[blob] (z1) at (1\nodedist,0) {$\hat\vz_{\subs{1}}$};
   \node[blob] (z2) at (2\nodedist,0) {$\hat\vz_{\subs{2}}$};
 
@@ -1091,7 +1091,7 @@ To the best of our knowledge, we are the first to present a method that learns a
 using only latent-state consistency. As such, we hope our method for learning task-agnostic representations paves the
 way for more research in multi-task and lifelong learning.
 Given that our method obtains an implicit codebook an obvious future direction is exploring if we can leverage the
-discretized latent-space. So far, we have only applied our representation learning loss to state-based tasks. Extending the method to handle even higher-dimensional visual tasks is an interesting direction. Furthermore, we have neither analyzed the scaling behavior of our world models nor how well \our performs in a multi-task setting. Utilizing the knowledge learned during with Internet-scale pre-training with large robotic datasets could make our method even more sample efficient. Exploring whether explicitly quantifying the model uncertainty by e.g. using larger ensembles would help to adapt our method to a real-world robotics setting is also a promising direction for future work.
+discretized latent-space. So far, we have only applied our representation learning loss to state-based tasks. Extending the method to handle even higher-dimensional visual tasks is an interesting direction. Furthermore, we have neither analyzed the scaling behavior of our world models nor how well \our performs in a multi-task setting. Utilizing the knowledge learned during with Internet-scale pre-training with large robotic datasets could make our method even more sample efficient. Exploring whether explicitly quantifying the model uncertainty by \eg\ using larger ensembles would help to adapt our method to a real-world robotics setting is also a promising direction for future work.
 
 \section*{Broader Impact}
 This paper presents work whose goal is to advance the field of continuous RL that is applicable to, for instance, robotics. Therefore, it is possible that our methods could be employed in unforeseen harmful ways, such as autonomous drones for military or law enforcement use. There are even other potential societal consequences of our work, none which we feel must be specifically highlighted here.
@@ -1115,7 +1115,7 @@ This paper presents work whose goal is to advance the field of continuous RL tha
 \section{Hyperparameters, Implementation, and Training Infrastructure}
 \cref{tab:hyperparameters} lists all of the hyperparameters for training \our. For further details please check the code which is available in the submitted supplementary material and will be made public upon acceptance. We implemented our codebase with PyTorch and used the Adam optimizer for training the models. We used five seeds for all figures. All of our models can be trained on a single GPU. We used Nvidia A100s and AMD Instinct MI250X GPUs to run our experiments.
 
-\begin{table}[t]
+\begin{table}[h]
 \caption{Hyperparameters for \our.}
 \label{tab:hyperparameters}
 \vskip 0.15in
@@ -1159,7 +1159,7 @@ Encoder momentum coefficient ($\tau$) & 0.005 & \\
 FSQ levels & $[8, 5, 5, 5]$ & \\
 Horizon $(H)$ & $5$ & Horizon for representation learning \\
 Latent dimension ($d$) & $1024$ & \\
-% \bottomrule
+ \bottomrule
 \end{tabular}
 \end{sc}
 \end{small}
