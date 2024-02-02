@@ -859,6 +859,16 @@ That is, maximizing the Q-value using the clipped double Q learning trick to com
 % As such, our method learns a task-agnostic representation.
 
 
+\begin{figure*}[ht]
+\vskip 0.2in
+\begin{center}
+\centerline{\includegraphics[width=1.0\textwidth]{./figs/normalization-ablation.pdf}}
+\caption{\textbf{Ablation of normalization}. We analyze the impact of our FSQ-based normalization scheme on the sample-efficiency of \our. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
+\label{fig:normalization-ablation}
+\end{center}
+\vskip -0.2in
+\end{figure*}
+
 
 
 \section{Experiments}
@@ -895,16 +905,6 @@ In \cref{fig:normalization_improves_sample_efficiency}, we compare \our to the m
 We analyze the impact of the latent-space normalization on the rank of the latent representations outputted by the learned encoder. We follow the methodology of \citet{ni2024bridging} for estimating the matrix rank. We plot the ranks in \cref{fig:rank-comparison-z1}. The latent state dimensions are 256, 128, 256, and 128 for Acrobot Swingup, Hopper Stand, Humanoid Run and Cheetah Run, respectively, and the plots show that the matrix rank stays close to the latent state dimension when our FSQ normalization scheme is applied. Without normalization, a dimensional collapse occurs, which can have significant harmful effects as the representational power of the latent state diminishes \cite{jingUnderstandingDimensionalCollapse2021}.
 
 
-
-\begin{figure*}[ht]
-\vskip 0.2in
-\begin{center}
-\centerline{\includegraphics[width=1.0\textwidth]{./figs/normalization-ablation.pdf}}
-\caption{\textbf{Ablation of normalization}. We analyze the impact of our FSQ-based normalization scheme on the sample-efficiency of \our. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
-\label{fig:normalization-ablation}
-\end{center}
-\vskip -0.2in
-\end{figure*}
 
 \begin{figure*}[ht]
 	\vskip 0.2in
