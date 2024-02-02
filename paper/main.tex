@@ -791,13 +791,16 @@ Our representation learning is based solely on the latent-state consistency loss
 %&= \E_{(s_{t}, a_{t}, s_{t+1}) \sim \mathcal{D}}
 % &= \E_{\tau \sim \mathcal{D}}
 % \left[ \sum_{h=0}^{H-1} \gamma^{h} \| d_{\phi}(e_{\theta}(s_{t}), a_{t}) - e_{\bar{\theta}}(s_{t+1}) \|_{2}^{2} \right]
-&= \sum_{h=0}^{H-1} \gamma^{h} \| d_{\phi}(e_{\theta}(s_{t}), a_{t}) - e_{\bar{\theta}}(s_{t+1}) \|_{2}^{2},
+&= \sum_{h=0}^{H-1} \gamma^{h} \| d_{\phi}(\hat{z}_{t}, a_{t}) - e_{\bar{\theta}}(s_{t+1}) \|_{2}^{2},
 \end{align}
 %
-which minimizes the distance between the next state predicted by the transition model $\hat{z}_{t+1} = d_{\phi}(e_{\phi}(z_{t}), a_{t})$
-and the next state predicted by the momentum encoder $\bar{z}_{t+1} = e_{\bar{\phi}}(z_{t+1})$.
-The prediction $d_{\phi}(e_{\phi}(z_{t}), a_{t})$ uses the online encoder, which is being trained jointly with the transition model.
-The target $e_{\bar{\phi}}(z_{t+1})$ is calculated with the momentum encoder, which uses an exponential moving average (EMA)
+which minimizes the distance between the next state predicted by the transition model $\hat{z}_{t+1} = d_{\phi}(\hat{z}_{t}, a_{t})$
+and the next state predicted by the momentum encoder $\bar{z}_{t+1} = e_{\bar{\phi}}(s_{t+1})$.
+The latent states are obtained with multi-step predictions in the latent space $\hat{z}_{t+1} = d(\hat{z}_{t}, a_{t})$
+with $\hat{z}_{0} = e_{\theta}(s_{0})$.
+The initial mapping to the latent space $\hat{z}_{0} = e_{\theta}(s_{0})$ uses the online encoder which
+is being trained jointly with the transition model $d_{\phi}(\hat{z_{t}}, a_{t})$.
+The target $e_{\bar{\phi}}(z_{t+1})$ is calculated with the momentum encoder which uses an exponential moving average (EMA)
 of the encoder's weights $\bar{\theta} \leftarrow \tau \bar{\theta} + (1-\tau)\theta$.
 % As such, gradient to not flow through the target network
 The target network update rate is denoted $\tau$.
@@ -855,8 +858,7 @@ This idea generalizes to the case where the $i^{\text{th}}$ channel is mapped to
 
 FSQ has the following hyperparameters: we must specify the number of channels $c$ and the number of levels per channel
 $\mathcal{L} = [L_{1},\ldots,L_{d}]$.
-\cref{tab:fsq-levels} shows the recommended number of channels and number of levels per channel to obtain codebooks of
-different sizes.
+\cref{tab:fsq-levels} shows the recommended number of channels and number of levels per channel to obtain codebooks of different sizes \citep{mentzerFiniteScalarQuantization2023}.
 FSQ, relies on a simple, fixed grid partition in a much
 lower-dimensional space.
 In practice, we found codebooks of size $|\mathcal{C}|=2^{6}$ sufficient for most environments in the DeepMind Control suite.
@@ -919,7 +921,7 @@ We learn the policy and value function using TD3 \citep{fujimotoAddressingFuncti
 However, we follow \citet{yaratsMasteringVisualContinuous2021,zhaoSimplifiedTemporalConsistency2023}
 and augment the loss with n-step returns.
 The only difference to TD3 is that instead of using the original observations $o_{t}$, we map them through the
-encoder $z_{t} = e_{\bar{\theta}}(o_{t})$ and learn the value function and policy in the latent space $z_{t}$.
+target encoder $z_{t} = e_{\bar{\theta}}(o_{t})$ and learn the value function and policy in the latent space $z_{t}$.
 The value function is updated by minimizing the following objective:
 \begin{align} \label{eq:value-loss}
   \mathcal{L}_{Q} &= \E_{\tau \sim \mathcal{D}} \left[ (Q_{\psi_{k}}(e_{\bar{\theta}}(s_{t}), a_{t}) - y)^{2}  \right], \quad  \forall k \in 1, 2 \\
@@ -1006,10 +1008,10 @@ Unlike prior methods such as TCLR \cite{zhaoSimplifiedTemporalConsistency2023}, 
 	\begin{align*}
 		\mathcal{L}_\text{rew} = \sum_{h=0}^{H-1} \gamma^h \| \hat{r}_{t+h} - r_{t+h}\|_2^2,
 	\end{align*}
-	where $\tilde{r}_{t+h}$ is the ground-truth H-step reward and $\hat{r}_{t+h}$ the predicted H-step rewards.
+	where $r_{t+h}$ is the ground-truth H-step reward and $\hat{r}_{t+h}$ the predicted H-step rewards.
 	\item \ourcosrew, where in addition to the reward prediction head in \ourrew, we additionally convert the self-supervised MSE loss (see \cref{eq:rep-loss}) for the temporal consistency into a cosine similarity, similarly to TCRL:
 	\begin{align*} \label{eq:rep-loss}
-		\hat{z}_{t+h} &= d_{\phi}(e_{\theta}(s_{t}), a_{t}) \\
+		\hat{z}_{t+h} &= d_{\phi}(\hat{z}_{t}, a_{t}) \\
 		\tilde{z}_{t+h} &= e_{\bar{\theta}}(s_{t+1}) \\
 		\mathcal{L}_{\text{rep}}(\theta, \phi; \tau)
 		&= - \sum_{h=0}^{H-1} \gamma^{h} \left ( \frac{\hat{z}_{t+h}}{\| \hat{z}_{t+h} \|_2} \right )^T \left ( \frac{\tilde{z}_{t+h}}{\| \tilde{z}_{t+h} \|_2} \right )
@@ -1017,7 +1019,7 @@ Unlike prior methods such as TCLR \cite{zhaoSimplifiedTemporalConsistency2023}, 
 	\item TCRL-ours, where in addition to \ourcosrew, we remove the FSQ normalization scheme to make the method equal to TCRL with some minor improvements to the method, such as using nstep-TD3 \cite{fujimotoAddressingFunctionApproximation2018} as the base algorithm instead of DDPG with Double Q and nstep returns, using the neural network architecture from \citet{hansen2023td}, and performing policy smoothing \cite{fujimotoAddressingFunctionApproximation2018}.
 \end{itemize}
 The results for this ablation study are shown in \cref{fig:reward-ablation}. 
-The plots show that our method, \our, without a reward prediction term in the loss, has equal or superior performance to the comparison methods except Fish Swim, where the unnormalized TCRL-ours outperforms all the methods with normalization due to not suffering from latent collapse in this specific environment. Even then, \our performs equally to the normalized variants of our method with the reward prediction. Our results imply that learning to predict the reward is not necessary for learning a suitable latent representation. The upside of not including the reward prediction head is that it makes learning the representation learning task-agnostic, which we believe to be important for downstream applications such as learning in an incremental multi-task setting.
+The plots show that our method, \our, without a reward prediction term in the loss, has equal or superior performance to the comparison methods except in Fish Swim, where the unnormalized TCRL-ours outperforms all the methods with normalization due to not suffering from rank collapse in this specific environment. Even then, \our performs equally to the normalized variants of our method with the reward prediction. Our results imply that learning to predict the reward is not necessary for learning a suitable latent representation. The upside of not including the reward prediction head is that it makes the representation task-agnostic, which we believe to be important for downstream applications such as learning in an incremental multi-task setting.
 
 \textbf{\our's task-agnostic representation is helpful for multi-task RL}
 In contrast to \eg TCRL \cite{zhaoSimplifiedTemporalConsistency2023} and TD-MPC \cite{hansenTemporalDifferenceLearning2022}, \our learns a representation that is task-agnostic, that is, there are no task-specific components such as reward or value prediction in the representation loss formula (\cref{eq:rep-loss}). The potential upside of \our's task-agnostic representations is that they can be used to speed-up learning in the incremental multi-task setting. That is, we can leverage the representation learned from solving one task to aid learning another tasks in the same domain. For instance, we can pre-train a representation in Walker Walk, and use it to speed up the training process in Walker Run. The only requirement is that the action and observation spaces must match. In addition, we assume that the transition dynamics are unchanged, but the reward may change.
