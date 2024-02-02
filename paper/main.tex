@@ -757,8 +757,8 @@ The discount factor is denoted $\gamma \in [0, 1]$.
 The encoder $e_{\theta}$  and latent-space dynamics model $d_{\phi}$ are responsible for representation learning.
 The encoder $e_{\theta}$ maps observations $o_{t}$ to latent states $z_{t}$ and is responsible for learning a representation
 which can aid RL.
-The latent-space dynamics model $d_{\phi}$ predicts next latent states $z_{t+1}$ given a latent state $z_{t}$ and an action $a_{t}$.
-It's sole purpose is to aid representation learning by making the latent states temporally consistent.
+The latent-space dynamics model $d_{\phi}$ predicts the next latent states $z_{t+1}$ given a latent state $z_{t}$ and an action $a_{t}$.
+Its sole purpose is to aid representation learning by making the latent states temporally consistent.
 Note that we do not use it for model-based RL.
 Once we have the representation learned by our encoder, we map all observations to the latent space and perform model-free RL
 in this latent space.
@@ -766,7 +766,7 @@ Throughout this paper, we use Twin Delayed Deep Deterministic Policy Gradient
 (TD3), \citep{fujimotoAddressingFunctionApproximation2018}).
 It consists of two state-action value functions $\{Q_{\psi_{1}},Q_{\psi_{2}} \}$, known as critics, and a deterministic
 actor $\pi_{\eta}$.
-Following prior works \citep{yaratsMasteringVisualContinuous2021} we use a linear exploration noise schedule
+Following prior works \citep{yaratsMasteringVisualContinuous2021}, we use a linear exploration noise schedule
 which decays from $1$ to $0.1$ during training.
 
 
@@ -774,7 +774,7 @@ which decays from $1$ to $0.1$ during training.
 \vskip 0.2in
 \begin{center}
 \centerline{\includegraphics[width=1.0\textwidth]{./figs/baselines_comparison.pdf}}
-\caption{\textbf{\our is simple, fast, and performant} \our is significantly more sample efficient than the model-free baselines SAC (blue) and REDQ (purple). It performs similarly to TD-MPC (orange) whilst being significantly simpler and quicker to train. \our even outperforms TCRL, which is the most similar baseline. Results are for eight DMC tasks with UTD=1. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
+\caption{\textbf{\our is simple, fast, and performant} \our is significantly more sample efficient than the model-free baselines SAC (blue) and REDQ (purple). It performs similarly to TD-MPC (orange) whilst being significantly simpler and quicker to train. \our even outperforms TCRL, which is the most similar baseline. Results are for seven DMC tasks with UTD=1. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
 
 \label{fig:normalization_improves_sample_efficiency}
 \end{center}
@@ -853,18 +853,16 @@ obtains a quantized $\tilde{z} \in \mathcal{C}$, where $\tilde{z}$ takes one of 
 This gives rise to an implicit codebook $\mathcal{C}$ given by the product of the per-channel codebook sets.
 % The size of the codebook $|\mathcal{C}| = L^{c}$ is given by the product of the
 % For example, specifying $c=3$ channels
-This idea generalizes to the case where the $i^{\text{th}}$ channel is mapped to $L_{i}$ values.
-Giving a codebook of size $|\mathcal{C}| = L_{i}^{d_{i}}$.
+This idea generalizes to the case where the $i^{\text{th}}$ channel is mapped to $L_{i}$ values, giving a codebook of size $|\mathcal{C}| = L_{i}^{d_{i}}$.
 % Since quantization is performed by rounding to integers
 
-FSQ has the following hyperparameters. We must specify the number of channels $c$ and the number of levels per channel
+FSQ has the following hyperparameters: we must specify the number of channels $c$ and the number of levels per channel
 $\mathcal{L} = [L_{1},\ldots,L_{d}]$.
-\cref{tab:fsq-levels} shows the recommended number of channels and number of levels per channel to obatin codebooks of
-different sizes \citep{mentzerFiniteScalarQuantization2023}.
+\cref{tab:fsq-levels} shows the recommended number of channels and number of levels per channel to obtain codebooks of different sizes \citep{mentzerFiniteScalarQuantization2023}.
 FSQ, relies on a simple, fixed grid partition in a much
 lower-dimensional space.
 In practice, we found codebooks of size $|\mathcal{C}|=2^{6}$ sufficient for most environments in the DeepMind Control suite.
-However, for the dog-walk environment we used a codebook of size $|\mathcal{C}|=2^{9}$.
+However, for the Dog Walk environment we used a codebook of size $|\mathcal{C}|=2^{9}$.
 
 % Fig. 1 shows FSQ for d=3, L=3, implying a codebook
 % C = {(−1, −1, −1),(−1, −1, 0),(−1, −1, 1), . . . ,(1, 1, 1)}, where |C| = L
@@ -900,7 +898,7 @@ However, for the dog-walk environment we used a codebook of size $|\mathcal{C}|=
 \vskip 0.2in
 \begin{center}
 \centerline{\includegraphics[width=0.9\textwidth]{./figs/reward-ablation.pdf}}
-\caption{\textbf{Reward prediction is not necessary for representation learning}. We compare \our to variants of our method with a reward prediction term included in the representation learning loss. \our performs on par with the best method on all environments except Fish Swim, where it is slightly behind our version of TCRL. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
+\caption{\textbf{Reward prediction is not necessary for representation learning}. We compare \our to variants of our method with a reward prediction term included in the representation learning loss. \our performs on par with the best method on all environments except Fish Swim, where it is slightly inferior to our version of TCRL. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
 \label{fig:reward-ablation}
 \end{center}
 \vskip -0.2in
@@ -910,7 +908,7 @@ However, for the dog-walk environment we used a codebook of size $|\mathcal{C}|=
 	\vskip 0.2in
 	\begin{center}
 		\centerline{\includegraphics[width=1.0\textwidth]{./figs/rank-comparison-z1.pdf}}
-		\caption{\textbf{Representation collapse without normalization}. We observe that the representation normalization of \our is crucial for avoiding representation collapse. When no normalization is applied to the latents, the matrix rank of the representations drops rapidly, which can have a harmful effect on the downstream performance. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
+		\caption{\textbf{Representation collapse without normalization}. We observe that the representation normalization of \our is crucial for avoiding representation collapse. When no normalization is applied to the latent variables, the matrix rank of the representations drops rapidly, which can hurt the downstream performance. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
 		\label{fig:rank-comparison-z1}
 	\end{center}
 	\vskip -0.2in
@@ -933,13 +931,13 @@ where we use policy smoothing by adding clipped Gaussian noise $\epsilon_{t+n} \
 action $a_{t+n} = \pi_{\bar{\eta}}(z_{t+n}) + \epsilon_{t+n}$.
 Note that we use the target encoder to get the latent states in both the prediction and the target.
 We then use the target value functions $Q_{\bar{\psi}_{k}}$ and the target policy $\pi_{\bar{\eta}}$ to calculate the TD target.
-Following TD3, we learn the actor's parameters by minimizing,
+Following TD3, we learn the actor's parameters by minimizing
 %
 \begin{align} \label{eq:policy-loss}
  \mathcal{L}_{\pi} = - \E_{(o_{t}, a_{t}) \sim \mathcal{D}} \left[ \min_{k\in\{1,2\}} Q_{\psi_{k}}(e_{\bar{\theta}}(o_{t}), a_{t}) \right].
 \end{align}
 %
-That is, maximizing the Q-value using the clipped double Q learning trick to combat overestimation in Q learning.
+That is, we maximize the Q-value using the clipped double Q learning trick to combat overestimation in Q learning.
 
 % Whilst our method resembles TCRL \citep{zhaoSimplifiedTemporalConsistency2023} it is important to note that
 % our transition model does not predict the reward.
@@ -951,13 +949,13 @@ That is, maximizing the Q-value using the clipped double Q learning trick to com
 
 \section{Experiments}
 \label{sec:experiments}
-In this section, we evaluate \our in a variety of continuous control tasks from the DeepMind Control (DMC) suite \cite{tassa2018deepmind}.
+In this section, we evaluate \our in a variety of continuous control tasks from the DeepMind Control (DMC) Suite \cite{tassa2018deepmind}.
 We aim to answer the following questions:
 \begin{itemize}
     \item How does \our compare to state-of-the-art model-free and model-based algorithms?
     \item Does the FSQ-based normalization of \our help combat rank collapse of the learned latent-space representation?
     \item Is learning a representation with only latent-state consistency really better than including reward predictions and value predictions?
-    \item Can \our's task-agnostic representation aid task-adaptation with its pre-trained representation?
+    \item Can \our's task-agnostic representation aid task adaptation with its pre-trained representation?
 \end{itemize}
 
 % \begin{figure*}[ht]
@@ -977,16 +975,16 @@ We aim to answer the following questions:
 % In contrast, when increasing the UTD ratio for TCRL no improvements are observed.
 
 \textbf{\our is simple, fast, and performant}
-In \cref{fig:normalization_improves_sample_efficiency}, we compare \our to the model-free baselines Soft-Actor Critic (SAC) \cite{haarnojaSoft2018} and Randomized Ensemble Double Q Learning (REDQ) \cite{chenRandomizedEnsembledDouble2021}, and the model-based baselines TD-MPC \cite{hansenTemporalDifferenceLearning2022} and TCRL \cite{zhaoSimplifiedTemporalConsistency2023} on eight problems from the DeepMind Control Suite. The results show that our method, \our, performs on par with TD-MPC while being significantly simpler and quicker to train, as the loss term is simpler and no planning is needed unlike in TD-MPC. We even outperform TCRL, which is the most similar baseline to our work. We ablate the effect of the FSQ-based latent-space normalization scheme in \cref{fig:normalization-ablation}. The normalization is overall beneficial.
+In \cref{fig:normalization_improves_sample_efficiency}, we compare \our to the model-free baselines Soft-Actor Critic (SAC) \cite{haarnojaSoft2018} and Randomized Ensemble Double Q Learning (REDQ) \cite{chenRandomizedEnsembledDouble2021}, and the model-based baselines TD-MPC \cite{hansenTemporalDifferenceLearning2022} and TCRL \cite{zhaoSimplifiedTemporalConsistency2023} on seven problems from the DeepMind Control Suite. The results show that our method, \our, performs on par with TD-MPC while being significantly simpler and quicker to train, as the loss term consists of fewer terms and no planning is needed, unlike in TD-MPC. We even outperform TCRL, which is the most similar baseline to our work. We ablate the effect of the FSQ-based latent-space normalization scheme in \cref{fig:normalization-ablation}. The normalization is overall beneficial.
 
 \textbf{\our does not suffer from rank collapse} We analyze the impact of the latent-space normalization on the rank of the latent representations outputted by the learned encoder.
-We follow the methodology of \citet{ni2024bridging} for estimating the matrix rank. We plot the ranks in \cref{fig:rank-comparison-z1}. The latent state dimensions are 256, 128, 256, and 128 for Acrobot Swingup, Hopper Stand, Humanoid Run and Cheetah Run, respectively, and the plots show that the matrix rank stays close to the latent state dimension when our FSQ normalization scheme is applied. Without normalization, a dimensional collapse occurs, which can have significant harmful effects as the representational power of the latent state diminishes \cite{jingUnderstandingDimensionalCollapse2021}. Note that in contrast to \citet{ni2024bridging}, we observe that using a detached momentum encoder as the target encoder is insufficient to prevent a rank collapse in practice. We hypothesize that this is due to trivial representations being enough to minimize the prediction error, when a reward term is not present in the loss \cite{tang2023understanding}. 
+We follow the methodology of \citet{ni2024bridging} for estimating the matrix rank. We plot the ranks in \cref{fig:rank-comparison-z1}. The latent state dimensions are 256, 256, 256, and 128 for Acrobot Swingup, Fish Swim, Humanoid Run, and Cheetah Run, respectively, and the plots show that the matrix rank stays close to the latent state dimension when our FSQ normalization scheme is applied. Without normalization, a dimensional collapse occurs, which can have significant harmful effects as the representational power of the latent state diminishes \cite{jingUnderstandingDimensionalCollapse2021}. Note that in contrast to \citet{ni2024bridging}, we observe that using a detached momentum encoder as the target encoder is insufficient to prevent a rank collapse in practice. We hypothesize that this is due to trivial representations being enough to minimize the prediction error when a reward term is not present in the loss \cite{tang2023understanding}. 
 
 \begin{figure*}[ht]
 	\vskip 0.2in
 	\begin{center}
 		\centerline{\includegraphics[width=0.8\textwidth]{./figs/task-agnostic-ablation.pdf}}
-		\caption{\textbf{\our's task-agnostic representation helps for multi-task RL}. We evaluate whether pre-training \our on the walk tasks in the DeepMind Control Suite help for learning the run task on the same environment. The pre-training proves to be beneficial on all evaluated environments. If the representation is task-specific (the reward prediction term is included), the pre-training can be clearly detrimental. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
+		\caption{\textbf{\our's task-agnostic representation helps for multi-task RL}. We evaluate whether pre-training \our on the walk tasks in the DeepMind Control Suite help for learning the run task on the same environment. The pre-training proves to be beneficial on all evaluated environments. If the representation is task-specific, \ie the reward prediction term is included, the pre-training can be clearly detrimental. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
 		\label{fig:multi-task-pretraining}
 	\end{center}
 	\vskip -0.2in
@@ -1004,7 +1002,7 @@ We follow the methodology of \citet{ni2024bridging} for estimating the matrix ra
 \end{figure*}
 
 \textbf{Reward predict is not necessary for representation learning}
-Unlike prior methods such as TCLR \cite{zhaoSimplifiedTemporalConsistency2023}, TD-MPC \cite{hansenTemporalDifferenceLearning2022}, and Dreamer-V2 \cite{hafnerMasteringAtariDiscrete2022}, our representation learning loss (\cref{eq:rep-loss}) does not include a term for learning to predict the reward or the value. Instead, we rely solely on the temporal consistency loss. To analyze the impact of not including the reward prediction term, we perform an ablation study, where we compare our method to three variants of our method:
+Unlike prior methods such as TCLR \cite{zhaoSimplifiedTemporalConsistency2023}, TD-MPC \cite{hansenTemporalDifferenceLearning2022}, and Dreamer-V2 \cite{hafnerMasteringAtariDiscrete2022}, our representation learning loss (\cref{eq:rep-loss}) does not include a term for learning to predict the reward or the value. Instead, we rely solely on the self-predictive temporal consistency loss. To analyze the impact of not including the reward prediction term, we perform an ablation study, where we compare our method to three variants of our method:
 \begin{itemize}
 	\item \ourrew, where we add a reward prediction head into our model architecture by re-defining the dynamics as $\hat{z}_{t+1}, \hat{r}_t = d_{\phi} (z_{t}, a_{t})$ (see \cref{eq:transition}), and include a reward prediction term (discounted MSE Loss) in the representation loss:
 	\begin{align*}
@@ -1020,14 +1018,14 @@ Unlike prior methods such as TCLR \cite{zhaoSimplifiedTemporalConsistency2023}, 
 	\item TCRL-ours, where in addition to \ourcosrew, we remove the FSQ normalization scheme to make the method equal to TCRL with some minor improvements to the method, such as using nstep-TD3 \cite{fujimotoAddressingFunctionApproximation2018} as the base algorithm instead of DDPG with Double Q and nstep returns, using the neural network architecture from \citet{hansen2023td}, and performing policy smoothing \cite{fujimotoAddressingFunctionApproximation2018}.
 \end{itemize}
 The results for this ablation study are shown in \cref{fig:reward-ablation}. 
-The plots show that our method, \our, without a reward prediction term in the loss, has equal or superior performance to the comparison methods with the exception of Fish Swim, where the unnormalized TCRL-ours outperforms all the methods with normalization. Even then, \our performs equally to the normalized variants of our method with the reward prediction. Our results imply that learning to predict the reward is not necessary for learning a suitable latent representation. The upside of not including the reward prediction head is that it makes the representation task-agnostic, which we believe to be   important for downstream applications such as learning in an incremental multi-task setting.
+The plots show that our method, \our, without a reward prediction term in the loss, has equal or superior performance to the comparison methods except in Fish Swim, where the unnormalized TCRL-ours outperforms all the methods with normalization due to being able to maintain the latent matrix rank in this specific environment (see \cref{fig:rank-comparison-z1}). Even then, \our performs equally to the normalized variants of our method with the reward prediction. Our results imply that learning to predict the reward is not necessary for learning a suitable latent representation. The upside of not including the reward prediction head is that it makes the representation task-agnostic, which we believe to be important for downstream applications such as learning in an incremental multi-task setting.
 
 \textbf{\our's task-agnostic representation is helpful for multi-task RL}
-In contrast to \eg TCRL \cite{zhaoSimplifiedTemporalConsistency2023} and TD-MPC \cite{hansenTemporalDifferenceLearning2022}, \our learns a representation that is task-agnostic, that is, there are no task-specific components such as reward or value prediction in the representation loss (\cref{eq:rep-loss}). The potential upside of \our's task-agnostic representation is it can be used to speed-up learning in the incremental multi-task setting. That is, we can leverage the representation learned from solving one task to aid learning another tasks in the same domain. For instance, we can pre-train a representation in Walker Walk, and use it to speed up the training process in Walker Run. The only requirement is that the action and observation spaces must match. In addition, we assume that the transition dynamics are unchanged, but the reward may change.
+In contrast to \eg TCRL \cite{zhaoSimplifiedTemporalConsistency2023} and TD-MPC \cite{hansenTemporalDifferenceLearning2022}, \our learns a representation that is task-agnostic, that is, there are no task-specific components such as reward or value prediction in the representation loss (\cref{eq:rep-loss}). The potential upside of \our's task-agnostic representation is it can be used to speed up learning in the incremental multi-task setting. That is, we can leverage the representation learned from solving one task to aid in learning other tasks in the same domain. For instance, we can pre-train a representation in Walker Walk and use it to speed up the training process in Walker Run. The only requirement is that the action and observation spaces must match. In addition, we assume that the transition dynamics are unchanged, but the reward may change.
 
-We evaluate whether pre-training representations is beneficial on three environments. We start by pre-training \our on Walker Walk, Quadruped Walk and Humanoid Walk. In addition, we replicate the pre-training on Walker Walk and Quadruped Walk by adding a reward prediction term to the representation loss. Then, we keep the encoder and the dynamics function from the pre-training, and perform training on the target tasks, which are Walker Run, Quadruped Run, and Humanoid-Run. We compare the pre-trained agents to training \our on these tasks from scratch. The results for this experiment can be found in \cref{fig:multi-task-pretraining}.
+We evaluate whether pre-trained representations are beneficial in three environments. We start by pre-training \our on Walker Walk, Quadruped Walk, and Humanoid Walk. In addition, we replicate the pre-training on Walker Walk and Quadruped Walk by adding a reward prediction term to the representation loss. Then, we retain the encoder and dynamics function from the pre-training and train \our on the target tasks Walker Run, Quadruped Run, and Humanoid Run. We compare the pre-trained agents to training \our on these tasks from scratch. The results for this experiment are shown in \cref{fig:multi-task-pretraining}.
 
-The plots in \cref{fig:multi-task-pretraining} show that when the encoder and the dynamics function have been pre-trained, the agent learns quicker than when it is trained from scratch. This effect is particularly visible in Quadruped Run and Humanoid Run. In contrast, when the reward term has been included in the pre-training objective, making the representation task-specific, the pre-training proves to be harmful on Quadruped Run. These results indicate that \our's task-agnostic representation is beneficial in the continual and lifelong learning settings.
+The plots in \cref{fig:multi-task-pretraining} show that when the encoder and the dynamics function have been pre-trained, the agent learns quicker than when it is trained from scratch. This effect is particularly visible in Quadruped Run and Humanoid Run. In contrast, when the reward term has been included in the pre-training objective, making the representation task-specific, the pre-training proves to be harmful on Quadruped Run. These results indicate that \our's task-agnostic representation is beneficial in continual and lifelong learning settings.
 % However, given the breadth of
 
 % we show that \our can benefit from pre-training the representation in a different environment with the same dynamics. In contrast, if the representation learning objective used 
@@ -1060,8 +1058,8 @@ The plots in \cref{fig:multi-task-pretraining} show that when the encoder and th
 % \end{itemize}
 
 \textbf{Reconstruction loss has a detrimental impact}
-Learning to minimize the observation reconstruction error has been widely applied in model-based reinforcement learning \cite{sutton2018reinforcement, haRecurrentWorldModels2018, hafnerLearning2019}, and an observation decoder has been a component of the most successful RL algorithms to date \cite{hafner2023mastering}. However, recent work \citep{zhaoSimplifiedTemporalConsistency2023,hansenTemporalDifferenceLearning2022}
-has shown that incorporating a reconstruction term into the representation loss can have a negative impact on performance. They hypothesize that learning to reconstruct the observations is inefficient as they can have irrelevant details and visuals like shading that are uncontrollable by the agent and do not affect the tasks.
+Learning to minimize the observation reconstruction error has been widely applied in model-based reinforcement learning \cite{sutton2018reinforcement, haRecurrentWorldModels2018, hafnerLearning2019}, and an observation decoder has been a component of many of the most successful RL algorithms to date \cite{hafner2023mastering}. However, recent work \citep{zhaoSimplifiedTemporalConsistency2023,hansenTemporalDifferenceLearning2022}
+has shown that incorporating a reconstruction term into the representation loss can have a negative impact on performance, as learning to reconstruct the observations is inefficient due to the observations containing irrelevant details and visuals like shading that are uncontrollable by the agent and do not affect the tasks.
 
 To provide a thorough analysis of \our, we include results where we add a reconstruction term to our representation loss \cref{eq:rep-loss}:
 \begin{align*}
@@ -1104,9 +1102,12 @@ and {\em (iii)} learns a task-agnostic representation.
 To the best of our knowledge, we are the first to present a method that learns a task-agnostic representation
 using only latent-state consistency. As such, we hope our method for learning task-agnostic representations paves the
 way for more research into multi-task and lifelong learning.
-Given that our method obtains an implicit codebook an obvious future direction is exploring if we can leverage the
-discretized latent-space. So far, we have only applied our representation learning loss to state-based tasks. Extending the method to handle even higher-dimensional visual tasks is an interesting direction.
+% Given that our method obtains an implicit codebook an obvious future direction is exploring if we can leverage the
+% discretized latent-space. So far, we have only applied our representation learning loss to state-based tasks. Extending the method to handle even higher-dimensional visual tasks is an interesting direction.
 % Furthermore, we have neither analyzed the scaling behavior of our world models nor how well \our performs in a multi-task setting. Utilizing the knowledge learned during with Internet-scale pre-training with large robotic datasets could make our method even more sample efficient. Exploring whether explicitly quantifying the model uncertainty by \eg\ using larger ensembles would help to adapt our method to a real-world robotics setting is also a promising direction for future work.
+Given that our method obtains an implicit codebook, an obvious future direction is exploring whether we can leverage the
+discretized latent-space. So far, we have only applied our representation loss to state-based tasks. Extending the method to handle even higher-dimensional visual tasks is an attractive direction.
+% Furthermore, we have neither analyzed the scaling behavior of our world models nor how well \our performs in a multi-task setting. Utilizing the knowledge learned during with Internet-scale pre-training with large robotic datasets could make our method even more sample-efficient. Exploring whether explicitly quantifying the model uncertainty by \eg using larger ensembles would help to adapt our algorithm to a real-world robotics setting is also a promising direction for future work.
 
 
 % Arno recommends to have this here as a last thing (leaves a positive feeling)
@@ -1115,7 +1116,7 @@ A reference implementation of the methods will be made available on GitHub upon 
 
 
 \section*{Broader Impact}
-This paper presents work whose goal is to advance the field of continuous RL that is applicable to, for instance, robotics. Therefore, it is possible that our methods could be employed in unforeseen harmful ways, such as autonomous drones for military or law enforcement use. There are even other potential societal consequences of our work, none which we feel must be specifically highlighted here.
+This paper presents work whose goal is to advance the field of continuous RL that is applicable to, for instance, robotics. Therefore, it is possible that our methods could be employed in unforeseen harmful ways, such as autonomous drones for military or law enforcement use. There are even other potential societal consequences of our work, none of which we feel must be specifically highlighted here.
 
 % In the unusual situation where you want a paper to appear in the
 % references without citing it in the main text, use \nocite
@@ -1134,7 +1135,7 @@ This paper presents work whose goal is to advance the field of continuous RL tha
 \onecolumn
 
 \section{Hyperparameters, Implementation, and Training Infrastructure}
-\cref{tab:hyperparameters} lists all of the hyperparameters for training \our. For further details please check the code which is available in the submitted supplementary material and will be made public upon acceptance. We implemented our codebase with PyTorch and used the Adam optimizer for training the models. We used five seeds for all figures. All of our models can be trained on a single GPU. We used Nvidia A100s and AMD Instinct MI250X GPUs to run our experiments.
+\cref{tab:hyperparameters} lists all of the hyperparameters for training \our. For further details, please check the code, which is available in the submitted supplementary material and will be made public upon acceptance. We implemented our codebase with PyTorch and used the Adam optimizer for training the models. We used five seeds for all figures. All of our experiments have been run on a single GPU. We used Nvidia A100s and AMD Instinct MI250X GPUs to run our experiments.
 
 \begin{table}[h]
 \caption{Hyperparameters for \our.}
