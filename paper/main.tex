@@ -733,25 +733,6 @@ $o_{t+1} = P(\cdot \mid o_{t}, a_{t})$.
 The discount factor is denoted $\gamma \in [0, 1]$.
 
 
-\begin{table}[t]
-\caption{FSQ levels $\mathcal{L}$ to approximate different codebook sizes $|\mathcal{C}|$}
-\label{sample-table}
-\vskip 0.15in
-\begin{center}
-\begin{small}
-\begin{sc}
-\begin{tabular}{lccc}
-\toprule
-Target size $|\mathcal{C}|$ & $2^{8}$ & $2^{10}$ & $2^{12}$ \\
-\midrule
-Proposed $\mathcal{L}$ & $[8,6,5]$ & $[8,5,5,5]$ & $[7,5,5,5,5]$ \\
-% \bottomrule
-\end{tabular}
-\end{sc}
-\end{small}
-\end{center}
-\vskip -0.1in
-\end{table}
 
 \textbf{Method overview}
 \our has four main components which we wish to learn:
@@ -759,7 +740,7 @@ Proposed $\mathcal{L}$ & $[8,6,5]$ & $[8,5,5,5]$ & $[7,5,5,5,5]$ \\
 &\text{Encoder: } & z_{t} &= e_{\theta} (s_{t}) \label{eq:encoder} \\
 &\text{Dynamics: } & \hat{z}_{t+1} &= d_{\phi} (z_{t}, a_{t}) \label{eq:transition} \\
 &\text{Value: } & q_{t} &= Q_{\psi} (z_{t}, a_{t}) \label{eq:value} \\
-&\text{Policy: } & a_{t} &\sim \pi_{\eta} (z_{t}) . \label{eq:policy}.
+&\text{Policy: } & a_{t} &\sim \pi_{\eta} (z_{t}) . \label{eq:policy}
 \end{align}
 The encoder $e_{\theta}$  and latent-space dynamics model $d_{\phi}$ are responsible for representation learning.
 The encoder $e_{\theta}$ maps observations $o_{t}$ to latent states $z_{t}$ and is responsible for learning a representation
@@ -800,25 +781,82 @@ Our representation learning is based solely on the latent-state consistency loss
 &= \sum_{h=0}^{H-1} \gamma^{h} \| d_{\phi}(e_{\theta}(s_{t}), a_{t}) - e_{\bar{\theta}}(s_{t+1}) \|_{2}^{2},
 \end{align}
 %
-which minimizes the distance between the next state predicted by the transition model $d_{\phi}(e_{\phi}(z_{t}), a_{t})$
-and the next state predicted by the momentum encoder $e_{\bar{\phi}}(z_{t+1})$.
+which minimizes the distance between the next state predicted by the transition model $\hat{z}_{t+1} = d_{\phi}(e_{\phi}(z_{t}), a_{t})$
+and the next state predicted by the momentum encoder $\bar{z}_{t+1} = e_{\bar{\phi}}(z_{t+1})$.
 The prediction $d_{\phi}(e_{\phi}(z_{t}), a_{t})$ uses the online encoder which is being trained jointly with the transition model.
 The target $e_{\bar{\phi}}(z_{t+1})$ is calculated with the momentum encoder which uses an exponential moving average (EMA)
 of the encoder's weights $\bar{\theta} \leftarrow \tau \bar{\theta} + (1-\tau)\theta$.
+% As such, gradient to not flow through the target network
 The target network update rate is denoted $\tau$.
 
-Unlike previous works, we normalize the latent vector
+\begin{table}[t]
+\caption{FSQ levels $\mathcal{L}$ to approximate different codebook sizes $|\mathcal{C}|$}
+\label{tab:fsq-levels}
+\vskip 0.15in
+\begin{center}
+\begin{small}
+\begin{sc}
+\begin{tabular}{lccc}
+\toprule
+Target size $|\mathcal{C}|$ & $2^{6}$ & $2^{8}$ & $2^{10}$ \\
+\midrule
+Proposed $\mathcal{L}$ & $[8,8]$ & $[8,6,5]$ & $[8,5,5,5]$ \\
+% Target size $|\mathcal{C}|$ & $2^{8}$ & $2^{10}$ & $2^{12}$ \\
+% \midrule
+% Proposed $\mathcal{L}$ & $[8,6,5]$ & $[8,5,5,5]$ & $[7,5,5,5,5]$ \\
+% \bottomrule
+\end{tabular}
+\end{sc}
+\end{small}
+\end{center}
+\vskip -0.1in
+\end{table}
 
-\textbf{Finite Scalar Quantization}
-We follow Finite Scalar Quantization (FSQ, \cite{mentzerFiniteScalarQuantization2023})
-and bound each dimension of our latent space.
-Given the output of our MLP encoder $z \in \R^{d}$,
+\textbf{Normalization with implicit quantization}
+% However, this can lead to exploding gradients and
+Motivated by preventing representation collapse we seek a representation with high matrix rank.
+To this end, we bound our latent space following the approach from
+Finite Scalar Quantization \citep[FSQ,][]{mentzerFiniteScalarQuantization2023}.
+Note that the latent state $z_{t}$ is typically a vector of unbounded real numbers, \ie $z_{t} \in \R^{d}$.
+% each (scalar) entry in the representation $z_{t}$ is independently quantized to the nearest integer by rounding
+Their important observation is that carefully bounding each channel gives rise to an implicit codebook of a chosen size.
+Let's consider a single element of the latent state $z$ and give it $c$ channels so it's of shape $[c]$.
+% Here $d$ is the output dimension of the NN.
+Mapping each entry $z_{i}$ to $L$ values (\eg, via $z_{i} \rightarrow [L/2] \text{tanh}(z_{i})$ and rounding to integers),
+obtains a quantized $\tilde{z} \in \mathcal{C}$, where $\tilde{z}$ takes one of $L^{c}$ unique possible vectors.
+This gives rise to an implicit codebook $\mathcal{C}$ given by the product of the per-channel codebook sets.
+% The size of the codebook $|\mathcal{C}| = L^{c}$ is given by the product of the
+% For example, specifying $c=3$ channels
+This idea generalizes to the case where the $i^{\text{th}}$ channel is mapped to $L_{i}$ values.
+Giving a codebook of size $|\mathcal{C}| = L_{i}^{d_{i}}$.
+% Since quantization is performed by rounding to integers
 
-where each entry in  $f : z \rightarrow \left[ L/2 \right] \mathrm{tanh}(z))$
+FSQ has the following hyperparameters. We must specify the number of channels $c$ and the number of levels per channel
+$\mathcal{L} = [L_{1},\ldots,L_{d}]$.
+\cref{tab:fsq-levels} shows the recommended number of channels and number of levels per channel to obatin codebooks of
+different sizes.
+FSQ, relies on a simple, fixed grid partition in a much
+lower-dimensional space.
+In practice, we found codebooks of size $|\mathcal{C}|=2^{6}$ sufficient for most environments in the DeepMind Control suite.
+However, for the dog-walk environment we used a codebook of size $|\mathcal{C}|=2^{12}$.
 
-\textbf{Bounding the latent space}
-Typically the latent state $z_{t} \in \R^{d}$
-However, in our work we bound the domain of the latent space, \ie $z_{t} \in [-L, L]^{d}$.
+% Fig. 1 shows FSQ for d=3, L=3, implying a codebook
+% C = {(−1, −1, −1),(−1, −1, 0),(−1, −1, 1), . . . ,(1, 1, 1)}, where |C| = L
+% d = 27.
+
+
+% However, thi w
+% bounding the range of the quantizer
+% However, in our work we bound the domain of the latent space, \ie $z_{t} \in [-L, L]^{d}$.
+% We follow Finite Scalar Quantization (FSQ, \cite{mentzerFiniteScalarQuantization2023})
+% and bound each dimension of our latent space.
+% Given the output of our MLP encoder $z \in \R^{d}$,
+
+% where each entry in  $f : z \rightarrow \left[ L/2 \right] \mathrm{tanh}(z))$
+
+% Unlike previous works, we normalize the latent vector
+
+% \textbf{Bounding the latent space}
 
 
 % Thereby, we have zˆ ∈ C, where C is the implied codebook, given by the product of these per-channel
@@ -1026,6 +1064,17 @@ The results in \cref{fig:multi-task-pretraining} shows that in no environments d
 
 \section{Conclusion}
 \label{conclusion}
+We have presented \our, a simple technique for learning task-agnostic representations which can be combined with
+any model-free RL algorithm.
+
+\textbf{Future work}
+To the best of our knowledge, we are the first to present a method that learns a task-agnostic representation
+using only latent-state consistency. As such, we hope our method for learning task-agnostic representations paves the
+way for more research in multi-task and lifelong learning.
+Given that our method obtains an implicit codebook an obvious future direction is exploring if we can leverage the
+discretized latent-space.
+
+\textbf{Limitations}
 
 \section*{Broader Impact}
 This paper presents work whose goal is to advance the field of continuous RL that is applicable to, for instance, robotics. Therefore, it is possible that our methods could be employed in unforeseen harmful ways, such as autonomous drones for military or law enforcement use. There are even other potential societal consequences of our work, none which we feel must be specifically highlighted here.
