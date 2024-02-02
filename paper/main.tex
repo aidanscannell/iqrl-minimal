@@ -711,6 +711,9 @@ Importantly, our method {\em (i)} alleviates representation collapse,
 {\em (iii)} is simple to implement, and {\em (iv)} learns a task-agnostic
 representation which could be helpful in downstream tasks.
 
+\section{Related Work}
+\label{sec:related_work}
+
 
 \section{Method}
 \label{sec:method}
@@ -993,7 +996,7 @@ The plots in \cref{fig:multi-task-pretraining} show that when the encoder and th
 % \end{itemize}
 
 \textbf{Reconstruction loss has a detrimental impact}
-Learning to minimize the observation reconstruction error has been widely applied in model-based reinforcement learning \cite{sutton2018reinforcement, ha2018recurrent, hafnerLearning2019}, and an observation decoder has been a component of the most successful RL algorithms to date \cite{hafner2023mastering}. However, recent work \citep{zhaoSimplifiedTemporalConsistency2023,hansenTemporalDifferenceLearning2022}
+Learning to minimize the observation reconstruction error has been widely applied in model-based reinforcement learning \cite{sutton2018reinforcement, haRecurrentWorldModels2018, hafnerLearning2019}, and an observation decoder has been a component of the most successful RL algorithms to date \cite{hafner2023mastering}. However, recent work \citep{zhaoSimplifiedTemporalConsistency2023,hansenTemporalDifferenceLearning2022}
 has shown that incorporating a reconstruction term into the representation loss can have a negative impact on performance. They hypothesize that learning to reconstruct the observations is inefficient as they can have irrelevant details and visuals like shading that are uncontrollable by the agent and do not affect the tasks.
 
 To provide a thorough analysis of \our, we include results where we add a reconstruction term to our representation loss \cref{eq:rep-loss}:
