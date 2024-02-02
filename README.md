@@ -27,11 +27,11 @@ conda-containerize new --mamba --prefix $IQRL_CONTAINER_DIR environment.yml
 conda-containerize update $IQRL_CONTAINER_DIR --post-install post-install-amd.txt
 ```
 
-To run experiments add container to path with
+To run experiments add container to path with:
 ```sh
 export PATH="/scratch/project_462000462/iqrl/container/bin:$PATH"
 ```
-Then you can run experiments with 
+You can then deploy multiple experiments to slurm with:
 ``` sh
 python train.py -m +env=walker-walk ++use_wandb=True ++capture_eval_video=False ++seed=1,2,3,4,5
 ```
