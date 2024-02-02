@@ -35,7 +35,7 @@ main_envs = [
     "walker-walk",
     "humanoid-walk",
     "dog-walk",
-    "dog-run",
+    # "dog-run",
 ]
 
 
@@ -43,14 +43,17 @@ def plot(df, key="episode_reward"):
     envs = np.sort(df.env.unique())
     ncol = 4
     # assert envs.shape[0] % ncol == 0
-    nrow = len(main_envs) // ncol
+    # nrow = len(main_envs) // ncol
+    nrow = 2
     # nrow = envs.shape[0] // ncol
 
     fig, axs = plt.subplots(nrow, ncol, figsize=(4 * ncol, 3.5 * nrow))
+    # df = df[df["env_step"] < 1000000]
 
-    # breakpoint()
+    all_data = []
     # df["env_step"] = df["env_step"] / 1000
     for idx, env in enumerate(main_envs):
+        idx += 1
         data = df[df["env"] == env]
         # breakpoint()
         # data[data["agent"] == "iFSQ-RL"] = data[data["agent"] == "iFSQ-RL"].iloc[::2]
@@ -58,6 +61,16 @@ def plot(df, key="episode_reward"):
         col = idx % ncol
         ax = axs[row, col]
         hue_order = data.agent.unique()
+
+        min_ep_length = 1e10
+        for agent in data.agent:
+            ep_length = np.max(df[df["agent"] == agent]["env_step"])
+            # print(f"ep_length {ep_length} for env {env}")
+            min_ep_length = min(min_ep_length, ep_length)
+            # min_ep_length=np.min(min_ep)
+        # print(f"min_ep_length {min_ep_length} for env {env}")
+        all_data += [df[df["env_step"] < min_ep_length]]
+        # breakpoint()
 
         if idx == 4:
             g = sns.lineplot(
@@ -93,13 +106,34 @@ def plot(df, key="episode_reward"):
         if env == "walker-walk":
             g.set(xlim=(0, 250000))
         if env == "dog-walk":
-            g.set(xlim=(0, 1500000))
+            g.set(xlim=(0, 750000))
         if env == "humanoid-walk":
             g.set(xlim=(0, 3000000))
 
         ax.set_title(" ".join([ele.capitalize() for ele in env.split("-")]))
         ax.set_xlabel("Environment Steps (1e3)")
         ax.set_ylabel("Episode Return")
+
+    df = pd.concat(all_data)
+    df = df[df["env_step"] < 1000000]
+    g = sns.lineplot(
+        # x=int("env_step" / 1000),
+        x="env_step",
+        # x="env_step",
+        # x="episode",
+        y=key,
+        data=df,
+        errorbar=("ci", 95),
+        hue="agent",
+        # hue_order=hue_order,
+        palette=COLORS,
+        legend="auto",
+        ax=axs[0, 0],
+    )
+    axs[0, 0].set_title("Avg. Over 8 DMC Tasks")
+    axs[0, 0].set_xlabel("Environment Steps (1e3)")
+    axs[0, 0].set_ylabel("Episode Return")
+
     plt.tight_layout()
     plt.savefig(f"../../baselines_comparison.pdf")
     # plt.show()

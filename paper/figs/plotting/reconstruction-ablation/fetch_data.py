@@ -69,6 +69,20 @@ ddpg_data = {
             "ucvgujrp",
             "zqv19l3p",
         ],
+        "cartpole-swingup-d=64-rec": [
+            "ibu5qn0t",
+            "bb079aef",
+            "ilhv49du",
+            "e15gra4x",
+            "u1rmgrtb",
+        ],
+        "cartpole-swingup-d=64": [
+            "dul9ksc7",
+            "aygtwe76",
+            "chmq024k",
+            "mwhja16u",
+            "lmkngxtl",
+        ],
         # "hopper-stand": [
         #     ##### Project=True
         #     # # reconstruction
