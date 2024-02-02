@@ -1117,7 +1117,7 @@ way for more research into multi-task and lifelong learning.
 % discretized latent-space. So far, we have only applied our representation learning loss to state-based tasks. Extending the method to handle even higher-dimensional visual tasks is an interesting direction.
 % Furthermore, we have neither analyzed the scaling behavior of our world models nor how well \our performs in a multi-task setting. Utilizing the knowledge learned during with Internet-scale pre-training with large robotic datasets could make our method even more sample efficient. Exploring whether explicitly quantifying the model uncertainty by \eg\ using larger ensembles would help to adapt our method to a real-world robotics setting is also a promising direction for future work.
 Given that our method obtains an implicit codebook, an obvious future direction is exploring whether we can leverage the
-discretized latent-space. So far, we have only applied our representation loss to state-based tasks. Extending the method to handle even higher-dimensional visual tasks is an attractive direction.
+discretized latent space. So far, we have only applied our representation loss to state-based tasks. Extending the method to handle even higher-dimensional visual tasks is an attractive direction.
 % Furthermore, we have neither analyzed the scaling behavior of our world models nor how well \our performs in a multi-task setting. Utilizing the knowledge learned during with Internet-scale pre-training with large robotic datasets could make our method even more sample-efficient. Exploring whether explicitly quantifying the model uncertainty by \eg using larger ensembles would help to adapt our algorithm to a real-world robotics setting is also a promising direction for future work.
 
 
@@ -1146,7 +1146,7 @@ This paper presents work whose goal is to advance the field of continuous RL tha
 \onecolumn
 
 \section{Hyperparameters, Implementation, and Training Infrastructure}
-\cref{tab:hyperparameters} lists all of the hyperparameters for training \our. For further details, please check the code, which is available in the submitted supplementary material and will be made public upon acceptance. We implemented our codebase with PyTorch and used the Adam optimizer for training the models. We used five seeds for all figures. All of our experiments have been run on a single GPU. We used Nvidia A100s and AMD Instinct MI250X GPUs to run our experiments.
+\cref{tab:hyperparameters} lists all of the hyperparameters for training \our and the ablations of our method. For further details of the implementation, model architectures, and training please check the code, which is available in the submitted supplementary material and will be made public upon acceptance to guarantee seamless reproducibility. We implemented our codebase with PyTorch and used the AdamW optimizer for training the models. We used five seeds for all figures and plotted the 95 \% confidence intervals as the shaded area. We used Nvidia A100s and AMD Instinct MI250X GPUs to run our experiments. All our experiments have been run on a single GPU with a single-digit number of CPU workers.
 
 \begin{table}[h]
 \caption{Hyperparameters for \our.}
