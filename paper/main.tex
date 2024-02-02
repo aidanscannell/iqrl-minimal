@@ -337,7 +337,7 @@
 
 
 \begin{abstract}
-  Learning representations for reinforcement learning (RL) has shown much promise for continuous control. We propose an efficient representation learning method using only a self-supervised latent-state consistency loss. Our approach employs an encoder and a transition model to map observations to latent states and predict future states, respectively. We achieve high performance and prevent representation collapse by normalizing and bounding the latent representation such that rank in the representation is empirically preserved. Our method is straightforward, compatible with any model-free RL algorithm, and demonstrates state-of-the-art performance in continuous control benchmarks from DeepMind Control Suite.
+  Learning representations for reinforcement learning (RL) has shown much promise for continuous control. We propose an efficient representation learning method using only a self-supervised latent-state consistency loss. Our approach employs an encoder and a dynamics model to map observations to latent states and predict future states, respectively. We achieve high performance and prevent representation collapse by normalizing and bounding the latent representation such that rank in the representation is empirically preserved. Our method is straightforward, compatible with any model-free RL algorithm, and demonstrates state-of-the-art performance in continuous control benchmarks from DeepMind Control Suite.
 \end{abstract}
 
 % \begin{abstract}
@@ -648,16 +648,16 @@ Recently, TD-MPC \citep{hansenTemporalDifferenceLearning2022} and TCRL \citep{zh
 have obtained state-of-the-art performance on continuous control benchmarks by learning
 representations with self-supervised losses.
 In particular, they leverage the latent-state consistency loss.
-This requires an encoder $e_{\theta}$ which maps observations $o_{t}$ to latent states $z_{t}$ and a transition model $d_{\phi}$ which predicts
+This requires an encoder $e_{\theta}$ which maps observations $o_{t}$ to latent states $z_{t}$ and a dynamics model $d_{\phi}$ which predicts
 the next latent states $z_{t+1}$ given a latent state $z_{t}$ and an action $a_{t}$.
-It then minimizes the distance between the next state predicted by the transition model $d_{\phi}(e_{\phi}(z_{t}), a_{t})$
+It then minimizes the distance between the next state predicted by the dynamics model $d_{\phi}(e_{\phi}(z_{t}), a_{t})$
 and the next state predicted by the target encoder $e_{\bar{\phi}}(z_{t+1})$.
 Self-supervised losses are susceptible to a problem known as representation collapse, where the encoder learns a constant
 representation \cite{jingUnderstandingDimensionalCollapse2021}.
 As such, it is common to combine the latent-state consistency loss with other loss terms, such as
 minimizing the reward prediction error in the latent space
 \citep{zhangLearningInvariantRepresentations2020,zhaoSimplifiedTemporalConsistency2023,hansenTemporalDifferenceLearning2022,geladaDeepMDPLearningContinuous2019,rezaei-shoshtariContinuousMDPHomomorphisms2022}.
-This helps to prevent representation collapse at the cost of learning a task-specific representation.
+This helps to prevent representation collapse at the cost of learning a task-specific representation.\looseness-1
 % Typically it is combined with other loss terms such as reward or value prediction.
 
 % To the best of our knowledge, all prior works that learn representations with objectives that depend on
@@ -679,7 +679,7 @@ This helps to prevent representation collapse at the cost of learning a task-spe
    \label{alg:main_alg}
    \renewcommand{\algorithmiccomment}[1]{\hfill\textcolor{gray}{\(\triangleright\) #1}}
 \begin{algorithmic}
-   \STATE {\bfseries Input:} Encoder $e_{\theta}$, transition $d_{\phi}$, critics $\{Q_{\psi_{1}}, Q_{\psi_{2}} \}$, policy $\pi_{\eta}$, learning rate $\alpha$, target network update rate $\tau$
+   \STATE {\bfseries Input:} Encoder $e_{\theta}$, dynamics $d_{\phi}$, critics $\{Q_{\psi_{1}}, Q_{\psi_{2}} \}$, policy $\pi_{\eta}$, learning rate $\alpha$, target network update rate $\tau$
    \FOR{$i$ {\bfseries to} $N_{\text{episodes}}$}
     \STATE Collect data in environment:
     \STATE $\qquad \mathcal{D} \leftarrow \mathcal{D} \cup \{o_{t}, a_{t}, o_{t+1}, r_{t+1}\}^{T}_{t=0}$
@@ -829,12 +829,12 @@ Our representation learning is based solely on the latent-state consistency loss
 &= \sum_{h=0}^{H-1} \gamma^{h} \| d_{\phi}(\hat{z}_{t}, a_{t}) - e_{\bar{\theta}}(s_{t+1}) \|_{2}^{2},
 \end{align}
 %
-which minimizes the distance between the next state predicted by the transition model $\hat{z}_{t+1} = d_{\phi}(\hat{z}_{t}, a_{t})$
+which minimizes the distance between the next state predicted by the dynamics model $\hat{z}_{t+1} = d_{\phi}(\hat{z}_{t}, a_{t})$
 and the next state predicted by the momentum encoder $\bar{z}_{t+1} = e_{\bar{\phi}}(s_{t+1})$.
 The latent states are obtained with multi-step predictions in the latent space $\hat{z}_{t+1} = d(\hat{z}_{t}, a_{t})$
 with $\hat{z}_{0} = e_{\theta}(s_{0})$.
 The initial mapping to the latent space $\hat{z}_{0} = e_{\theta}(s_{0})$ uses the online encoder which
-is being trained jointly with the transition model $d_{\phi}(\hat{z_{t}}, a_{t})$.
+is being trained jointly with the dynamics model $d_{\phi}(\hat{z_{t}}, a_{t})$.
 The target $e_{\bar{\phi}}(z_{t+1})$ is calculated with the momentum encoder which uses an exponential moving average (EMA)
 of the encoder's weights $\bar{\theta} \leftarrow \tau \bar{\theta} + (1-\tau)\theta$.
 % As such, gradient to not flow through the target network
@@ -1120,10 +1120,11 @@ We have presented \our, a simple technique for learning representations which de
 continuous control tasks.
 Our normalization and bounding of the latent space empirically preserves the representation's matrix rank,
 indicating that it alleviates representation collapse.
-As such, \our learns a task agnostic representation and our experiments demonstrate that it shows
+As such, \our learns a task-agnostic representation and our experiments demonstrate that it shows
 promise for incremental multi-task learning.
 Importantly, our method is {\em (i)} straightforward, {\em (ii)} compatible with any model-free RL algorithm,
 and {\em (iii)} learns a task-agnostic representation.
+% We hope that our representation learning technique is
 % Moreover, it can be combined with any model-free RL algorithm
 % In our experiments we compared against both state-of-the-art model-free RL methods and state-of--the-art model-based RL methods.
 % Our results demonstrate state-of-the-art based on our empirical results, we suggest further
