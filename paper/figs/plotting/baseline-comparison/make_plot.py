@@ -99,6 +99,11 @@ def plot(df, key="episode_reward"):
         ax.set_xlabel("Environment Steps (1e3)")
         ax.set_ylabel("Episode Return")
 
+    # df["episode_reward"] = df.apply(
+    #     lambda row: int(row["episode_reward"] / len(main_envs)), axis=1
+    # )
+
+    # Only plot for first 1M steps
     df = df[df["episode"] < 1000]
     # df = df[df["env"] != "walker-walk"]
     g = sns.lineplot(
