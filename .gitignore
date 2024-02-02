@@ -33,3 +33,5 @@ paper/main.pdf
 .dir-locals.el
 
 *multirun
+
+.ipynb_checkpoints/
