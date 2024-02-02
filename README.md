@@ -29,7 +29,7 @@ conda-containerize update $IQRL_CONTAINER_DIR --post-install post-install-amd.tx
 
 To run experiments add container to path with
 ```sh
-export PATH="/scratch/project_462000462/aidan/iqrl/container/bin:$PATH"
+export PATH="/scratch/project_462000462/iqrl/container/bin:$PATH"
 ```
 Then you can run experiments with 
 ``` sh
