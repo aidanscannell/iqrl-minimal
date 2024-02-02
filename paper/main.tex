@@ -1122,6 +1122,8 @@ Our normalization and bounding of the latent space empirically preserves the rep
 indicating that it alleviates representation collapse.
 As such, \our learns a task-agnostic representation and our experiments demonstrate that it shows
 promise for incremental multi-task learning.
+Our experiments further demonstrate that \our is extremely sample efficient whilst being fast to train,
+which we believe is a strong selling point.
 Importantly, our method is {\em (i)} straightforward, {\em (ii)} compatible with any model-free RL algorithm,
 and {\em (iii)} learns a task-agnostic representation.
 % We hope that our representation learning technique is
@@ -1139,7 +1141,7 @@ way for more research into multi-task and lifelong learning.
 Given that our method obtains an implicit codebook, an obvious future direction is exploring whether we can leverage the
 discretized latent space. So far, we have only applied our representation loss to state-based tasks. Extending the method to handle even higher-dimensional visual tasks is an attractive direction.
 Furthermore, we have neither analyzed the scaling behavior of our world models nor how well \our performs in a multi-task setting.
-Utilizing the knowledge learned during with Internet-scale pre-training with large robotic datasets could make our method even more sample efficient.
+Utilizing the knowledge learned with Internet-scale pre-training with large robotic datasets could make our method even more sample efficient.
 % Exploring whether explicitly quantifying the model uncertainty by \eg using larger ensembles would help to adapt our algorithm to a real-world robotics setting is also a promising direction for future work.
 
 
@@ -1213,7 +1215,7 @@ Encoder MLP dims & $[256]$ & \\
 Encoder momentum coefficient ($\tau$) & 0.005 & \\
 FSQ levels & $[8, 5, 5, 5]$ & \\
 Horizon $(H)$ & $5$ & Horizon for representation learning \\
-Latent dimension ($d$) & $1024$ & \\
+Latent dimension ($d$) & $128$ & \\
  \bottomrule
 \end{tabular}
 \end{sc}
