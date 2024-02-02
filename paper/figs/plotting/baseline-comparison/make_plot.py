@@ -72,7 +72,7 @@ def plot(df, key="episode_reward"):
         all_data += [df[df["env_step"] < min_ep_length]]
         # breakpoint()
 
-        if idx == 4:
+        if idx == 2:
             g = sns.lineplot(
                 # x=int("env_step" / 1000),
                 x="env_step",
@@ -127,7 +127,7 @@ def plot(df, key="episode_reward"):
         hue="agent",
         # hue_order=hue_order,
         palette=COLORS,
-        legend="auto",
+        legend=False,
         ax=axs[0, 0],
     )
     axs[0, 0].set_title("Avg. Over 7 DMC Tasks")

@@ -1011,7 +1011,7 @@ We follow the methodology of \citet{ni2024bridging} for estimating the matrix ra
 	\vskip -0.2in
 \end{figure*}
 
-\textbf{Reward predict is not necessary for representation learning}
+\textbf{Reward prediction is not necessary for representation learning}
 Unlike prior methods such as TCLR \cite{zhaoSimplifiedTemporalConsistency2023}, TD-MPC \cite{hansenTemporalDifferenceLearning2022}, and Dreamer-V2 \cite{hafnerMasteringAtariDiscrete2022}, our representation learning loss (\cref{eq:rep-loss}) does not include a term for learning to predict the reward or the value. Instead, we rely solely on the self-predictive temporal consistency loss. To analyze the impact of not including the reward prediction term, we perform an ablation study, where we compare our method to three variants of our method:
 \begin{itemize}
 	\item \ourrew, where we add a reward prediction head into our model architecture by re-defining the dynamics as $\hat{z}_{t+1}, \hat{r}_t = d_{\phi} (z_{t}, a_{t})$ (see \cref{eq:transition}), and include a reward prediction term (discounted MSE Loss) in the representation loss:
