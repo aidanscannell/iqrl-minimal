@@ -597,7 +597,7 @@
   \node[circle,fill=white,inner sep=0] at ($(e2)!.5!(zh2)$) {\cube};
 
   % Minimization
-  \node[blue!50,below of=z1,align=center,font=\scriptsize,xshift=4em] (min) {minimize: $\|\bar\vz_{\bullet}-\hat\vz_{\bullet}\|^{2}_{2}$};
+  \node[blue!50,below of=z1,align=center,font=\scriptsize,xshift=4em] (min) {minimize: $\|\bar\vz-\hat\vz\|^{2}_{2}$};
   \draw[blue!50,line width=1pt,shorten <=1mm,shorten >=1mm,->] (min) to[bend right=30] ($(z1)!.5!(zh1)$);
   \draw[blue!50,line width=1pt,shorten <=1mm,shorten >=1mm,->] (min) to[bend left=30] ($(z2)!.5!(zh2)$);
 
@@ -715,7 +715,7 @@ representation which could be helpful in downstream tasks.
 \section{Related Work}
 \label{sec:related_work}
 
-Model-based RL (MBRL) can significantly improve on the sample efficiency of the model-free methods by reasoning about the world and maximizing the fraction of the information stream utilized for learning by utilizing the observations instead of simply trying to learn a policy or a value function to maximize the return \cite{haRecurrentWorldModels2018}. The world model can be used for planning \cite{allen1983planning, basye1992decision}. A prominent idea has been to to optimize the evidence lower bound of observation and reward sequences to learn world models that operate on the latent space of a learned Variational Autoencoder (VAE) \cite{kingmaAutoEncoding2014, igl2018deep}. These models rely on maximizing the conditional observation likelihood $p(o_t | s_t$), which is the reconstruction objective. The latent space of the model can be used for both planning with model-predictive control \cite{rubinstein1997optimization, hafnerLearning2019} or policy learning in the imagination of the world model \cite{hafner2019dream}. \citet{finn2017deep} and \citet{ebert2018visual} show that it is possible to plan with models that have been taught to predict videos directly without a VAE-based latent space. Incorporating the model uncertainty into planning through ensembling or sampling can also have significant positive impact on the performance of model-based RL agents \cite{deisenrothPILCO2011, chua2018deep, janner2019trust, yu2020mopo, clavera2020model}.
+Model-based RL (MBRL) can significantly improve on the sample efficiency of the model-free methods by reasoning about the world and maximizing the fraction of the information stream utilized for learning by utilizing the observations instead of simply trying to learn a policy or a value function to maximize the return \cite{haRecurrentWorldModels2018}. The world model can be used for planning \cite{allen1983planning, basye1992decision}. A prominent idea has been to to optimize the evidence lower bound of observation and reward sequences to learn world models that operate on the latent space of a learned Variational Autoencoder  \citep[VAE,][]{kingmaAutoEncoding2014, igl2018deep}. These models rely on maximizing the conditional observation likelihood $p(o_t | s_t$), which is the reconstruction objective. The latent space of the model can be used for both planning with model-predictive control \cite{rubinstein1997optimization, hafnerLearning2019} or policy learning in the imagination of the world model \cite{hafner2019dream}. \citet{finn2017deep} and \citet{ebert2018visual} show that it is possible to plan with models that have been taught to predict videos directly without a VAE-based latent space. Incorporating the model uncertainty into planning through ensembling or sampling can also have significant positive impact on the performance of model-based RL agents \cite{deisenrothPILCO2011, chua2018deep, janner2019trust, yu2020mopo, clavera2020model}.
 
 Maximizing the ELBO or video reconstruction error to learn a world model can mislead the model to focus on learning task-irrelevant information, which distorts the optimization landscape \cite{zhang2018natural,zintgraf2021varibad}. When the task is complex, planning with reconstruction-based world models is unreliable \cite{lutter2021learning} and struggles to outperform model-free methods \cite{kostrikov2020image, yarats2021mastering}. The problems are aggravated when the environment is partially observable \cite{morad2023popgym}. Planning can be done through models that learn to predicting rewards and values for multi-step rollouts \cite {tamar2016value, silver2017predictron, oh2017value, schrittwieser2020mastering}. However, these methods do not utilize the observations for model learning at all, which can make them sample in-efficient.
 
@@ -1086,12 +1086,18 @@ The results in \cref{fig:multi-task-pretraining} shows that in no environments d
 We have presented \our, a simple technique for learning task-agnostic representations which can be combined with
 any model-free RL algorithm.
 
-\textbf{Limitations and Future work}
+\textbf{Limitations and future work}
 To the best of our knowledge, we are the first to present a method that learns a task-agnostic representation
 using only latent-state consistency. As such, we hope our method for learning task-agnostic representations paves the
 way for more research in multi-task and lifelong learning.
 Given that our method obtains an implicit codebook an obvious future direction is exploring if we can leverage the
 discretized latent-space. So far, we have only applied our representation learning loss to state-based tasks. Extending the method to handle even higher-dimensional visual tasks is an interesting direction. Furthermore, we have neither analyzed the scaling behavior of our world models nor how well \our performs in a multi-task setting. Utilizing the knowledge learned during with Internet-scale pre-training with large robotic datasets could make our method even more sample efficient. Exploring whether explicitly quantifying the model uncertainty by \eg\ using larger ensembles would help to adapt our method to a real-world robotics setting is also a promising direction for future work.
+
+
+% Arno recommends to have this here as a last thing (leaves a positive feeling)
+A reference implementation of the methods will be made available on GitHub upon acceptance of the paper (see supplementary material for now).
+
+
 
 \section*{Broader Impact}
 This paper presents work whose goal is to advance the field of continuous RL that is applicable to, for instance, robotics. Therefore, it is possible that our methods could be employed in unforeseen harmful ways, such as autonomous drones for military or law enforcement use. There are even other potential societal consequences of our work, none which we feel must be specifically highlighted here.
