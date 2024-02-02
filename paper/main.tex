@@ -288,6 +288,8 @@
 
 \begin{icmlauthorlist}
 \icmlauthor{Aidan Scannell}{aalto,fcai}
+\icmlauthor{Kalle Kujanpää}{aalto,fcai}
+\icmlauthor{Yi Zhao}{aalto}
 \icmlauthor{Arno Solin}{aalto}
 \icmlauthor{Joni Pajarinen}{aalto}
 % \icmlauthor{Firstname1 Lastname1}{equal,yyy}
@@ -615,7 +617,7 @@
 \section{Introduction}
 \label{intro}
 
-Reinforcement learning  \citep[RL, \eg][]{sutton2018reinforcement} has shown much promise in games, animation and robotics.
+Reinforcement learning  \citep[RL, \eg][]{sutton2018reinforcement} has shown much promise in games, animation, and robotics.
 However, applying RL in real-world environments is challenging. The problem is two-fold,
 {\em (i)}~handling high dimensional/complex observation spaces is non-trivial, and {\em (ii)}~deep RL typically requires millions of data points which can be unpractical (or costly), \ie it is very sample inefficient.\looseness-1
 
@@ -623,12 +625,12 @@ However, applying RL in real-world environments is challenging. The problem is t
 % Whilst these latent states are often lower dimensional this is not always
 Many approaches have been proposed to improve sample efficiency in deep RL.
 As \citet{laskinCURLContrastiveUnsupervised2020} highlighted, these can generally be divided into two streams of research:
-{\em (i)} auxillary tasks on the agent's observations and {\em (ii)}~world models that predict the future
+{\em (i)} auxiliary tasks on the agent's observations and {\em (ii)}~world models that predict the future
 \citep{haRecurrentWorldModels2018,hafnerLearning2019,hansenTemporalDifferenceLearning2022}.
-In this work, we are interested in the first class of methods, which use auxillary tasks to improve sample efficiency.
-In particular, we focus on representation learning methods which compress observations into latent states.
+In this work, we are interested in the first class of methods, which use auxiliary tasks to improve sample efficiency.
+In particular, we focus on representation learning methods that compress observations into latent states.
 Nevertheless, our representation learning borrows ideas from world models as it uses multi-step predictions in a
-latent-space dynamics model to learn temporally consist representations \citep{zhaoSimplifiedTemporalConsistency2023}.
+latent-space dynamics model to learn temporally consistent representations \citep{zhaoSimplifiedTemporalConsistency2023}.
 % In particular, methods for compressing observations into latent states.%, aka representation learning.
 
 Learning representations for RL has been investigated for decades
