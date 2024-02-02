@@ -130,7 +130,7 @@ def plot(df, key="episode_reward"):
         legend="auto",
         ax=axs[0, 0],
     )
-    axs[0, 0].set_title("Avg. Over 8 DMC Tasks")
+    axs[0, 0].set_title("Avg. Over 7 DMC Tasks")
     axs[0, 0].set_xlabel("Environment Steps (1e3)")
     axs[0, 0].set_ylabel("Episode Return")
 
