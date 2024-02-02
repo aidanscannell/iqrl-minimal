@@ -28,6 +28,7 @@ COLORS = {
 main_envs = [
     "acrobot-swingup",
     "cheetah-run",
+    "cartpole-swingup",
     # "walker-walk",
     "walker-run",
     "hopper-stand",
@@ -70,7 +71,7 @@ def plot(df, key="episode_reward"):
 
     df = df.rename(columns=rename)
 
-    axs[-1, -1].axis("off")
+    # axs[-1, -1].axis("off")
 
     for idx, env in enumerate(main_envs):
         data = df[df["env"] == env]
@@ -83,8 +84,8 @@ def plot(df, key="episode_reward"):
         # hue_order = data.utd_ratio.unique()
         # breakpoint()
 
-        if idx == 7:
-            sns.lineplot(
+        if idx == 3:
+            g = sns.lineplot(
                 x="env_step",
                 # x="episode",
                 y=key,
@@ -100,7 +101,7 @@ def plot(df, key="episode_reward"):
             ax.legend().set_title(None)
         else:
             # breakpoint()
-            sns.lineplot(
+            g = sns.lineplot(
                 x="env_step",
                 # x="episode",
                 y=key,
@@ -113,6 +114,8 @@ def plot(df, key="episode_reward"):
                 legend=False,
                 ax=ax,
             )
+        if env == "cartpole-swingup":
+            g.set(xlim=(20000, 100000))
 
         ax.set_title(" ".join([ele.capitalize() for ele in env.split("-")]))
         ax.set_xlabel("Environment Steps (1e3)")

@@ -51,15 +51,15 @@ ddpg_data = {
         #     "b5ffm8rt",
         # ],  # project=True
         # "dog-walk": ["sjqd8i9u"],
-        "dog-run": [
-            "ohxmhffe",
-            "aikn5eix",
-            "kprj5q9u",
-            "r232jms2",
-            # "aox6spn2", # crashed
-            "5ubkon5e",
-            "65wmol3k",
-        ],  # project=False
+        # "dog-run": [
+        #     "ohxmhffe",
+        #     "aikn5eix",
+        #     "kprj5q9u",
+        #     "r232jms2",
+        #     # "aox6spn2", # crashed
+        #     "5ubkon5e",
+        #     "65wmol3k",
+        # ],  # project=False
         # "dog-run": [
         #     "7hty9mrz",
         #     "0no65695",
