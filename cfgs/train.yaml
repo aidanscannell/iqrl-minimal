@@ -1,7 +1,6 @@
 defaults:
   # - train_config
-  - agent: ddpg_ae # mppi or ddpg
-  # - env: cheetah-run
+  - agent: iqrl
   # - override hydra/launcher: slurm # Use slurm (on cluster) for multirun
   - override hydra/launcher: lumi_12hrs # Use slurm (on cluster) for multirun
   - override hydra/job_logging: colorlog

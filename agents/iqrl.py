@@ -327,7 +327,7 @@ class MLPReward(MLPResettable):
         return r
 
 
-class VQ_TC_TD3(Agent):
+class iQRL(Agent):
     def __init__(
         self,
         # TD3 config
