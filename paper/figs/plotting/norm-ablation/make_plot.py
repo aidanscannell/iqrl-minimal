@@ -32,8 +32,8 @@ main_envs = [
     "acrobot-swingup",
     "cheetah-run",
     # "walker-walk",
-    "walker-run",
     "hopper-stand",
+    "walker-run",
     "fish-swim",
     "quadruped-run",
     "humanoid-walk",
@@ -84,7 +84,7 @@ def plot(df, key="episode_reward"):
         hue_order = data.name.unique()
         # hue_order = data.utd_ratio.unique()
 
-        if idx == 0:
+        if idx == 3:
             sns.lineplot(
                 # x="env_step",
                 x="episode",

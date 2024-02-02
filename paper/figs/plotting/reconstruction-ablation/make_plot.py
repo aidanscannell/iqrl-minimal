@@ -116,6 +116,8 @@ def plot(df, key="episode_reward"):
             )
         if env == "cartpole-swingup":
             g.set(xlim=(20, 100))
+        if env == "dog-walk":
+            g.set(xlim=(0, 780))
 
         ax.set_title(" ".join([ele.capitalize() for ele in env.split("-")]))
         ax.set_xlabel("Environment Steps (1e3)")
