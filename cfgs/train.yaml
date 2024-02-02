@@ -2,7 +2,7 @@ defaults:
   # - train_config
   - agent: iqrl
   # - override hydra/launcher: slurm # Use slurm (on cluster) for multirun
-  - override hydra/launcher: lumi_12hrs # Use slurm (on cluster) for multirun
+  # - override hydra/launcher: lumi_12hrs # Use slurm (on cluster) for multirun
   - override hydra/job_logging: colorlog
   # - override hydra/hydra_logging: hydra_debug
   - override hydra/hydra_logging: colorlog
@@ -28,13 +28,13 @@ capture_eval_video: True # Fails on AMD GPU so set to False
 capture_train_video: False
 
 # W&B config
-use_wandb: True
-wandb_project_name: "lifelong-td3-tc"
+use_wandb: False
+wandb_project_name: "iQRL"
 monitor_gym: True
 run_name: ${agent.name}__${seed}__${now:%Y-%m-%d_%H-%M-%S}
 
 hydra:
-  verbose: true
+  verbose: false
   run:
     dir: output/hydra/${hydra.job.name}/${now:%Y-%m-%d_%H-%M-%S}
   job:
