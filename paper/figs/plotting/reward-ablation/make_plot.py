@@ -24,7 +24,7 @@ COLORS = {
     "iQRL": "#e41a1c",
     "iQRL+rew": "#377eb8",
     "iQRL+cos+rew": "#ff7f00",
-    "TCRL-ours": "magenta",
+    "TCRL-ours": "#4DAF4A",
     #"TCRL-ours-small": "#984ea3",
 }
 # %%
