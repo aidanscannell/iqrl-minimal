@@ -640,6 +640,7 @@ attempt to learn good features without labels \cite{anandUnsupervisedStateRepres
 % Alternative approaches leverage contrastive losses to learn representations \cite{laskinCURLContrastiveUnsupervised2020}.
 
 
+
 Recently, TD-MPC \citep{hansenTemporalDifferenceLearning2022} and TCRL \citep{zhaoSimplifiedTemporalConsistency2023}
 have obtained state-of-the-art performance on continuous control benchmarks by learning
 representations with self-supervised losses.
@@ -669,6 +670,32 @@ This helps to prevent representation collapse at the cost of learning a task-spe
 % similarity loss plus the MSE of reward predictions in the latent space.
 % The cosine similarity loss provides training stability whilst the reward prediction prevents representation collapse.
 % However, learning representations using reward and/or value loss terms leads to the representations being task specific.
+
+\begin{algorithm}[tb]
+   \caption{\our}
+   \label{alg:main_alg}
+   \renewcommand{\algorithmiccomment}[1]{\hfill\textcolor{gray}{\(\triangleright\) #1}}
+\begin{algorithmic}
+   \STATE {\bfseries Input:} Encoder $e_{\theta}$, transition $d_{\phi}$, critics $\{Q_{\psi_{1}}, Q_{\psi_{2}} \}$, policy $\pi_{\eta}$, learning rate $\alpha$, target network update rate $\tau$
+   \FOR{$i$ {\bfseries to} $N_{\text{episodes}}$}
+    \STATE Collect data in environment
+    \STATE $\qquad \mathcal{D} \leftarrow \mathcal{D} \cup \{o_{t}, a_{t}, o_{t+1}, r_{t+1}\}^{T}_{t=0}$
+    \FOR{$i=1$ {\bfseries to} $T$}
+        \STATE Update representation
+        \STATE $\qquad [\theta, \phi] \leftarrow [\theta, \phi] + \alpha \nabla \left( \mathcal{L}_{\text{rep}}(\theta, \phi; \mathcal{D}) \right)$  \COMMENT{\cref{eq:rep-loss}}
+        \STATE Update critic
+        \STATE \quad \quad $\psi \leftarrow \psi + \alpha \nabla \left( \mathcal{L}_{Q}(\psi; \mathcal{D}) \right)$ \COMMENT{\cref{eq:value-loss}}
+        \IF{i \% 2 == 0}
+          \STATE Update actor less frequently than critic
+          \STATE $\quad \quad \eta \leftarrow \psi + \alpha \nabla \left( \mathcal{L}_{\pi}(\psi; \mathcal{D}) \right)$  \COMMENT{\cref{eq:policy-loss}}
+          % \STATE $\bar{\eta} \leftarrow \tau \bar{\eta} + (1-\tau) \eta$
+        \ENDIF
+        \STATE Update target networks
+        \STATE $\quad \quad [\bar{\theta}, \bar{\phi}, \bar{\psi}] \leftarrow \tau [\bar{\theta}, \bar{\phi}, \bar{\psi}] + (1-\tau) [{\theta}, {\phi}, {\psi}]$
+    \ENDFOR
+   \ENDFOR
+\end{algorithmic}
+\end{algorithm}
 
 
 In this paper, we propose a simple representation learning technique that can be combined with any model-free RL method
@@ -702,31 +729,26 @@ The agent then obtains a reward $r_{t} = \mathcal{R} (o_{t}, a_{t})$ and obtains
 $o_{t+1} = P(\cdot \mid o_{t}, a_{t})$.
 The discount factor is denoted $\gamma \in [0, 1]$.
 
-\begin{algorithm}[tb]
-   \caption{\our}
-   \label{alg:main_alg}
-   \renewcommand{\algorithmiccomment}[1]{\hfill\textcolor{gray}{\(\triangleright\) #1}}
-\begin{algorithmic}
-   \STATE {\bfseries Input:} Encoder $e_{\theta}$, transition $d_{\phi}$, critics $\{Q_{\psi_{1}}, Q_{\psi_{2}} \}$, policy $\pi_{\eta}$, learning rate $\alpha$, target network update rate $\tau$
-   \FOR{$i$ {\bfseries to} $N_{\text{episodes}}$}
-    \STATE Collect data in environment
-    \STATE $\qquad \mathcal{D} \leftarrow \mathcal{D} \cup \{o_{t}, a_{t}, o_{t+1}, r_{t+1}\}^{T}_{t=0}$
-    \FOR{$i=1$ {\bfseries to} $T$}
-        \STATE Update representation
-        \STATE $\qquad [\theta, \phi] \leftarrow [\theta, \phi] + \alpha \nabla \left( \mathcal{L}_{\text{rep}}(\theta, \phi; \mathcal{D}) \right)$  \COMMENT{\cref{eq:rep-loss}}
-        \STATE Update critic
-        \STATE \quad \quad $\psi \leftarrow \psi + \alpha \nabla \left( \mathcal{L}_{Q}(\psi; \mathcal{D}) \right)$ \COMMENT{\cref{eq:value-loss}}
-        \IF{i \% 2 == 0}
-          \STATE Update actor less frequently than critic
-          \STATE $\quad \quad \eta \leftarrow \psi + \alpha \nabla \left( \mathcal{L}_{\pi}(\psi; \mathcal{D}) \right)$  \COMMENT{\cref{eq:policy-loss}}
-          % \STATE $\bar{\eta} \leftarrow \tau \bar{\eta} + (1-\tau) \eta$
-        \ENDIF
-        \STATE Update target networks
-        \STATE $\quad \quad [\bar{\theta}, \bar{\phi}, \bar{\psi}] \leftarrow \tau [\bar{\theta}, \bar{\phi}, \bar{\psi}] + (1-\tau) [{\theta}, {\phi}, {\psi}]$
-    \ENDFOR
-   \ENDFOR
-\end{algorithmic}
-\end{algorithm}
+
+\begin{table}[t]
+\caption{FSQ levels $\mathcal{L}$ to approximate different codebook sizes $|\mathcal{C}|$}
+\label{sample-table}
+\vskip 0.15in
+\begin{center}
+\begin{small}
+\begin{sc}
+\begin{tabular}{lccc}
+\toprule
+Target size $|\mathcal{C}|$ & $2^{8}$ & $2^{10}$ & $2^{12}$ \\
+\midrule
+Proposed $\mathcal{L}$ & $[8,6,5]$ & $[8,5,5,5]$ & $[7,5,5,5,5]$ \\
+% \bottomrule
+\end{tabular}
+\end{sc}
+\end{small}
+\end{center}
+\vskip -0.1in
+\end{table}
 
 \textbf{Method overview}
 \our has four main components which we wish to learn:
@@ -750,6 +772,18 @@ It consists of two state-action value functions $\{Q_{\psi_{1}},Q_{\psi_{2}} \}$
 actor $\pi_{\eta}$.
 Following prior works \citep{yaratsMasteringVisualContinuous2021} we use a linear exploration noise schedule
 which decays from $1$ to $0.1$ during training.
+
+
+\begin{figure*}[ht]
+\vskip 0.2in
+\begin{center}
+\centerline{\includegraphics[width=1.0\textwidth]{./figs/baselines_comparison.pdf}}
+\caption{\textbf{Normalizing the latent-space improves sample efficiency} \our is significanly more sample efficient than the model-free baselines SAC (blue) and REDQ (purple). It performs similarly to TD-MPC (orange) whilst being significantly simpler and quicker to train. \our even outperforms TCRL, which is the most similar baseline. Results are for eight DMC tasks with UTD=1. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
+\label{fig:normalization_improves_sample_efficiency}
+\end{center}
+\vskip -0.2in
+\end{figure*}
+
 
 \textbf{Representation learning}
 Our representation learning is based solely on the latent-state consistency loss,
@@ -794,25 +828,6 @@ However, in our work we bound the domain of the latent space, \ie $z_{t} \in [-L
 % Qd
 % i=1 Li
 
-\begin{table}[t]
-\caption{FSQ levels $\mathcal{L}$ to approximate different codebook sizes $|\mathcal{C}|$}
-\label{sample-table}
-\vskip 0.15in
-\begin{center}
-\begin{small}
-\begin{sc}
-\begin{tabular}{lccc}
-\toprule
-Target size $|\mathcal{C}|$ & $2^{8}$ & $2^{10}$ & $2^{12}$ \\
-\midrule
-Proposed $\mathcal{L}$ & $[8,6,5]$ & $[8,5,5,5]$ & $[7,5,5,5,5]$ \\
-% \bottomrule
-\end{tabular}
-\end{sc}
-\end{small}
-\end{center}
-\vskip -0.1in
-\end{table}
 
 
 
@@ -844,6 +859,8 @@ That is, maximizing the Q-value using the clipped double Q learning trick to com
 % As such, our method learns a task-agnostic representation.
 
 
+
+
 \section{Experiments}
 \label{sec:experiments}
 In this section, we evaluate \our in a wide variety of continuous control tasks from the DeepMind Control (DMC) suite \cite{tassa2018deepmind}.
@@ -871,17 +888,6 @@ We aim to answer the following questions:
 % In contrast, when increasing the UTD ratio for TCRL no improvements are observed.
 
 
-
-
-\begin{figure*}[ht]
-\vskip 0.2in
-\begin{center}
-\centerline{\includegraphics[width=1.0\textwidth]{./figs/baselines_comparison.pdf}}
-\caption{\textbf{Normalizing the latent-space improves sample efficiency} \our is significanly more sample efficient than the model-free baselines SAC (blue) and REDQ (purple). It performs similarly to TD-MPC (orange) whilst being significantly simpler and quicker to train. \our even outperforms TCRL, which is the most similar baseline. Results are for eight DMC tasks with UTD=1. We plot the mean (solid line) and the $95\%$ confidence intervals (shaded) across 5 random seeds, where each seed averages over 10 evaluation episodes.}
-\label{fig:normalization_improves_sample_efficiency}
-\end{center}
-\vskip -0.2in
-\end{figure*}
 
 \textbf{Normalizing the latent-space improves sample efficiency}
 In \cref{fig:normalization_improves_sample_efficiency}, we compare \our to the model-free baselines Soft-Actor Critic (SAC) \cite{haarnojaSoft2018} and Randomized Ensemble Double Q Learning (REDQ) \cite{chenRandomizedEnsembledDouble2021}, and the model-based TD-MPC \cite{hansenTemporalDifferenceLearning2022} and TCRL \cite{zhaoSimplifiedTemporalConsistency2023} on eight problems from the DeepMind Control Suite. The results show that our method, \our, performs on par with TD-MPC while being significantly simpler and quicker to train, as the loss term is simpler and no planning is needed unlike in TD-MPC. We even outperform TCRL, which is the most similar baseline to our work. We ablate the effect of the FSQ-based latent-space normalization scheme in \cref{fig:normalization-ablation}. The normalization is overall beneficial. 
