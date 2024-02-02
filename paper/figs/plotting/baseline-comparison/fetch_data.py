@@ -15,11 +15,11 @@ ddpg_data = {
         "cheetah-run": ["8x29ibzc", "9k7936z8", "e7afvv6h", "81pbgf97", "qfqv9wz3"],
         # "walker-walk": ["8z9o8vp6", "roz89u0n", "h1by1w6s", "zfu00w22", "jvw4myex"], # only ran for 500k
         "walker-walk": [
-            "xfzks8lu",
-            "6zlwsbuy",
-            "hqki86zv",
-            "j13po5c8",
-            "j4l1oh62",
+            "zgtw2w02",
+            "hix7b6di",
+            "o17mz4v1",
+            "lqvypdgw",
+            "ilb76d20",
         ],  # 1M steps
         # "cheetah-run": ["l4c3phty", "96xm0zx5", "6tul0lmk", "y7c9k82p", "zx6ykgj9"],
         # POOR performance d=512 project=False
