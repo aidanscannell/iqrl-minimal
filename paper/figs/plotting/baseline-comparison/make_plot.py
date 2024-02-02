@@ -60,7 +60,7 @@ def plot(df, key="episode_reward"):
         hue_order = data.agent.unique()
 
         if idx == 3:
-            sns.lineplot(
+            g = sns.lineplot(
                 # x=int("env_step" / 1000),
                 x="env_step",
                 # x="env_step",
@@ -76,7 +76,7 @@ def plot(df, key="episode_reward"):
             )
             ax.legend().set_title(None)
         else:
-            sns.lineplot(
+            g = sns.lineplot(
                 # x="episode",
                 x="env_step",
                 y=key,
@@ -88,6 +88,14 @@ def plot(df, key="episode_reward"):
                 legend=False,
                 ax=ax,
             )
+        if env == "quadruped-walk":
+            g.set(xlim=(0, 500000))
+        if env == "walker-walk":
+            g.set(xlim=(0, 250000))
+        if env == "dog-walk":
+            g.set(xlim=(0, 1500000))
+        if env == "humanoid-walk":
+            g.set(xlim=(0, 3000000))
 
         ax.set_title(" ".join([ele.capitalize() for ele in env.split("-")]))
         ax.set_xlabel("Environment Steps (1e3)")
