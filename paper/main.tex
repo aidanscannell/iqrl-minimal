@@ -613,16 +613,15 @@
 \section{Introduction}
 \label{intro}
 
-Reinforcement learning (RL) \citep{sutton2018reinforcement} has shown much promise in games, animation and robotics.
+Reinforcement learning  \citep[RL, \eg][]{sutton2018reinforcement} has shown much promise in games, animation and robotics.
 However, applying RL in real-world environments is challenging. The problem is two-fold,
-{\em (i)}, handling high dimensional/complex observation spaces is non-trivial and {\em (ii)}
-deep RL typically requires millions of data points which can be unpractical (or costly), \ie it is very sample inefficient.
+{\em (i)}~handling high dimensional/complex observation spaces is non-trivial, and {\em (ii)}~deep RL typically requires millions of data points which can be unpractical (or costly), \ie it is very sample inefficient.
 
 % Given such a latent space,
 % Whilst these latent states are often lower dimensional this is not always
 Many approaches have been proposed to improve sample efficiency in deep RL.
 As \citet{laskinCURLContrastiveUnsupervised2020} highlighted, these can generally be divided into two streams of research:
-{\em (i)} auxillary tasks on the agent's observations and {\em (ii)} world models that predict the future
+{\em (i)} auxillary tasks on the agent's observations and {\em (ii)}~world models that predict the future
 \citep{haRecurrentWorldModels2018,hafnerLearning2019,hansenTemporalDifferenceLearning2022}.
 In this work, we are interested in the first class of methods, which use auxillary tasks to improve sample efficiency.
 In particular, we focus on representation learning methods which compress observations into latent states.
@@ -633,7 +632,7 @@ latent-space dynamics model to learn temporally consist representations \citep{z
 Learning representations for RL has been investigated for decades
 \citep{abelOptimalBehaviorApproximate2016,mannorDynamicAbstractionReinforcement2004,liUnifiedTheoryState2006,andreStateAbstractionProgrammable2002,deardenAbstractionApproximateDecisiontheoretic1997,singhReinforcementLearningSoft1994,higginsDefinitionDisentangledRepresentations2018,vanhoofStableReinforcementLearning2016,watterEmbedControlLocally2015,ghoshRepresentationsStableOffPolicy2020}.
 However, these approaches are usually limited to simple environments.
-Some approaches used unsupervised learning (\eg VAE \citep{kingmaAutoEncoding2014} with reconstruction loss) to acquire representations
+Some approaches used unsupervised learning \citep[\eg VAE,][with reconstruction loss]{kingmaAutoEncoding2014} to acquire representations
 \citep{finnDeepSpatialAutoencoders2016,higginsDARLAImprovingZeroShot2017,langeAutonomousReinforcementLearning2012,watterEmbedControlLocally2015}.
 More recently, self-supervised learning (SSL) approaches (which do not reconstruct observations)
 attempt to learn good features without labels \cite{anandUnsupervisedStateRepresentation2019}.
@@ -699,34 +698,35 @@ This helps to prevent representation collapse at the cost of learning a task-spe
 
 
 In this paper, we propose a simple representation learning technique that can be combined with any model-free RL method
-(we use TD3 \citep{fujimotoAddressingFunctionApproximation2018}).
+\citep[we use TD3][]{fujimotoAddressingFunctionApproximation2018}.
 See \cref{fig:diagram-self-predictive} for an overview of our (extremely simple) representation learning method.
 It is based soley on the latent-state consistency loss, \ie a commonly used self-supervised loss for continuous RL.
 In contrast to prior works, we normalize our latent representation using the technique from Finite Scalar Quantization
 \citep{mentzerFiniteScalarQuantization2023}.
-As a result, our latent space is bounded and associated with an \textit{implicit} codebook, whose size we can control.
+As a result, our latent space is bounded and associated with an \emph{implicit} codebook, whose size we can control.
 % As a result, our latent space is associated with an \textit{implicit} codebook, whose size we can control.
-Importantly, our method {\em (i)} alleviates representation collapse,
-{\em (ii)} demonstrates state-of-the-art sample efficiency in continuous control benchmarks,
-{\em (iii)} is simple to implement, and {\em (iv)} learns a task-agnostic
+Importantly, our method {\em (i)}~alleviates representation collapse,
+{\em (ii)}~demonstrates state-of-the-art sample efficiency in continuous control benchmarks,
+{\em (iii)}~is simple to implement, and {\em (iv)}~learns a task-agnostic
 representation which could be helpful in downstream tasks.
 
 \section{Related Work}
 \label{sec:related_work}
 
 
+
 \section{Method}
 \label{sec:method}
 
 In this section, we detail our method, titled \textit{implicitly Quantized Reinforcement Learning} (\our).
-\our is conceptually simple, it (1) learns a representation of the observation space and then,
-(2) performs model-free RL (e.g. TD3) on this representation.
+\our is conceptually simple, it {\em (i)}~learns a representation of the observation space and then,
+{\em (2)}~performs model-free RL (\eg, TD3) on this representation.
 % It the first representation learning phase, it learns an encoder which maps observations $o \in \mathcal{O}$
 % to a latent space $z \in \mathcal{Z}$.
 % It first learns a representation of the observation space and then uses
 See \cref{fig:diagram-self-predictive} and \cref{alg:main_alg}.
 
-We consider Markov Decision Processes (MDPs, \citet{bellmanMarkovianDecisionProcess1957a}) $\mathcal{M} = (\mathcal{O}, \mathcal{A}, \mathcal{P}, \mathcal{R}, \gamma)$,
+We consider Markov Decision Processes \citep[MDPs,][]{bellmanMarkovianDecisionProcess1957a} $\mathcal{M} = (\mathcal{O}, \mathcal{A}, \mathcal{P}, \mathcal{R}, \gamma)$,
 where an agent receives an observation $o_{t} \in \mathcal{O}$ at time step $t$ and performs an action $a_{t} \in \mathcal{A}$.
 The agent then obtains a reward $r_{t} = \mathcal{R} (o_{t}, a_{t})$ and obtains the next observation
 $o_{t+1} = P(\cdot \mid o_{t}, a_{t})$.
