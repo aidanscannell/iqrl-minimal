@@ -333,19 +333,24 @@
 \printAffiliationsAndNotice{}  % leave blank if no need to mention equal contribution
 % \printAffiliationsAndNotice{\icmlEqualContribution} % otherwise use the standard text.
 
+
 \begin{abstract}
-  In reinforcement learning (RL) for continuous control, we propose an
-  efficient representation learning method using only a latent-state
-  consistency loss. Our approach employs an encoder and a transition
-  model to map observations to latent states and predict future
-  states, respectively. We achieve high performance and prevent
-  representation collapse by normalizing the quantized latent
-  representation such that rank in the presentation is empirically
-  preserved. Our method is straightforward, compatible with any
-  model-free RL algorithm, and demonstrates state-of-the-art
-  performance in continuous control benchmarks from DeepMind Control
-  Suite.
+  Learning representations for reinforcement learning (RL) has shown much promise for continuous control. We propose an efficient representation learning method using only a self-supervised latent-state consistency loss. Our approach employs an encoder and a transition model to map observations to latent states and predict future states, respectively. We achieve high performance and prevent representation collapse by normalizing and bounding the latent representation such that rank in the representation is empirically preserved. Our method is straightforward, compatible with any model-free RL algorithm, and demonstrates state-of-the-art performance in continuous control benchmarks from DeepMind Control Suite.
 \end{abstract}
+
+% \begin{abstract}
+%   In reinforcement learning (RL) for continuous control, we propose an
+%   efficient representation learning method using only a latent-state
+%   consistency loss. Our approach employs an encoder and a transition
+%   model to map observations to latent states and predict future
+%   states, respectively. We achieve high performance and prevent
+%   representation collapse by normalizing the quantized latent
+%   representation such that rank in the presentation is empirically
+%   preserved. Our method is straightforward, compatible with any
+%   model-free RL algorithm, and demonstrates state-of-the-art
+%   performance in continuous control benchmarks from DeepMind Control
+%   Suite.
+% \end{abstract}
 
 %% \begin{abstract}
 %%   Learning representations for reinforcement learning (RL) has shown
@@ -400,31 +405,31 @@
 %% \end{abstract}
 
 
-\section{Introduction}
-\label{intro}
+% \section{Introduction}
+% \label{intro}
 
-Reinforcement learning (RL) \citep{sutton2018reinforcement} has shown much promise in games, animation and robotics.
-However, applying RL in real-world environments is challenging. The problem is two-fold,
-{\em (i)}, handling high dimensional/complex observation spaces is non-trivial and {\em (ii)}
-deep RL typically requires millions of data points which can be unpractical (or costly), \ie it is very sample inefficient.
+% Reinforcement learning (RL) \citep{sutton2018reinforcement} has shown much promise in games, animation and robotics.
+% However, applying RL in real-world environments is challenging. The problem is two-fold,
+% {\em (i)}, handling high dimensional/complex observation spaces is non-trivial and {\em (ii)}
+% deep RL typically requires millions of data points which can be unpractical (or costly), \ie it is very sample inefficient.
 
-% Given such a latent space,
-% Whilst these latent states are often lower dimensional this is not always
-Many approaches have been proposed to improve sample efficiency in deep RL.
-As \citet{laskinCURLContrastiveUnsupervised2020} highlighted, these can generally be divided into two streams of research:
-{\em (i)} auxillary tasks on the agent's observations and {\em (ii)} world models that predict the future
-\citep{haRecurrentWorldModels2018,hafnerLearning2019,hansenTemporalDifferenceLearning2022}.
-In this work, we are interested in the first class of methods, which use auxillary tasks to improve sample efficiency.
-In particular, methods for compressing observations into latent states.%, aka representation learning.
+% % Given such a latent space,
+% % Whilst these latent states are often lower dimensional this is not always
+% Many approaches have been proposed to improve sample efficiency in deep RL.
+% As \citet{laskinCURLContrastiveUnsupervised2020} highlighted, these can generally be divided into two streams of research:
+% {\em (i)} auxillary tasks on the agent's observations and {\em (ii)} world models that predict the future
+% \citep{haRecurrentWorldModels2018,hafnerLearning2019,hansenTemporalDifferenceLearning2022}.
+% In this work, we are interested in the first class of methods, which use auxillary tasks to improve sample efficiency.
+% In particular, methods for compressing observations into latent states.%, aka representation learning.
 
-Learning representations for RL has been investigated for decades
-\citep{abelOptimalBehaviorApproximate2016,mannorDynamicAbstractionReinforcement2004,liUnifiedTheoryState2006,andreStateAbstractionProgrammable2002,deardenAbstractionApproximateDecisiontheoretic1997,singhReinforcementLearningSoft1994,higginsDefinitionDisentangledRepresentations2018,vanhoofStableReinforcementLearning2016,watterEmbedControlLocally2015,ghoshRepresentationsStableOffPolicy2020}.
-However, these approaches are usually limited to simple environments.
-Some approaches used unsupervised learning (\eg VAE \citep{kingmaAutoEncoding2014} with reconstruction loss) to acquire representations
-\citep{finnDeepSpatialAutoencoders2016,higginsDARLAImprovingZeroShot2017,langeAutonomousReinforcementLearning2012,watterEmbedControlLocally2015}.
-More recently, self-supervised learning (SSL) approaches (which do not reconstruct observations)
-attempt to learn good features without labels \cite{anandUnsupervisedStateRepresentation2019}.
-Alternative approaches leverage contrastive losses to learn representations \cite{laskinCURLContrastiveUnsupervised2020}.
+% Learning representations for RL has been investigated for decades
+% \citep{abelOptimalBehaviorApproximate2016,mannorDynamicAbstractionReinforcement2004,liUnifiedTheoryState2006,andreStateAbstractionProgrammable2002,deardenAbstractionApproximateDecisiontheoretic1997,singhReinforcementLearningSoft1994,higginsDefinitionDisentangledRepresentations2018,vanhoofStableReinforcementLearning2016,watterEmbedControlLocally2015,ghoshRepresentationsStableOffPolicy2020}.
+% However, these approaches are usually limited to simple environments.
+% Some approaches used unsupervised learning (\eg VAE \citep{kingmaAutoEncoding2014} with reconstruction loss) to acquire representations
+% \citep{finnDeepSpatialAutoencoders2016,higginsDARLAImprovingZeroShot2017,langeAutonomousReinforcementLearning2012,watterEmbedControlLocally2015}.
+% More recently, self-supervised learning (SSL) approaches (which do not reconstruct observations)
+% attempt to learn good features without labels \cite{anandUnsupervisedStateRepresentation2019}.
+% Alternative approaches leverage contrastive losses to learn representations \cite{laskinCURLContrastiveUnsupervised2020}.
 
 \begin{figure}[t!]
 \centering\scriptsize
@@ -812,26 +817,31 @@ Proposed $\mathcal{L}$ & $[8,6,5]$ & $[8,5,5,5]$ & $[7,5,5,5,5]$ \\
 
 
 \textbf{Policy and value function learning}
-We learn the policy and value function using TD3, \citep{fujimotoAddressingFunctionApproximation2018})
-and follow \cite{yaratsMasteringVisualContinuous2021,zhaoSimplifiedTemporalConsistency2023}
-by augmenting the loss with n-step returns.
+We learn the policy and value function using TD3 \citep{fujimotoAddressingFunctionApproximation2018}.
+However, we follow \citet{yaratsMasteringVisualContinuous2021,zhaoSimplifiedTemporalConsistency2023}
+and augment the loss with n-step returns.
 The only difference to TD3 is that instead of using the original observations $o_{t}$, we map them through the
-encoder $z_{t} e_{\theta}(o_{t})$ and learn the value function and policy in the latent space.
+encoder $z_{t} = e_{\bar{\theta}}(o_{t})$ and learn the value function and policy in the latent space $z_{t}$.
 The value function is updated by minimizing the following objective:
 \begin{align} \label{eq:value-loss}
-  \mathcal{L}_{Q} &= \E_{\tau \sim \mathcal{D}} \left[ (Q_{\psi_{k}}(e_{\theta}(s_{t}), a_{t}) - y)^{2}  \right], \quad  \forall k \in 1, 2 \\
+  \mathcal{L}_{Q} &= \E_{\tau \sim \mathcal{D}} \left[ (Q_{\psi_{k}}(e_{\bar{\theta}}(s_{t}), a_{t}) - y)^{2}  \right], \quad  \forall k \in 1, 2 \\
   y &= \sum_{n=0}^{N-1} \gamma^{n} r_{t+n} + \gamma^{n} \min_{k \in \{1,2\}} Q_{\bar{\psi}_{k}}(e_{\bar{\theta}}(s_{t+n}), a_{t+n}), \nonumber
 \end{align}
-where the action is
-
+where we use policy smoothing by adding clipped Gaussian noise $\epsilon_{t+n} \sim \mathcal{N} (0,\sigma^{2})$ to the
+action $a_{t+n} = \pi_{\bar{\eta}}(z_{t+n}) + \epsilon_{t+n}$.
+Note that we use the target encoder to get the latent states in both the prediction and the target.
+We then use the target value functions $Q_{\bar{\psi}_{k}}$ and the target policy $\pi_{\bar{\eta}}$ to calculate the TD target.
+Following TD3, we learn the actor's parameters by minimizing,
+%
 \begin{align} \label{eq:policy-loss}
- \mathcal{L}_{\pi} = \E_{(o_{t}, a_{t}) \sim \mathcal{D}} \left[ \min_{k\in\{1,2\}} Q_{\psi_{k}}(e_{\theta}(o_{t}), a_{t}) \right]
+ \mathcal{L}_{\pi} = - \E_{(o_{t}, a_{t}) \sim \mathcal{D}} \left[ \min_{k\in\{1,2\}} Q_{\psi_{k}}(e_{\bar{\theta}}(o_{t}), a_{t}) \right].
 \end{align}
+%
+That is, maximizing the Q-value using the clipped double Q learning trick to combat overestimation in Q learning.
 
-
-Whilst our method resembles TCRL \citep{zhaoSimplifiedTemporalConsistency2023} it is important to note that
-our transition model does not predict the reward.
-As such, our method learns a task-agnostic representation.
+% Whilst our method resembles TCRL \citep{zhaoSimplifiedTemporalConsistency2023} it is important to note that
+% our transition model does not predict the reward.
+% As such, our method learns a task-agnostic representation.
 
 
 \section{Experiments}
