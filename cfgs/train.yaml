@@ -29,7 +29,7 @@ capture_train_video: False
 
 # W&B config
 use_wandb: False
-wandb_project_name: "iQRL"
+wandb_project_name: "iqrl"
 monitor_gym: True
 run_name: ${agent.name}__${seed}__${now:%Y-%m-%d_%H-%M-%S}
 
