@@ -445,81 +445,142 @@ class iQRL(Agent):
 
         # Use SimNorm activation if enc_normalize is True
         act_fn = None
-        tar_act_fn = None
+        target_act_fn = None
         if enc_normalize:
             act_fn = SimNorm(dim=simplex_dim)
-            tar_act_fn = SimNorm(dim=simplex_dim)
+            target_act_fn = SimNorm(dim=simplex_dim)
 
+        obs_dim = np.array(observation_space.shape).prod()
+        # state_act_dim = np.array(observation_space.shape).prod()
+        state_act_dim = (
+            np.array(action_space.shape).prod() + np.array(self.latent_dim).prod()
+        )
         # Init representation learning (enc/decoder/dynamics/reward)
         if use_fsq:
-            self.enc = FSQEncoder(
-                observation_space=observation_space,
+            self.enc = h.FSQMLP(
+                in_dim=obs_dim,
                 mlp_dims=enc_mlp_dims,
                 levels=fsq_levels,
-                latent_dim=latent_dim,
+                out_dim=latent_dim
+                # out_dim=latent_dim * len(fsq_levels),
             ).to(device)
-            self.enc_tar = FSQEncoder(
-                observation_space=observation_space,
+            self.enc_tar = h.FSQMLP(
+                in_dim=obs_dim,
                 mlp_dims=enc_mlp_dims,
                 levels=fsq_levels,
-                latent_dim=latent_dim,
+                # out_dim=latent_dim * len(fsq_levels),
+                out_dim=latent_dim,
             ).to(device)
         else:
-            self.enc = Encoder(
-                observation_space=observation_space,
-                mlp_dims=enc_mlp_dims,
-                latent_dim=latent_dim,
-                act_fn=act_fn,
+            self.enc = h.mlp(
+                in_dim=obs_dim, mlp_dims=mlp_dims, out_dim=latent_dim, act_fn=act_fn
             ).to(device)
-            self.enc_tar = Encoder(
-                observation_space=observation_space,
-                mlp_dims=enc_mlp_dims,
-                latent_dim=latent_dim,
-                act_fn=tar_act_fn,
+            self.enc_tar = h.mlp(
+                in_dim=obs_dim,
+                mlp_dims=mlp_dims,
+                out_dim=latent_dim,
+                act_fn=target_act_fn,
             ).to(device)
         self.enc_tar.load_state_dict(self.enc.state_dict())
-
         if compile:
             self.enc = torch.compile(self.enc, mode="default")
             self.enc_tar = torch.compile(self.enc_tar, mode="default")
-
         enc_params = list(self.enc.parameters())
 
-        if reconstruction_loss:
+        # if reconstruction_loss:
+        #     self.decoder = h.mlp(
+        #         in_dim=latent_dim, mlp_dims=mlp_dims, out_dim=obs_dim
+        #     ).to(device)
+        #     if compile:
+        #         self.decoder = torch.compile(self.decoder, mode="default")
+        #     enc_params += list(self.decoder.parameters())
+        if temporal_consistency:
             if use_fsq:
-                self.decoder = FSQDecoder(
-                    observation_space=observation_space,
+                self.dynamics = h.FSQMLP(
+                    in_dim=state_act_dim,
                     mlp_dims=mlp_dims,
                     levels=fsq_levels,
-                    latent_dim=latent_dim,
+                    out_dim=latent_dim,
                 ).to(device)
             else:
-                self.decoder = Decoder(
-                    observation_space=observation_space,
-                    mlp_dims=mlp_dims,
-                    latent_dim=latent_dim,
-                ).to(device)
-            if compile:
-                self.decoder = torch.compile(self.decoder, mode="default")
-            enc_params += list(self.decoder.parameters())
-        if temporal_consistency or value_dynamics_loss:
-            if use_fsq:
-                self.dynamics = FSQMLPDynamics(
-                    action_space=action_space,
-                    mlp_dims=mlp_dims,
-                    levels=fsq_levels,
-                    latent_dim=latent_dim,
-                ).to(device)
-            else:
-                self.dynamics = MLPDynamics(
-                    action_space=action_space,
-                    mlp_dims=mlp_dims,
-                    latent_dim=latent_dim,
-                    act_fn=act_fn,
+                self.dynamics = h.mlp(
+                    in_dim=state_act_dim, mlp_dims=mlp_dims, out_dim=latent_dim
                 ).to(device)
             if compile:
                 self.dynamics = torch.compile(self.dynamics, mode="default")
             enc_params += list(self.dynamics.parameters())
+
+        # # Init representation learning (enc/decoder/dynamics/reward)
+        # if use_fsq:
+        #     self.enc = FSQEncoder(
+        #         observation_space=observation_space,
+        #         mlp_dims=enc_mlp_dims,
+        #         levels=fsq_levels,
+        #         latent_dim=latent_dim,
+        #     ).to(device)
+        #     self.enc_tar = FSQEncoder(
+        #         observation_space=observation_space,
+        #         mlp_dims=enc_mlp_dims,
+        #         levels=fsq_levels,
+        #         latent_dim=latent_dim,
+        #     ).to(device)
+        # else:
+        #     self.enc = Encoder(
+        #         observation_space=observation_space,
+        #         mlp_dims=enc_mlp_dims,
+        #         latent_dim=latent_dim,
+        #         act_fn=act_fn,
+        #     ).to(device)
+        #     self.enc_tar = Encoder(
+        #         observation_space=observation_space,
+        #         mlp_dims=enc_mlp_dims,
+        #         latent_dim=latent_dim,
+        #         act_fn=tar_act_fn,
+        #     ).to(device)
+        # self.enc_tar.load_state_dict(self.enc.state_dict())
+
+        # if compile:
+        #     self.enc = torch.compile(self.enc, mode="default")
+        #     self.enc_tar = torch.compile(self.enc_tar, mode="default")
+
+        # enc_params = list(self.enc.parameters())
+
+        # if reconstruction_loss:
+        #     if use_fsq:
+        #         self.decoder = FSQDecoder(
+        #             observation_space=observation_space,
+        #             mlp_dims=mlp_dims,
+        #             levels=fsq_levels,
+        #             latent_dim=latent_dim,
+        #         ).to(device)
+        #     else:
+        #         self.decoder = Decoder(
+        #             observation_space=observation_space,
+        #             mlp_dims=mlp_dims,
+        #             latent_dim=latent_dim,
+        #         ).to(device)
+        #     if compile:
+        #         self.decoder = torch.compile(self.decoder, mode="default")
+        #     enc_params += list(self.decoder.parameters())
+        # if temporal_consistency or value_dynamics_loss:
+        #     if use_fsq:
+        #         self.dynamics = FSQMLPDynamics(
+        #             action_space=action_space,
+        #             mlp_dims=mlp_dims,
+        #             levels=fsq_levels,
+        #             latent_dim=latent_dim,
+        #         ).to(device)
+        #     else:
+        #         self.dynamics = MLPDynamics(
+        #             action_space=action_space,
+        #             mlp_dims=mlp_dims,
+        #             latent_dim=latent_dim,
+        #             act_fn=act_fn,
+        #         ).to(device)
+        #     if compile:
+        #         self.dynamics = torch.compile(self.dynamics, mode="default")
+        #     enc_params += list(self.dynamics.parameters())
+
         if self.reward_loss:
             if use_fsq:
                 self.reward = FSQMLPReward(
@@ -876,16 +937,16 @@ class iQRL(Agent):
                 z_next_tar = self.enc_tar(nstep_batch.next_observations)
                 z = self.enc(nstep_batch.observations)
                 z_next = self.enc(nstep_batch.next_observations)
-            if self.use_fsq:
-                z = z[self.fsq_idx]
-                z_tar = z_tar[self.fsq_idx]
-                z_next = z_next[self.fsq_idx]
-                z_next_tar = z_next_tar[self.fsq_idx]
-                if self.fsq_idx == 0:
-                    z = torch.flatten(z, -2, -1)
-                    z_tar = torch.flatten(z_tar, -2, -1)
-                    z_next = torch.flatten(z_next, -2, -1)
-                    z_next_tar = torch.flatten(z_next_tar, -2, -1)
+            # if self.use_fsq:
+            #     z = z[self.fsq_idx]
+            #     z_tar = z_tar[self.fsq_idx]
+            #     z_next = z_next[self.fsq_idx]
+            #     z_next_tar = z_next_tar[self.fsq_idx]
+            #     if self.fsq_idx == 0:
+            #         z = torch.flatten(z, -2, -1)
+            #         z_tar = torch.flatten(z_tar, -2, -1)
+            #         z_next = torch.flatten(z_next, -2, -1)
+            #         z_next_tar = torch.flatten(z_next_tar, -2, -1)
 
             # Update critic
             q_loss = self.td3.critic_loss(  # uses tar z_next
@@ -947,8 +1008,8 @@ class iQRL(Agent):
                     if self.use_fsq:
                         pre_norm_z_batch = self.enc.mlp(batch.observations[0])
                         log_rank(name="z-pre-normed", z=pre_norm_z_batch)
-                        z_batch = z_batch[0]  # always use z not indices
-                        z_batch = torch.flatten(z_batch, -2, -1)
+                        # z_batch = z_batch[0]  # always use z not indices
+                        # z_batch = torch.flatten(z_batch, -2, -1)
 
                     log_rank(name="z", z=z_batch)
 
@@ -1064,12 +1125,12 @@ class iQRL(Agent):
             else:
                 z = self.enc(batch.observations)
                 z_next = self.enc(batch.next_observations)
-            if self.use_fsq:
-                z = z[self.fsq_idx]
-                z_next = z_next[self.fsq_idx]
-                if self.fsq_idx == 0:
-                    z = torch.flatten(z, -2, -1)
-                    z_next = torch.flatten(z_next, -2, -1)
+            # if self.use_fsq:
+            #     z = z[self.fsq_idx]
+            #     z_next = z_next[self.fsq_idx]
+            #     if self.fsq_idx == 0:
+            #         z = torch.flatten(z, -2, -1)
+            #         z_next = torch.flatten(z_next, -2, -1)
             latent_batch = ReplayBufferSamples(
                 observations=z.to(torch.float).detach(),
                 actions=batch.actions,
@@ -1124,16 +1185,17 @@ class iQRL(Agent):
         self, batch: ReplayBufferSamples
     ) -> Tuple[torch.Tensor, dict]:
         x_train = batch.observations
-        if self.use_fsq:
-            # if x_train.ndim > 2:
-            #     z, indices = torch.func.vmap(self.enc)(x_train)
-            # else:
-            z, indices = self.enc(x_train)
-        else:
-            # if x_train.ndim > 2:
-            #     z = torch.func.vmap(self.enc)(x_train)
-            # else:
-            z = self.enc(x_train)
+        # if self.use_fsq:
+        #     # if x_train.ndim > 2:
+        #     #     z, indices = torch.func.vmap(self.enc)(x_train)
+        #     # else:
+        #     z, indices = self.enc(x_train)
+        # else:
+        #     # if x_train.ndim > 2:
+        #     #     z = torch.func.vmap(self.enc)(x_train)
+        #     # else:
+        #     z = self.enc(x_train)
+        z = self.enc(x_train)
 
         if self.reconstruction_loss and not self.temporal_consistency:
             raise NotImplementedError("Doesn't handle leading dim of N-step?")
@@ -1146,10 +1208,11 @@ class iQRL(Agent):
         if self.temporal_consistency:
             temporal_consitency_loss, reward_loss = 0.0, 0.0
             rec_loss = torch.zeros(1).to(self.device)
-            if self.use_fsq:
-                z, _ = self.enc(batch.observations[0])
-            else:
-                z = self.enc(batch.observations[0])
+            # if self.use_fsq:
+            #     z, _ = self.enc(batch.observations[0])
+            # else:
+            #     z = self.enc(batch.observations[0])
+            z = self.enc(batch.observations[0])
 
             dones = torch.zeros_like(batch.dones[0], dtype=torch.bool)
             timeout_or_dones = torch.zeros_like(batch.dones[0], dtype=torch.bool)
@@ -1166,9 +1229,10 @@ class iQRL(Agent):
                     rec_loss = ((x_rec - x_train[t]) ** 2).mean()
 
                 # Predict next latent
-                delta_z_pred = self.dynamics(z, a=batch.actions[t])
-                if self.use_fsq:
-                    delta_z_pred = delta_z_pred[0]
+                delta_z_pred = self.dynamics(torch.concat([z, batch.actions[t]], -1))
+                # delta_z_pred = self.dynamics(z, a=batch.actions[t])
+                # if self.use_fsq:
+                #     delta_z_pred = delta_z_pred[0]
                 next_z_pred = z + delta_z_pred
 
                 # Predict next reward
@@ -1178,8 +1242,8 @@ class iQRL(Agent):
                 with torch.no_grad():
                     next_obs = batch.next_observations[t]
                     next_z_tar = self.enc_tar(next_obs)
-                    if self.use_fsq:
-                        next_z_tar = next_z_tar[0]
+                    # if self.use_fsq:
+                    # next_z_tar = next_z_tar[0]
                     r_tar = batch.rewards[t]
                     assert next_obs.ndim == r_tar.ndim == 2
 
@@ -1192,9 +1256,9 @@ class iQRL(Agent):
 
                 # Losses
                 rho = self.rho**t
-                if self.use_fsq and not self.project_latent:
-                    next_z_pred = next_z_pred.flatten(-2)
-                    next_z_tar = next_z_tar.flatten(-2)
+                # if self.use_fsq and not self.project_latent:
+                #     next_z_pred = next_z_pred.flatten(-2)
+                #     next_z_tar = next_z_tar.flatten(-2)
                 if self.use_cosine_similarity_dynamics:
                     _temporal_consitency_loss = nn.CosineSimilarity(dim=-1, eps=1e-6)(
                         next_z_pred, next_z_tar
@@ -1253,6 +1317,7 @@ class iQRL(Agent):
             return value_loss
 
         if self.value_dynamics_loss:
+            raise NotImplementedError
             if not self.temporal_consistency:
                 delta_z_dynamics = self.dynamics(x=z, a=batch.actions)
                 z_next_dynamics = z + delta_z_dynamics
@@ -1330,17 +1395,17 @@ class iQRL(Agent):
         self.x_mem = memory_batch.observations
         with torch.no_grad():
             self.z_mem = self.enc(self.x_mem)
-            if self.use_fsq:
-                # TODO do we want to use z or indices for actor/critic?
-                self.z_mem = self.z_mem[self.fsq_idx]
+            # if self.use_fsq:
+            # TODO do we want to use z or indices for actor/critic?
+            # self.z_mem = self.z_mem[self.fsq_idx]
 
     def latent_euclidian_dist(self) -> float:
         z_dist = 0.0
         if self.x_mem is not None:
             z_mem_pred = self.enc(self.x_mem)
-            if self.use_fsq:
-                # TODO do we want to use z or indices for actor/critic?
-                z_mem_pred = z_mem_pred[self.fsq_idx]
+            # if self.use_fsq:
+            # TODO do we want to use z or indices for actor/critic?
+            # z_mem_pred = z_mem_pred[self.fsq_idx]
             # TODO make sure mean is over state dimensions
             # z_dist = (self.z_mem - z_mem_pred).abs().mean()
             z_dist = ((self.z_mem - z_mem_pred) ** 2).mean()
@@ -1362,11 +1427,11 @@ class iQRL(Agent):
             z = self.enc_tar(observation)
         else:
             z = self.enc(observation)
-        if self.use_fsq:
-            # TODO do we want to use z or indices for actor/critic?
-            z = z[self.fsq_idx]
-            if self.fsq_idx == 0:
-                z = torch.flatten(z, -2, -1)
+        # if self.use_fsq:
+        #     # TODO do we want to use z or indices for actor/critic?
+        #     z = z[self.fsq_idx]
+        #     if self.fsq_idx == 0:
+        #         z = torch.flatten(z, -2, -1)
         z = z.to(torch.float)
 
         action = self.td3.select_action(observation=z, eval_mode=eval_mode, t0=t0)
