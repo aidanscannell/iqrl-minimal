@@ -365,8 +365,6 @@ class iQRL(Agent):
         train_strategy: str = "interleaved",  # "interleaved" or "representation-first"
         temporal_consistency: bool = False,  # if True include dynamic model for representation learning
         reward_loss: bool = False,  # if True include reward model for representation learning
-        value_dynamics_loss: bool = False,  # if True include value prediction for representation learning
-        value_enc_loss: bool = False,  # if True include value prediction for representation learning
         reconstruction_loss: bool = True,  # if True use reconstruction loss with decoder
         use_cosine_similarity_dynamics: bool = False,
         use_cosine_similarity_reward: bool = False,
@@ -404,8 +402,6 @@ class iQRL(Agent):
 
         self.temporal_consistency = temporal_consistency
         self.reward_loss = reward_loss
-        self.value_dynamics_loss = value_dynamics_loss
-        self.value_enc_loss = value_enc_loss
         self.reconstruction_loss = reconstruction_loss
         self.use_cosine_similarity_dynamics = use_cosine_similarity_dynamics
         self.use_cosine_similarity_reward = use_cosine_similarity_reward
@@ -742,9 +738,6 @@ class iQRL(Agent):
         self.x_mem = None
         self.z_mem = None
 
-        self.value_weight = 1
-        self.value_weight_discount = 0.99999
-
     def update(self, replay_buffer: ReplayBuffer, num_new_transitions: int) -> dict:
         self.train()
 
@@ -839,7 +832,7 @@ class iQRL(Agent):
 
             if i % self.logging_freq == 0:
                 logger.info(
-                    f"Iteration {i} | loss {info['enc_loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']} | reward loss {info['reward_loss']} | value dynamics loss {info['value_dynamics_loss']}"
+                    f"Iteration {i} | loss {info['enc_loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']} | reward loss {info['reward_loss']} "
                 )
                 if wandb.run is not None:
                     # info.update({"exploration_noise": self.td3.exploration_noise})
@@ -1053,7 +1046,7 @@ class iQRL(Agent):
 
             if i % self.logging_freq == 0:
                 logger.info(
-                    f"Iteration {i} | loss {info['enc_loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']} | reward loss {info['reward_loss']} | value dynamics loss {info['value_dynamics_loss']}"
+                    f"Iteration {i} | loss {info['enc_loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']} | reward loss {info['reward_loss']}"
                 )
                 if wandb.run is not None:
                     wandb.log(info)
@@ -1304,73 +1297,9 @@ class iQRL(Agent):
         else:
             temporal_consitency_loss = torch.zeros(1).to(self.device)
 
-        def value_loss_fn(z_next):
-            q1_pred, q2_pred = self.td3.critic(z, batch.actions)
-
-            # Policy smoothing actions for next state
-            # TODO get this functionality from method in td3
-            clipped_noise = (
-                torch.randn_like(batch.actions, device=self.device)
-                * self.td3.policy_noise
-            ).clamp(
-                -self.td3.noise_clip, self.td3.noise_clip
-            ) * self.td3.actor_tar.action_scale
-
-            next_state_actions = (self.td3.actor_tar(z_next) + clipped_noise).clamp(
-                self.td3.action_space.low[0], self.td3.action_space.high[0]
-            )
-            q1_next_tar, q2_next_tar = self.td3.critic_tar(z_next, next_state_actions)
-            min_q_next_tar = torch.min(q1_next_tar, q2_next_tar)
-            next_q_value = batch.rewards.flatten() + (
-                1 - batch.dones.flatten()
-            ) * self.td3.discount**self.td3.nstep * (min_q_next_tar).view(-1)
-            q1_loss = torch.nn.functional.mse_loss(
-                input=q1_pred, target=next_q_value, reduction="mean"
-            )
-            q2_loss = torch.nn.functional.mse_loss(
-                input=q2_pred, target=next_q_value, reduction="mean"
-            )
-            value_loss = (q1_loss + q2_loss) / 2
-            return value_loss
-
-        if self.value_dynamics_loss:
-            raise NotImplementedError
-            if not self.temporal_consistency:
-                delta_z_dynamics = self.dynamics(x=z, a=batch.actions)
-                z_next_dynamics = z + delta_z_dynamics
-            value_dynamics_loss = value_loss_fn(z_next_dynamics)
-        else:
-            value_dynamics_loss = torch.zeros(1).to(self.device)
-
-        if self.value_enc_loss:
-            if not self.temporal_consistency:
-                with torch.no_grad():
-                    z_next_enc_tar = self.enc_tar(batch.next_observations)
-            value_enc_loss = value_loss_fn(z_next_enc_tar)
-        else:
-            value_enc_loss = torch.zeros(1).to(self.device)
-
-        # if (self.td3.critic_update_counter / 1000) > 5:
-        #     print(
-        #         f"(self.td3.critic_update_counter / 1000) {(self.td3.critic_update_counter / 1000)}"
-        #     )
-        #     self.value_weight *= self.value_weight_discount
-
-        loss = (
-            rec_loss
-            + reward_loss
-            + temporal_consitency_loss
-            # + self.value_weight * temporal_consitency_loss
-            # + (1 - self.value_weight) * value_dynamics_loss
-            # + (1 - self.value_weight) * value_enc_loss
-            + value_dynamics_loss
-            + value_enc_loss
-        )
+        loss = rec_loss + reward_loss + temporal_consitency_loss
         info = {
             "reward_loss": reward_loss.item(),
-            "value_dynamics_loss": value_dynamics_loss.item(),
-            "value_enc_loss": value_enc_loss.item(),
-            # "value_weight": self.value_weight,
             "temporal_consitency_loss": temporal_consitency_loss.item(),
             "rec_loss": rec_loss.item(),
             "enc_loss": loss.item(),
@@ -1469,7 +1398,7 @@ class iQRL(Agent):
             logger.info("Resetting decoder")
             self.decoder.reset(reset_type=reset_type)
             enc_params += list(self.decoder.parameters())
-        if self.temporal_consistency or self.value_dynamics_loss:
+        if self.temporal_consistency:
             logger.info("Resetting dynamics")
             self.dynamics.reset(reset_type=reset_type)
             enc_params += list(self.dynamics.parameters())
@@ -1564,7 +1493,7 @@ class iQRL(Agent):
         self.td3.train()
         if self.reconstruction_loss:
             self.decoder.train()
-        if self.temporal_consistency or self.value_dynamics_loss:
+        if self.temporal_consistency:
             self.dynamics.train()
         if self.reward_loss:
             self.reward.train()
@@ -1574,7 +1503,7 @@ class iQRL(Agent):
         self.td3.eval()
         if self.reconstruction_loss:
             self.decoder.eval()
-        if self.temporal_consistency or self.value_dynamics_loss:
+        if self.temporal_consistency:
             self.dynamics.eval()
         if self.reward_loss:
             self.reward.eval()
