@@ -690,11 +690,11 @@ This helps to prevent representation collapse at the cost of learning a task-spe
         \STATE \quad \quad $\psi \leftarrow \psi + \alpha \nabla \left( \mathcal{L}_{Q}(\psi; \mathcal{D}) \right)$ \COMMENT{\cref{eq:value-loss}}
         \IF{$i$ \% 2 == 0}
           \STATE Update actor less frequently than critic:
-          \STATE $\quad \quad \eta \leftarrow \psi + \alpha \nabla \left( \mathcal{L}_{\pi}(\psi; \mathcal{D}) \right)$  \COMMENT{\cref{eq:policy-loss}}
+          \STATE $\quad \quad \eta \leftarrow \eta + \alpha \nabla \left( \mathcal{L}_{\pi}(\eta; \mathcal{D}) \right)$  \COMMENT{\cref{eq:policy-loss}}
           % \STATE $\bar{\eta} \leftarrow \tau \bar{\eta} + (1-\tau) \eta$
         \ENDIF
         \STATE Update target networks:
-        \STATE $\quad \quad [\bar{\theta}, \bar{\phi}, \bar{\psi}] \leftarrow \tau [\bar{\theta}, \bar{\phi}, \bar{\psi}] + (1-\tau) [{\theta}, {\phi}, {\psi}]$
+        \STATE $\quad \quad [\bar{\theta}, \bar{\psi}, \bar{\eta}] \leftarrow \tau [\bar{\theta}, \bar{\psi}, \bar{\eta}] + (1-\tau) [{\theta}, {\psi}, \eta]$
     \ENDFOR
    \ENDFOR
 \end{algorithmic}
