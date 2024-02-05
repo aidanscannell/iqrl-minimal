@@ -127,6 +127,7 @@ class FSQMLP(nn.Module):
             in_dim=in_dim, mlp_dims=mlp_dims, out_dim=self.out_dim, act_fn=None
         )
         self._fsq = FSQ(levels)
+        self.apply(orthogonal_init)
 
     def forward(self, x, quantized: bool = False, both: bool = False):
         flag = False
@@ -176,7 +177,9 @@ def mlp(in_dim, mlp_dims, out_dim, act_fn=None, dropout=0.0):
         if act_fn
         else nn.Linear(dims[-2], dims[-1])
     )
-    return nn.Sequential(*mlp)
+    mlp = nn.Sequential(*mlp)
+    mlp.apply(orthogonal_init)
+    return mlp
 
 
 def orthogonal_init(m):
@@ -232,6 +235,7 @@ class MLPResettable(nn.Module):
     def __init__(self, mlp):
         super().__init__()
         self.mlp = mlp
+        self.reset(reset_type="full")
 
     def forward(self, x):
         return self.mlp(x)
