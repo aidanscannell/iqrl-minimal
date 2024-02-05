@@ -644,33 +644,52 @@ class iQRL(Agent):
         # high = np.array(levels).prod()
         # TODO is this the right way to make observation space??
         # TODO Should we bound z in -100,100 instead of -inf,inf??
-        if enc_normalize:
-            self.latent_observation_space = gym.spaces.Box(
-                low=0, high=1, shape=(latent_dim,)
-            )
-        else:
-            self.latent_observation_space = gym.spaces.Box(
-                low=-np.inf,
-                high=np.inf,
-                shape=(latent_dim,)
-                # low=0.0, high=high, shape=(latent_dim,)
-            )
-        if use_fsq:
-            codebook_size = np.array(fsq_levels).prod()
+        # if enc_normalize:
+        #     self.latent_observation_space = gym.spaces.Box(
+        #         low=0, high=1, shape=(latent_dim,)
+        #     )
+        # else:
+        #     self.latent_observation_space = gym.spaces.Box(
+        #         low=-np.inf,
+        #         high=np.inf,
+        #         shape=(latent_dim,)
+        #         # low=0.0, high=high, shape=(latent_dim,)
+        #     )
+        # if use_fsq:
+        #     codebook_size = np.array(fsq_levels).prod()
 
+        #     if self.fsq_idx == 0:
+        #         num_levels = len(fsq_levels)
+        #         low = -num_levels / 2
+        #         high = num_levels / 2
+        #         shape = (latent_dim * len(fsq_levels),)
+        #         # shape = (latent_dim, len(fsq_levels))
+        #     else:
+        #         low = 1
+        #         high = codebook_size
+        #         shape = (latent_dim,)
+        #     self.latent_observation_space = gym.spaces.Box(
+        #         low=low, high=high, shape=shape
+        #     )
+        # Make latent observation space
+        num_levels = len(fsq_levels)
+        obs_low = -np.inf
+        obs_high = np.inf
+        obs_shape = (latent_dim,)
+        if use_fsq:
             if self.fsq_idx == 0:
-                num_levels = len(fsq_levels)
-                low = -num_levels / 2
-                high = num_levels / 2
-                shape = (latent_dim * len(fsq_levels),)
-                # shape = (latent_dim, len(fsq_levels))
+                obs_low = -num_levels / 2
+                obs_high = num_levels / 2
             else:
-                low = 1
-                high = codebook_size
-                shape = (latent_dim,)
-            self.latent_observation_space = gym.spaces.Box(
-                low=low, high=high, shape=shape
-            )
+                obs_low = 1
+                obs_high = np.array(fsq_levels).prod()
+                obs_shape = (int(latent_dim / len(fsq_levels)),)
+        elif enc_normalize:
+            obs_low = 0
+            obs_high = 1
+        self.latent_observation_space = gym.spaces.Box(
+            low=obs_low, high=obs_high, shape=obs_shape
+        )
 
         print(f"latent_observation_space {self.latent_observation_space}")
         # Init TD3 agent
@@ -781,12 +800,12 @@ class iQRL(Agent):
                 else:
                     z = self.enc(batch.observations)
                     z_next = self.enc(batch.next_observations)
-            if self.use_fsq:
-                z = z[self.fsq_idx]
-                z_next = z_next[self.fsq_idx]
-                if self.fsq_idx == 0:
-                    z = torch.flatten(z, -2, -1)
-                    z_next = torch.flatten(z_next, -2, -1)
+            # if self.use_fsq:
+            #     z = z[self.fsq_idx]
+            #     z_next = z_next[self.fsq_idx]
+            #     if self.fsq_idx == 0:
+            #         z = torch.flatten(z, -2, -1)
+            #         z_next = torch.flatten(z_next, -2, -1)
 
             # TD3 on latent representation
             info.update(
@@ -848,8 +867,8 @@ class iQRL(Agent):
                     if self.use_fsq:
                         pre_norm_z_batch = self.enc.mlp(batch.observations[0])
                         log_rank(name="z-pre-normed", z=pre_norm_z_batch)
-                        z_batch = z_batch[0]  # always use z not indices
-                        z_batch = torch.flatten(z_batch, -2, -1)
+                        # z_batch = z_batch[0]  # always use z not indices
+                        # z_batch = torch.flatten(z_batch, -2, -1)
 
                     log_rank(name="z", z=z_batch)
 
