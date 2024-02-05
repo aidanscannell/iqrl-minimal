@@ -83,7 +83,7 @@ def train(cfg):
             save_code=True,
             dir=os.path.join(get_original_cwd(), "output"),
         )
-    # pprint.pprint(cfg_dict)
+    pprint.pprint(cfg_dict)
     # pprint.pprint(HydraConfig.get().launcher)
 
     ###### Prepare replay buffer ######

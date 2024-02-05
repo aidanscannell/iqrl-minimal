@@ -461,14 +461,12 @@ class iQRL(Agent):
                 in_dim=obs_dim,
                 mlp_dims=enc_mlp_dims,
                 levels=fsq_levels,
-                out_dim=latent_dim
-                # out_dim=latent_dim * len(fsq_levels),
+                out_dim=latent_dim,
             ).to(device)
             self.enc_tar = h.FSQMLP(
                 in_dim=obs_dim,
                 mlp_dims=enc_mlp_dims,
                 levels=fsq_levels,
-                # out_dim=latent_dim * len(fsq_levels),
                 out_dim=latent_dim,
             ).to(device)
         else:
