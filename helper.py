@@ -7,6 +7,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import distributions as pyd
 from torch.distributions.utils import _standard_normal
+from torch.linalg import cond, matrix_rank
 from vector_quantize_pytorch import FSQ
 
 
@@ -212,3 +213,16 @@ class LinearSchedule:
     def step(self):
         if self.step_idx < self.num_steps - 1:
             self.step_idx += 1
+
+
+def calc_rank(name, z):
+    """Log rank of latent"""
+    rank3 = matrix_rank(z, atol=1e-3, rtol=1e-3)
+    rank2 = matrix_rank(z, atol=1e-2, rtol=1e-2)
+    rank1 = matrix_rank(z, atol=1e-1, rtol=1e-1)
+    condition = cond(z)
+    info = {}
+    for j, rank in enumerate([rank1, rank2, rank3]):
+        info.update({f"{name}-rank-{j}": rank.item()})
+    info.update({f"{name}-cond-num": condition.item()})
+    return info
