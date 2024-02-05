@@ -126,7 +126,7 @@ class iQRL(Agent):
         eta_ratio: float = 1.0,  # enc-to-agent parameter update ratio (agent updates from early stopping)
         memory_size: int = 10000,
         ##### Encoder config #####
-        latent_dim: int = 20,
+        latent_dim: int = 128,
         horizon: int = 5,  # horizon used for representation learning
         enc_mlp_dims: List[int] = [256],
         enc_learning_rate: float = 3e-4,
@@ -139,9 +139,9 @@ class iQRL(Agent):
         use_early_stop: bool = False,
         train_strategy: str = "interleaved",  # "interleaved" or "representation-first"
         # Configure which loss terms to use
-        use_tc_loss: bool = False,  # if True include dynamic model for representation learning
+        use_tc_loss: bool = True,  # if True include dynamic model for representation learning
         use_rew_loss: bool = False,  # if True include reward model for representation learning
-        use_rec_loss: bool = True,  # if True use reconstruction loss with decoder
+        use_rec_loss: bool = False,  # if True use reconstruction loss with decoder
         use_cosine_similarity_dynamics: bool = False,
         use_cosine_similarity_reward: bool = False,
         # Project loss into another space before calculating TC loss
@@ -149,7 +149,7 @@ class iQRL(Agent):
         projection_mlp_dims: List[int] = [256],
         projection_dim: Optional[int] = None,  # if None use latent_dim/2
         # Configure where we use the target encoder network
-        use_tar_enc: bool = False,  # if True use target enc for actor/critic
+        use_tar_enc: bool = True,  # if True use target enc for actor/critic
         act_with_tar_enc: bool = False,  # if True act with target enc network
         # Configure FSQ normalization
         use_fsq: bool = False,
@@ -200,10 +200,8 @@ class iQRL(Agent):
         self.device = device
 
         obs_dim = np.array(observation_space.shape).prod()
-        state_act_dim = (
-            np.array(action_space.shape).prod() + np.array(self.latent_dim).prod()
-        )
-        ##### Init encoder for representation learning  ####
+        state_act_dim = self.latent_dim + np.array(action_space.shape).prod()
+        ##### Init encoder for representation learning #####
         if use_fsq:
             self.enc = h.FSQMLP(
                 in_dim=obs_dim,
@@ -256,77 +254,6 @@ class iQRL(Agent):
                 self.dynamics = torch.compile(self.dynamics, mode="default")
             enc_params += list(self.dynamics.parameters())
 
-        # # Init representation learning (enc/decoder/dynamics/reward)
-        # if use_fsq:
-        #     self.enc = FSQEncoder(
-        #         observation_space=observation_space,
-        #         mlp_dims=enc_mlp_dims,
-        #         levels=fsq_levels,
-        #         latent_dim=latent_dim,
-        #     ).to(device)
-        #     self.enc_tar = FSQEncoder(
-        #         observation_space=observation_space,
-        #         mlp_dims=enc_mlp_dims,
-        #         levels=fsq_levels,
-        #         latent_dim=latent_dim,
-        #     ).to(device)
-        # else:
-        #     self.enc = Encoder(
-        #         observation_space=observation_space,
-        #         mlp_dims=enc_mlp_dims,
-        #         latent_dim=latent_dim,
-        #         act_fn=act_fn,
-        #     ).to(device)
-        #     self.enc_tar = Encoder(
-        #         observation_space=observation_space,
-        #         mlp_dims=enc_mlp_dims,
-        #         latent_dim=latent_dim,
-        #         act_fn=tar_act_fn,
-        #     ).to(device)
-        # self.enc_tar.load_state_dict(self.enc.state_dict())
-
-        # if compile:
-        #     self.enc = torch.compile(self.enc, mode="default")
-        #     self.enc_tar = torch.compile(self.enc_tar, mode="default")
-
-        # enc_params = list(self.enc.parameters())
-
-        # if use_rec_loss:
-        #     if use_fsq:
-        #         self.decoder = FSQDecoder(
-        #             observation_space=observation_space,
-        #             mlp_dims=mlp_dims,
-        #             levels=fsq_levels,
-        #             latent_dim=latent_dim,
-        #         ).to(device)
-        #     else:
-        #         self.decoder = Decoder(
-        #             observation_space=observation_space,
-        #             mlp_dims=mlp_dims,
-        #             latent_dim=latent_dim,
-        #         ).to(device)
-        #     if compile:
-        #         self.decoder = torch.compile(self.decoder, mode="default")
-        #     enc_params += list(self.decoder.parameters())
-        # if use_tc_loss or value_dynamics_loss:
-        #     if use_fsq:
-        #         self.dynamics = FSQMLPDynamics(
-        #             action_space=action_space,
-        #             mlp_dims=mlp_dims,
-        #             levels=fsq_levels,
-        #             latent_dim=latent_dim,
-        #         ).to(device)
-        #     else:
-        #         self.dynamics = MLPDynamics(
-        #             action_space=action_space,
-        #             mlp_dims=mlp_dims,
-        #             latent_dim=latent_dim,
-        #             act_fn=act_fn,
-        #         ).to(device)
-        #     if compile:
-        #         self.dynamics = torch.compile(self.dynamics, mode="default")
-        #     enc_params += list(self.dynamics.parameters())
-
         if self.use_rew_loss:
             self.reward = h.mlp(in_dim=state_act_dim, mlp_dims=mlp_dims, out_dim=1)
             self.reward.to(device)
@@ -334,11 +261,8 @@ class iQRL(Agent):
                 self.reward = torch.compile(self.reward, mode="default")
             enc_params += list(self.reward.parameters())
 
+        # (Optionally) Init projection MLP to calculate TC loss in projected space
         if self.use_project_latent:
-            # if not use_fsq:
-            #     projection_levels = None
-            # else:
-            #     projection_levels = fsq_levels
             if projection_dim is None:
                 projection_dim = int(latent_dim / 2)
             self.projection = h.mlp(
@@ -347,20 +271,6 @@ class iQRL(Agent):
             self.projection_tar = h.mlp(
                 in_dim=latent_dim, mlp_dims=projection_mlp_dims, out_dim=projection_dim
             ).to(device)
-            # self.projection = Projection(
-            #     # mlp_dims=[1024],
-            #     mlp_dims=projection_mlp_dims,
-            #     levels=projection_levels,
-            #     latent_dim=latent_dim,
-            #     out_dim=projection_dim,
-            # ).to(device)
-            # self.projection_tar = Projection(
-            #     # mlp_dims=[1024],
-            #     mlp_dims=projection_mlp_dims,
-            #     levels=projection_levels,
-            #     latent_dim=latent_dim,
-            #     out_dim=projection_dim,
-            # ).to(device)
             self.projection_tar.load_state_dict(self.projection.state_dict())
             if compile:
                 self.projection = torch.compile(self.projection, mode="default")
@@ -503,12 +413,6 @@ class iQRL(Agent):
                 else:
                     z = self.enc(batch.observations)
                     z_next = self.enc(batch.next_observations)
-            # if self.use_fsq:
-            #     z = z[self.fsq_idx]
-            #     z_next = z_next[self.fsq_idx]
-            #     if self.fsq_idx == 0:
-            #         z = torch.flatten(z, -2, -1)
-            #         z_next = torch.flatten(z_next, -2, -1)
 
             # TD3 on latent representation
             info.update(
@@ -659,16 +563,6 @@ class iQRL(Agent):
                 z_next_tar = self.enc_tar(nstep_batch.next_observations)
                 z = self.enc(nstep_batch.observations)
                 z_next = self.enc(nstep_batch.next_observations)
-            # if self.use_fsq:
-            #     z = z[self.fsq_idx]
-            #     z_tar = z_tar[self.fsq_idx]
-            #     z_next = z_next[self.fsq_idx]
-            #     z_next_tar = z_next_tar[self.fsq_idx]
-            #     if self.fsq_idx == 0:
-            #         z = torch.flatten(z, -2, -1)
-            #         z_tar = torch.flatten(z_tar, -2, -1)
-            #         z_next = torch.flatten(z_next, -2, -1)
-            #         z_next_tar = torch.flatten(z_next_tar, -2, -1)
 
             # Update critic
             q_loss = self.td3.critic_loss(  # uses tar z_next
