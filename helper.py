@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
+from typing import List
+
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import distributions as pyd
 from torch.distributions.utils import _standard_normal
+from vector_quantize_pytorch import FSQ
 
 
 def simnorm(z, V=8):
@@ -104,6 +107,53 @@ class NormedLinear(nn.Linear):
         out_features={self.out_features}, \
         bias={self.bias is not None}{repr_dropout}, \
         act={self.act.__class__.__name__})"
+
+
+class FSQMLP(nn.Module):
+    def __init__(
+        self,
+        in_dim: int,
+        mlp_dims: List[int],
+        levels: List[int] = [8, 8],  # target size 2^6, actual size 64
+        out_dim: int = 1024,  # out_dim % levels == 0
+    ):
+        super().__init__()
+        self.levels = levels
+        self.out_dim = out_dim
+        assert out_dim % len(levels) == 0
+        self.latent_dim = int(out_dim / len(levels))
+        self.mlp = mlp(
+            in_dim=in_dim, mlp_dims=mlp_dims, out_dim=self.out_dim, act_fn=None
+        )
+        self._fsq = FSQ(levels)
+
+    def forward(self, x, quantized: bool = False, both: bool = False):
+        flag = False
+        if x.ndim == 1:
+            flag = True
+            x = x.view(1, -1)
+        leading_shape = x.shape[:-1]
+        z = self.mlp(x)
+        z = z.view(*leading_shape, self.latent_dim, len(self.levels))
+        z, indices = self.fsq(z)
+        z = z.view(*leading_shape, self.out_dim)
+
+        if flag:
+            z = z[0, ...]
+            indices = indices[0, ...]
+        if both:
+            return z, indices
+        elif quantized:
+            return indices
+        else:
+            return z
+
+    def fsq(self, z):
+        if z.ndim > 3:
+            z, indices = torch.func.vmap(self._fsq)(z)
+        else:
+            z, indices = self._fsq(z)
+        return z, indices
 
 
 def mlp(in_dim, mlp_dims, out_dim, act_fn=None, dropout=0.0):
