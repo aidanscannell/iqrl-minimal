@@ -960,7 +960,7 @@ We then use the target value functions $Q_{\bar{\psi}_{k}}$ and the target polic
 Following TD3, we learn the actor's parameters by minimizing
 %
 \begin{align} \label{eq:policy-loss}
- \mathcal{L}_{\pi} = - \E_{(o_{t}) \sim \mathcal{D}} \left[ \min_{k\in\{1,2\}} Q_{\psi_{k}}(e_{\bar{\theta}}(o_{t}), \pi_{\eta}(e_{\bar{\theta}}(o_{t}))) \right].
+ \mathcal{L}_{\pi} = - \E_{o_{t} \sim \mathcal{D}} \left[ \min_{k\in\{1,2\}} Q_{\psi_{k}}(e_{\bar{\theta}}(o_{t}), \pi_{\eta}(e_{\bar{\theta}}(o_{t}))) \right].
 \end{align}
 %
 That is, we maximize the Q-value using the clipped double Q learning trick to combat overestimation in Q learning.
