@@ -953,7 +953,7 @@ The value function is updated by minimizing the following objective:
   \mathcal{L}_{Q} &= \E_{\tau \sim \mathcal{D}} \left[ (Q_{\psi_{k}}(e_{\bar{\theta}}(s_{t}), a_{t}) - y)^{2}  \right], \quad  \forall k \in 1, 2 \\
   y &= \sum_{n=0}^{N-1} \gamma^{n} r_{t+n} + \gamma^{n} \min_{k \in \{1,2\}} Q_{\bar{\psi}_{k}}(e_{\bar{\theta}}(s_{t+n}), a_{t+n}), \nonumber
 \end{align}
-where we use policy smoothing by adding clipped Gaussian noise $\epsilon_{t+n} \sim \mathcal{N} (0,\sigma^{2})$ to the
+where we use policy smoothing by adding clipped Gaussian noise $\epsilon_{t+n} \sim \text{clip} \left(\mathcal{N} (0,\sigma^{2}), -c, c \right)$ to the
 action $a_{t+n} = \pi_{\bar{\eta}}(z_{t+n}) + \epsilon_{t+n}$.
 Note that we use the target encoder to get the latent states in both the prediction and the target.
 We then use the target value functions $Q_{\bar{\psi}_{k}}$ and the target policy $\pi_{\bar{\eta}}$ to calculate the TD target.
