@@ -349,7 +349,7 @@ class iQRL(Agent):
         discount: float = 0.99,
         tau: float = 0.005,
         rho: float = 0.9,  # discount for dynamics
-        act_with_target: bool = False,  # if True act with target actor network
+        act_with_tar: bool = False,  # if True act with tar actor network
         logging_freq: int = 499,
         # Reset stuff
         reset_type: str = "last_layer",  # "full" or "last-layer"
@@ -359,7 +359,7 @@ class iQRL(Agent):
         retrain_after_reset: bool = True,
         reset_retrain_strategy: str = "interleaved",  # "interleaved" or "representation-first"
         max_retrain_updates: int = 5000,
-        eta_ratio: float = 1.0,  # encoder-to-agent parameter update ratio (agent updates from early stopping)
+        eta_ratio: float = 1.0,  # enc-to-agent parameter update ratio (agent updates from early stopping)
         memory_size: int = 10000,
         # AE config
         train_strategy: str = "interleaved",  # "interleaved" or "representation-first"
@@ -370,29 +370,29 @@ class iQRL(Agent):
         reconstruction_loss: bool = True,  # if True use reconstruction loss with decoder
         use_cosine_similarity_dynamics: bool = False,
         use_cosine_similarity_reward: bool = False,
-        encoder_mlp_dims: List[int] = [256],
-        ae_learning_rate: float = 3e-4,
-        ae_batch_size: int = 128,
+        enc_mlp_dims: List[int] = [256],
+        enc_learning_rate: float = 3e-4,
+        enc_batch_size: int = 128,
         zp_weight: float = 10,
-        # ae_num_updates: int = 1000,
-        ae_utd_ratio: int = 1,  # used for representation first training
-        ae_update_freq: int = 1,  # update encoder less frequently than actor/critic
-        ae_patience: Optional[int] = None,
-        ae_min_delta: Optional[float] = None,
+        # enc_num_updates: int = 1000,
+        enc_utd_ratio: int = 1,  # used for representation first training
+        enc_update_freq: int = 1,  # update enc less frequently than actor/critic
+        enc_patience: Optional[int] = None,
+        enc_min_delta: Optional[float] = None,
         use_early_stop: bool = False,
         project_latent: bool = False,
         projection_mlp_dims: List[int] = [256],
         projection_dim: Optional[int] = None,
         latent_dim: int = 20,
-        ae_tau: float = 0.005,
-        use_target_encoder: bool = False,  # if True use target encoder for actor/critic
-        act_with_target_enc: bool = False,  # if True act with target encoder network
-        ae_normalize: bool = True,
+        enc_tau: float = 0.005,
+        use_tar_enc: bool = False,  # if True use target enc for actor/critic
+        act_with_tar_enc: bool = False,  # if True act with target enc network
+        enc_normalize: bool = True,
         simplex_dim: int = 10,
         use_fsq: bool = False,
         fsq_levels: List[int] = [8, 6, 5],
         fsq_idx: int = 0,  # 0 uses z and 1 uses indices for actor/critic
-        # encoder_reset_params_freq: int = 10000,  # reset enc params after X param updates
+        # enc_reset_params_freq: int = 10000,  # reset enc params after X param updates
         compile: bool = False,
         device: str = "cuda",
         name: str = "iQRL",
@@ -409,16 +409,16 @@ class iQRL(Agent):
         self.reconstruction_loss = reconstruction_loss
         self.use_cosine_similarity_dynamics = use_cosine_similarity_dynamics
         self.use_cosine_similarity_reward = use_cosine_similarity_reward
-        self.ae_learning_rate = ae_learning_rate
-        self.ae_batch_size = ae_batch_size
-        # self.ae_num_updates = ae_num_updates
-        self.ae_utd_ratio = ae_utd_ratio
-        self.encoder_update_freq = ae_update_freq
+        self.enc_learning_rate = enc_learning_rate
+        self.enc_batch_size = enc_batch_size
+        # self.enc_num_updates = enc_num_updates
+        self.enc_utd_ratio = enc_utd_ratio
+        self.enc_update_freq = enc_update_freq
 
         self.early_stopper_freq = 10
-        # self.ae_patience = int(ae_patience / self.early_stopper_freq)
-        self.ae_patience = ae_patience
-        self.ae_min_delta = ae_min_delta
+        # self.enc_patience = int(enc_patience / self.early_stopper_freq)
+        self.enc_patience = enc_patience
+        self.enc_min_delta = enc_min_delta
 
         self.logging_freq = logging_freq
 
@@ -428,10 +428,10 @@ class iQRL(Agent):
         self.rho = rho
 
         self.latent_dim = latent_dim
-        self.ae_tau = ae_tau
-        self.use_target_encoder = use_target_encoder
-        self.act_with_target_enc = act_with_target_enc
-        self.ae_normalize = ae_normalize
+        self.enc_tau = enc_tau
+        self.use_tar_enc = use_tar_enc
+        self.act_with_tar_enc = act_with_tar_enc
+        self.enc_normalize = enc_normalize
         self.simplex_dim = simplex_dim
         self.use_fsq = use_fsq
         self.fsq_levels = fsq_levels
@@ -443,47 +443,47 @@ class iQRL(Agent):
 
         self.device = device
 
-        # Use SimNorm activation if ae_normalize is True
+        # Use SimNorm activation if enc_normalize is True
         act_fn = None
-        target_act_fn = None
-        if ae_normalize:
+        tar_act_fn = None
+        if enc_normalize:
             act_fn = SimNorm(dim=simplex_dim)
-            target_act_fn = SimNorm(dim=simplex_dim)
+            tar_act_fn = SimNorm(dim=simplex_dim)
 
-        # Init representation learning (encoder/decoder/dynamics/reward)
+        # Init representation learning (enc/decoder/dynamics/reward)
         if use_fsq:
-            self.encoder = FSQEncoder(
+            self.enc = FSQEncoder(
                 observation_space=observation_space,
-                mlp_dims=encoder_mlp_dims,
+                mlp_dims=enc_mlp_dims,
                 levels=fsq_levels,
                 latent_dim=latent_dim,
             ).to(device)
-            self.encoder_target = FSQEncoder(
+            self.enc_tar = FSQEncoder(
                 observation_space=observation_space,
-                mlp_dims=encoder_mlp_dims,
+                mlp_dims=enc_mlp_dims,
                 levels=fsq_levels,
                 latent_dim=latent_dim,
             ).to(device)
         else:
-            self.encoder = Encoder(
+            self.enc = Encoder(
                 observation_space=observation_space,
-                mlp_dims=encoder_mlp_dims,
+                mlp_dims=enc_mlp_dims,
                 latent_dim=latent_dim,
                 act_fn=act_fn,
             ).to(device)
-            self.encoder_target = Encoder(
+            self.enc_tar = Encoder(
                 observation_space=observation_space,
-                mlp_dims=encoder_mlp_dims,
+                mlp_dims=enc_mlp_dims,
                 latent_dim=latent_dim,
-                act_fn=target_act_fn,
+                act_fn=tar_act_fn,
             ).to(device)
-        self.encoder_target.load_state_dict(self.encoder.state_dict())
+        self.enc_tar.load_state_dict(self.enc.state_dict())
 
         if compile:
-            self.encoder = torch.compile(self.encoder, mode="default")
-            self.encoder_target = torch.compile(self.encoder_target, mode="default")
+            self.enc = torch.compile(self.enc, mode="default")
+            self.enc_tar = torch.compile(self.enc_tar, mode="default")
 
-        encoder_params = list(self.encoder.parameters())
+        enc_params = list(self.enc.parameters())
 
         if reconstruction_loss:
             if use_fsq:
@@ -501,7 +501,7 @@ class iQRL(Agent):
                 ).to(device)
             if compile:
                 self.decoder = torch.compile(self.decoder, mode="default")
-            encoder_params += list(self.decoder.parameters())
+            enc_params += list(self.decoder.parameters())
         if temporal_consistency or value_dynamics_loss:
             if use_fsq:
                 self.dynamics = FSQMLPDynamics(
@@ -519,7 +519,7 @@ class iQRL(Agent):
                 ).to(device)
             if compile:
                 self.dynamics = torch.compile(self.dynamics, mode="default")
-            encoder_params += list(self.dynamics.parameters())
+            enc_params += list(self.dynamics.parameters())
         if self.reward_loss:
             if use_fsq:
                 self.reward = FSQMLPReward(
@@ -536,7 +536,7 @@ class iQRL(Agent):
                 ).to(device)
             if compile:
                 self.reward = torch.compile(self.reward, mode="default")
-            encoder_params += list(self.reward.parameters())
+            enc_params += list(self.reward.parameters())
 
         if self.project_latent:
             if not use_fsq:
@@ -552,40 +552,38 @@ class iQRL(Agent):
                 latent_dim=latent_dim,
                 out_dim=projection_dim,
             ).to(device)
-            self.projection_target = Projection(
+            self.projection_tar = Projection(
                 # mlp_dims=[1024],
                 mlp_dims=projection_mlp_dims,
                 levels=projection_levels,
                 latent_dim=latent_dim,
                 out_dim=projection_dim,
             ).to(device)
-            self.projection_target.load_state_dict(self.projection.state_dict())
+            self.projection_tar.load_state_dict(self.projection.state_dict())
             if compile:
                 self.projection = torch.compile(self.projection, mode="default")
-                self.projection_target = torch.compile(
-                    self.projection_target, mode="default"
-                )
-            encoder_params += list(self.projection.parameters())
+                self.projection_tar = torch.compile(self.projection_tar, mode="default")
+            enc_params += list(self.projection.parameters())
 
-        self.ae_opt = torch.optim.AdamW(encoder_params, lr=ae_learning_rate)
+        self.enc_opt = torch.optim.AdamW(enc_params, lr=enc_learning_rate)
 
         self.use_early_stop = use_early_stop
         if self.use_early_stop:
-            if ae_patience is not None and ae_min_delta is not None:
-                self.ae_early_stopper = h.EarlyStopper(
-                    patience=ae_patience, min_delta=ae_min_delta
+            if enc_patience is not None and enc_min_delta is not None:
+                self.enc_early_stopper = h.EarlyStopper(
+                    patience=enc_patience, min_delta=enc_min_delta
                 )
             else:
-                self.ae_early_stopper = None
+                self.enc_early_stopper = None
         else:
-            self.ae_early_stopper = None
+            self.enc_early_stopper = None
 
         # TODO make a space for latent states
         # latent_observation_space = observation_space
         # high = np.array(levels).prod()
         # TODO is this the right way to make observation space??
         # TODO Should we bound z in -100,100 instead of -inf,inf??
-        if ae_normalize:
+        if enc_normalize:
             self.latent_observation_space = gym.spaces.Box(
                 low=0, high=1, shape=(latent_dim,)
             )
@@ -635,24 +633,24 @@ class iQRL(Agent):
             discount=discount,
             tau=tau,
             device=device,
-            act_with_target=act_with_target,
+            act_with_tar=act_with_tar,
             name=name,
             compile=compile,
         )
 
         if train_strategy == "combined":
             params = (
-                encoder_params
+                enc_params
                 + list(self.td3.actor.parameters())
                 + list(self.td3.critic.parameters())
             )
             self.opt = torch.optim.AdamW(params, lr=learning_rate)
 
-        self.encoder_update_conter = 0
+        self.enc_update_conter = 0
 
         self.reset_type = reset_type
         self.reset_strategy = reset_strategy
-        # self.encoder_reset_params_freq = encoder_reset_params_freq
+        # self.enc_reset_params_freq = enc_reset_params_freq
         self.reset_params_freq = reset_params_freq
         self.eta_ratio = eta_ratio
         self.reset_threshold = reset_threshold
@@ -708,20 +706,20 @@ class iQRL(Agent):
         reset_flag = 0
         for i in range(num_updates):
             batch = replay_buffer.sample(self.td3.batch_size, val=False)
-            # Update encoder less frequently than actor/critic
-            if i % self.encoder_update_freq == 0:
+            # Update enc less frequently than actor/critic
+            if i % self.enc_update_freq == 0:
                 info.update(self.update_representation_step(batch=batch))
 
             # Map observations to latent
-            # TODO don't use target here. It breaks dog?
-            # TODO I used to use target here
+            # TODO don't use tar here. It breaks dog?
+            # TODO I used to use tar here
             with torch.no_grad():
-                if self.use_target_encoder:
-                    z = self.encoder_target(batch.observations)
-                    z_next = self.encoder_target(batch.next_observations)
+                if self.use_tar_enc:
+                    z = self.enc_tar(batch.observations)
+                    z_next = self.enc_tar(batch.next_observations)
                 else:
-                    z = self.encoder(batch.observations)
-                    z_next = self.encoder(batch.next_observations)
+                    z = self.enc(batch.observations)
+                    z_next = self.enc(batch.next_observations)
             if self.use_fsq:
                 z = z[self.fsq_idx]
                 z_next = z_next[self.fsq_idx]
@@ -744,7 +742,7 @@ class iQRL(Agent):
                 )
             )
 
-            # Potentially reset ae/actor/critic NN params
+            # Potentially reset enc/actor/critic NN params
             if self.reset_strategy == "every-x-param-updates":
                 if self.reset_params_freq is not None:
                     if self.td3.critic_update_counter % self.reset_params_freq == 0:
@@ -763,7 +761,7 @@ class iQRL(Agent):
 
             if i % self.logging_freq == 0:
                 logger.info(
-                    f"Iteration {i} | loss {info['encoder_loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']} | reward loss {info['reward_loss']} | value dynamics loss {info['value_dynamics_loss']}"
+                    f"Iteration {i} | loss {info['enc_loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']} | reward loss {info['reward_loss']} | value dynamics loss {info['value_dynamics_loss']}"
                 )
                 if wandb.run is not None:
                     # info.update({"exploration_noise": self.td3.exploration_noise})
@@ -785,9 +783,9 @@ class iQRL(Agent):
                         except:
                             pass
 
-                    z_batch = self.encoder(batch.observations[0])
+                    z_batch = self.enc(batch.observations[0])
                     if self.use_fsq:
-                        pre_norm_z_batch = self.encoder.mlp(batch.observations[0])
+                        pre_norm_z_batch = self.enc.mlp(batch.observations[0])
                         log_rank(name="z-pre-normed", z=pre_norm_z_batch)
                         z_batch = z_batch[0]  # always use z not indices
                         z_batch = torch.flatten(z_batch, -2, -1)
@@ -804,8 +802,8 @@ class iQRL(Agent):
         """Update representation and then do TD3"""
 
         ###### Train the representation ######
-        num_ae_updates = int(num_new_transitions * self.ae_utd_ratio)
-        info = self.update_encoder(replay_buffer, num_updates=num_ae_updates)
+        num_enc_updates = int(num_new_transitions * self.enc_utd_ratio)
+        info = self.update_enc(replay_buffer, num_updates=num_enc_updates)
 
         ###### Check for resets using distance in latent space ######
         if self.reset_strategy == "latent-dist":
@@ -829,8 +827,8 @@ class iQRL(Agent):
         for i in range(num_updates):
             batch = replay_buffer.sample(self.td3.batch_size, val=False)
 
-            # Update encoder less frequently than actor/critic
-            if i % self.encoder_update_freq == 0:
+            # Update enc less frequently than actor/critic
+            if i % self.enc_update_freq == 0:
                 info.update(self.update_representation_step(batch=batch))
 
             # Form n-step samples (truncate if timeout)
@@ -865,19 +863,19 @@ class iQRL(Agent):
                 next_state_discounts=next_state_discounts,
             )
 
-            # # Update encoder less frequently than actor/critic
-            # if i % self.encoder_update_freq == 0:
-            #     encoder_loss, _info = self.representation_loss(batch=batch)
+            # # Update enc less frequently than actor/critic
+            # if i % self.enc_update_freq == 0:
+            #     enc_loss, _info = self.representation_loss(batch=batch)
             #     info.update(_info)
             # else:
-            #     encoder_loss = torch.zeros(1).to(self.device)
+            #     enc_loss = torch.zeros(1).to(self.device)
 
             # Map observations to latent
             with torch.no_grad():
-                z_tar = self.encoder_target(nstep_batch.observations)
-                z_next_tar = self.encoder_target(nstep_batch.next_observations)
-                z = self.encoder(nstep_batch.observations)
-                z_next = self.encoder(nstep_batch.next_observations)
+                z_tar = self.enc_tar(nstep_batch.observations)
+                z_next_tar = self.enc_tar(nstep_batch.next_observations)
+                z = self.enc(nstep_batch.observations)
+                z_next = self.enc(nstep_batch.next_observations)
             if self.use_fsq:
                 z = z[self.fsq_idx]
                 z_tar = z_tar[self.fsq_idx]
@@ -890,7 +888,7 @@ class iQRL(Agent):
                     z_next_tar = torch.flatten(z_next_tar, -2, -1)
 
             # Update critic
-            q_loss = self.td3.critic_loss(  # uses target z_next
+            q_loss = self.td3.critic_loss(  # uses tar z_next
                 ReplayBufferSamples(
                     observations=z.to(torch.float).detach(),
                     actions=nstep_batch.actions,
@@ -907,13 +905,11 @@ class iQRL(Agent):
             info.update({"q_loss": q_loss})
 
             # Update target network
-            soft_update_params(
-                self.td3.critic, self.td3.target_critic, tau=self.td3.tau
-            )
+            soft_update_params(self.td3.critic, self.td3.critic_tar, tau=self.td3.tau)
 
             # Update actor less frequently than critic
             if self.td3.critic_update_counter % self.td3.actor_update_freq == 0:
-                q1, q2 = self.td3.target_critic(z_tar, self.td3.actor(z))
+                q1, q2 = self.td3.critic_tar(z_tar, self.td3.actor(z))
                 pi_loss = -torch.min(q1, q2).mean()
                 self.td3.actor_optimizer.zero_grad()
                 pi_loss.backward()
@@ -921,13 +917,11 @@ class iQRL(Agent):
                 info.update({"actor_loss": pi_loss})
 
                 # Update target network
-                soft_update_params(
-                    self.td3.actor, self.td3.target_actor, tau=self.td3.tau
-                )
+                soft_update_params(self.td3.actor, self.td3.actor_tar, tau=self.td3.tau)
 
             if i % self.logging_freq == 0:
                 logger.info(
-                    f"Iteration {i} | encoder loss {info['encoder_loss']} | q loss {info['q_loss']} | pi loss {info['actor_loss']}"
+                    f"Iteration {i} | enc loss {info['enc_loss']} | q loss {info['q_loss']} | pi loss {info['actor_loss']}"
                 )
                 if wandb.run is not None:
                     # info.update({"exploration_noise": self.td3.exploration_noise})
@@ -949,9 +943,9 @@ class iQRL(Agent):
                         except:
                             pass
 
-                    z_batch = self.encoder(batch.observations[0])
+                    z_batch = self.enc(batch.observations[0])
                     if self.use_fsq:
-                        pre_norm_z_batch = self.encoder.mlp(batch.observations[0])
+                        pre_norm_z_batch = self.enc.mlp(batch.observations[0])
                         log_rank(name="z-pre-normed", z=pre_norm_z_batch)
                         z_batch = z_batch[0]  # always use z not indices
                         z_batch = torch.flatten(z_batch, -2, -1)
@@ -964,24 +958,24 @@ class iQRL(Agent):
 
         return info
 
-    def update_encoder(
+    def update_enc(
         self, replay_buffer: ReplayBuffer, num_updates: int, use_early_stop: bool = True
     ) -> dict:
         """Update representation and then train actor/critic"""
-        if self.ae_early_stopper is not None:
-            self.ae_early_stopper.reset()
+        if self.enc_early_stopper is not None:
+            self.enc_early_stopper.reset()
             num_updates = 10000
 
         info = {}
-        logger.info("Training AE...")
+        logger.info("Training ENC...")
         best_val_loss, i = float("inf"), 0
         for i in range(num_updates):
-            batch = replay_buffer.sample(self.ae_batch_size, val=False)
+            batch = replay_buffer.sample(self.enc_batch_size, val=False)
             info.update(self.update_representation_step(batch=batch))
 
             if i % self.logging_freq == 0:
                 logger.info(
-                    f"Iteration {i} | loss {info['encoder_loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']} | reward loss {info['reward_loss']} | value dynamics loss {info['value_dynamics_loss']}"
+                    f"Iteration {i} | loss {info['enc_loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']} | reward loss {info['reward_loss']} | value dynamics loss {info['value_dynamics_loss']}"
                 )
                 if wandb.run is not None:
                     wandb.log(info)
@@ -992,23 +986,23 @@ class iQRL(Agent):
 
             # if i % self.early_stopper_freq == 0:
             if use_early_stop:
-                if self.ae_early_stopper is not None:
-                    val_batch = replay_buffer.sample(self.ae_batch_size, val=True)
+                if self.enc_early_stopper is not None:
+                    val_batch = replay_buffer.sample(self.enc_batch_size, val=True)
                     val_loss, val_info = self.representation_loss(val_batch)
                     if wandb.run is not None:
-                        wandb.log({"val_encoder_loss": val_info["encoder_loss"]})
-                    if self.ae_early_stopper(val_loss):
+                        wandb.log({"val_enc_loss": val_info["enc_loss"]})
+                    if self.enc_early_stopper(val_loss):
                         logger.info(
-                            "Early stopping criteria met, stopping AE training..."
+                            "Early stopping criteria met, stopping ENC training..."
                         )
                         break
 
                     if val_loss < best_val_loss:
                         best_val_loss = val_loss
                         state = {
-                            "encoder": self.encoder.state_dict(),
-                            "encoder_target": self.encoder_target.state_dict(),
-                            "ae_opt": self.ae_opt.state_dict(),
+                            "enc": self.enc.state_dict(),
+                            "enc_tar": self.enc_tar.state_dict(),
+                            "enc_opt": self.enc_opt.state_dict(),
                         }
                         if self.reward_loss:
                             state.update({"reward": self.reward.state_dict()})
@@ -1019,20 +1013,16 @@ class iQRL(Agent):
                         if self.project_latent:
                             state.update({"projection": self.projection.state_dict()})
                             state.update(
-                                {
-                                    "projection_target": self.projection_target.state_dict()
-                                }
+                                {"projection_tar": self.projection_tar.state_dict()}
                             )
                         torch.save(state, "./best_ckpt_dict.pt")
-                        # logger.info("Finished saving encoder+opt best ckpt")
+                        # logger.info("Finished saving enc+opt best ckpt")
 
         if use_early_stop:
             # Load best checkpoints
-            self.encoder.load_state_dict(torch.load("./best_ckpt_dict.pt")["encoder"])
-            self.encoder_target.load_state_dict(
-                torch.load("./best_ckpt_dict.pt")["encoder_target"]
-            )
-            self.ae_opt.load_state_dict(torch.load("./best_ckpt_dict.pt")["ae_opt"])
+            self.enc.load_state_dict(torch.load("./best_ckpt_dict.pt")["enc"])
+            self.enc_tar.load_state_dict(torch.load("./best_ckpt_dict.pt")["enc_tar"])
+            self.enc_opt.load_state_dict(torch.load("./best_ckpt_dict.pt")["enc_opt"])
             if self.reward_loss:
                 self.reward.load_state_dict(torch.load("./best_ckpt_dict.pt")["reward"])
             if self.reconstruction_loss:
@@ -1047,12 +1037,12 @@ class iQRL(Agent):
                 self.projection.load_state_dict(
                     torch.load("./best_ckpt_dict.pt")["projection"]
                 )
-                self.projection_target.load_state_dict(
-                    torch.load("./best_ckpt_dict.pt")["projection_target"]
+                self.projection_tar.load_state_dict(
+                    torch.load("./best_ckpt_dict.pt")["projection_tar"]
                 )
 
-        logger.info(f"Finished training AE for {i} update steps")
-        info.update({"num_ae_updates": i})
+        logger.info(f"Finished training ENC for {i} update steps")
+        info.update({"num_enc_updates": i})
         return info
 
     def update_actor_critic(
@@ -1068,12 +1058,12 @@ class iQRL(Agent):
             ###### Map observations to latent ######
             # TODO don't use target here. It breaks dog?
             # TODO I used to use target here
-            if self.use_target_encoder:
-                z = self.encoder_target(batch.observations)
-                z_next = self.encoder_target(batch.next_observations)
+            if self.use_tar_enc:
+                z = self.enc_tar(batch.observations)
+                z_next = self.enc_tar(batch.next_observations)
             else:
-                z = self.encoder(batch.observations)
-                z_next = self.encoder(batch.next_observations)
+                z = self.enc(batch.observations)
+                z_next = self.enc(batch.next_observations)
             if self.use_fsq:
                 z = z[self.fsq_idx]
                 z_next = z_next[self.fsq_idx]
@@ -1093,7 +1083,7 @@ class iQRL(Agent):
             ###### Train actor/critic on latent representation ######
             info.update(self.td3.update_step(batch=latent_batch))
 
-            ###### Potentially reset ae/actor/critic NN params ######
+            ###### Potentially reset enc/actor/critic NN params ######
             if self.reset_strategy == "every-x-param-updates":
                 if self.reset_params_freq is not None:
                     if self.td3.critic_update_counter % self.reset_params_freq == 0:
@@ -1114,19 +1104,19 @@ class iQRL(Agent):
 
     # @torch.compile
     def update_representation_step(self, batch: ReplayBufferSamples):
-        # Reset encoder after a fixed number of updates
-        self.encoder_update_conter += 1
+        # Reset enc after a fixed number of updates
+        self.enc_update_conter += 1
 
         loss, info = self.representation_loss(batch=batch)
 
-        self.ae_opt.zero_grad()
+        self.enc_opt.zero_grad()
         loss.backward()
-        self.ae_opt.step()
+        self.enc_opt.step()
 
         # Update the target network
-        soft_update_params(self.encoder, self.encoder_target, tau=self.ae_tau)
+        soft_update_params(self.enc, self.enc_tar, tau=self.enc_tau)
         if self.project_latent:
-            soft_update_params(self.projection, self.projection_target, tau=self.ae_tau)
+            soft_update_params(self.projection, self.projection_tar, tau=self.enc_tau)
 
         return info
 
@@ -1136,14 +1126,14 @@ class iQRL(Agent):
         x_train = batch.observations
         if self.use_fsq:
             # if x_train.ndim > 2:
-            #     z, indices = torch.func.vmap(self.encoder)(x_train)
+            #     z, indices = torch.func.vmap(self.enc)(x_train)
             # else:
-            z, indices = self.encoder(x_train)
+            z, indices = self.enc(x_train)
         else:
             # if x_train.ndim > 2:
-            #     z = torch.func.vmap(self.encoder)(x_train)
+            #     z = torch.func.vmap(self.enc)(x_train)
             # else:
-            z = self.encoder(x_train)
+            z = self.enc(x_train)
 
         if self.reconstruction_loss and not self.temporal_consistency:
             raise NotImplementedError("Doesn't handle leading dim of N-step?")
@@ -1157,9 +1147,9 @@ class iQRL(Agent):
             temporal_consitency_loss, reward_loss = 0.0, 0.0
             rec_loss = torch.zeros(1).to(self.device)
             if self.use_fsq:
-                z, _ = self.encoder(batch.observations[0])
+                z, _ = self.enc(batch.observations[0])
             else:
-                z = self.encoder(batch.observations[0])
+                z = self.enc(batch.observations[0])
 
             dones = torch.zeros_like(batch.dones[0], dtype=torch.bool)
             timeout_or_dones = torch.zeros_like(batch.dones[0], dtype=torch.bool)
@@ -1187,7 +1177,7 @@ class iQRL(Agent):
 
                 with torch.no_grad():
                     next_obs = batch.next_observations[t]
-                    next_z_tar = self.encoder_target(next_obs)
+                    next_z_tar = self.enc_tar(next_obs)
                     if self.use_fsq:
                         next_z_tar = next_z_tar[0]
                     r_tar = batch.rewards[t]
@@ -1197,7 +1187,7 @@ class iQRL(Agent):
                 z = next_z_pred
 
                 if self.project_latent:
-                    next_z_tar = self.projection_target(next_z_tar)
+                    next_z_tar = self.projection_tar(next_z_tar)
                     next_z_pred = self.projection(next_z_pred)
 
                 # Losses
@@ -1243,18 +1233,16 @@ class iQRL(Agent):
                 * self.td3.policy_noise
             ).clamp(
                 -self.td3.noise_clip, self.td3.noise_clip
-            ) * self.td3.target_actor.action_scale
+            ) * self.td3.actor_tar.action_scale
 
-            next_state_actions = (self.td3.target_actor(z_next) + clipped_noise).clamp(
+            next_state_actions = (self.td3.actor_tar(z_next) + clipped_noise).clamp(
                 self.td3.action_space.low[0], self.td3.action_space.high[0]
             )
-            q1_next_target, q2_next_target = self.td3.target_critic(
-                z_next, next_state_actions
-            )
-            min_q_next_target = torch.min(q1_next_target, q2_next_target)
+            q1_next_tar, q2_next_tar = self.td3.critic_tar(z_next, next_state_actions)
+            min_q_next_tar = torch.min(q1_next_tar, q2_next_tar)
             next_q_value = batch.rewards.flatten() + (
                 1 - batch.dones.flatten()
-            ) * self.td3.discount**self.td3.nstep * (min_q_next_target).view(-1)
+            ) * self.td3.discount**self.td3.nstep * (min_q_next_tar).view(-1)
             q1_loss = torch.nn.functional.mse_loss(
                 input=q1_pred, target=next_q_value, reduction="mean"
             )
@@ -1275,8 +1263,8 @@ class iQRL(Agent):
         if self.value_enc_loss:
             if not self.temporal_consistency:
                 with torch.no_grad():
-                    z_next_enc_target = self.encoder_target(batch.next_observations)
-            value_enc_loss = value_loss_fn(z_next_enc_target)
+                    z_next_enc_tar = self.enc_tar(batch.next_observations)
+            value_enc_loss = value_loss_fn(z_next_enc_tar)
         else:
             value_enc_loss = torch.zeros(1).to(self.device)
 
@@ -1303,7 +1291,7 @@ class iQRL(Agent):
             # "value_weight": self.value_weight,
             "temporal_consitency_loss": temporal_consitency_loss.item(),
             "rec_loss": rec_loss.item(),
-            "encoder_loss": loss.item(),
+            "enc_loss": loss.item(),
             "z_min": torch.min(z).item(),
             "z_max": torch.max(z).item(),
             "z_mean": torch.mean(z.to(torch.float)).item(),
@@ -1341,7 +1329,7 @@ class iQRL(Agent):
         # Store obs and (old) latents in class
         self.x_mem = memory_batch.observations
         with torch.no_grad():
-            self.z_mem = self.encoder(self.x_mem)
+            self.z_mem = self.enc(self.x_mem)
             if self.use_fsq:
                 # TODO do we want to use z or indices for actor/critic?
                 self.z_mem = self.z_mem[self.fsq_idx]
@@ -1349,7 +1337,7 @@ class iQRL(Agent):
     def latent_euclidian_dist(self) -> float:
         z_dist = 0.0
         if self.x_mem is not None:
-            z_mem_pred = self.encoder(self.x_mem)
+            z_mem_pred = self.enc(self.x_mem)
             if self.use_fsq:
                 # TODO do we want to use z or indices for actor/critic?
                 z_mem_pred = z_mem_pred[self.fsq_idx]
@@ -1370,10 +1358,10 @@ class iQRL(Agent):
             else:
                 raise NotImplementedError
         observation = torch.Tensor(observation).to(self.device)
-        if self.act_with_target_enc:
-            z = self.encoder_target(observation)
+        if self.act_with_tar_enc:
+            z = self.enc_tar(observation)
         else:
-            z = self.encoder(observation)
+            z = self.enc(observation)
         if self.use_fsq:
             # TODO do we want to use z or indices for actor/critic?
             z = z[self.fsq_idx]
@@ -1392,24 +1380,24 @@ class iQRL(Agent):
         if reset_type is None:
             reset_type = self.reset_type
         logger.info("Restting agent...")
-        logger.info("Resetting encoder params")
-        self.encoder.reset(reset_type=reset_type)
-        encoder_params = list(self.encoder.parameters())
+        logger.info("Resetting enc params")
+        self.enc.reset(reset_type=reset_type)
+        enc_params = list(self.enc.parameters())
         if self.reconstruction_loss:
             logger.info("Resetting decoder")
             self.decoder.reset(reset_type=reset_type)
-            encoder_params += list(self.decoder.parameters())
+            enc_params += list(self.decoder.parameters())
         if self.temporal_consistency or self.value_dynamics_loss:
             logger.info("Resetting dynamics")
             self.dynamics.reset(reset_type=reset_type)
-            encoder_params += list(self.dynamics.parameters())
+            enc_params += list(self.dynamics.parameters())
         if self.reward_loss:
             logger.info("Resetting reward")
             self.reward.reset(reset_type=reset_type)
-            encoder_params += list(self.reward.parameters())
-        # self.ae_target.reset(full_reset=full_reset)
-        self.encoder_target.load_state_dict(self.encoder.state_dict())
-        self.ae_opt = torch.optim.AdamW(encoder_params, lr=self.ae_learning_rate)
+            enc_params += list(self.reward.parameters())
+        # self.enc_tar.reset(full_reset=full_reset)
+        self.enc_tar.load_state_dict(self.enc.state_dict())
+        self.enc_opt = torch.optim.AdamW(enc_params, lr=self.enc_learning_rate)
 
         logger.info("Resetting actor/critic")
         self.td3.reset(reset_type=reset_type)
@@ -1424,17 +1412,17 @@ class iQRL(Agent):
 
         if self.reset_retrain_strategy == "interleaved":
             logger.info(f"Retraining interleaved...")
-            # Set large num encoder updates as will be stopped early using val loss
+            # Set large num enc updates as will be stopped early using val loss
             info = self.update_1(
                 replay_buffer=replay_buffer,
                 num_new_transitions=num_new_transitions,
             )
         elif self.reset_retrain_strategy == "representation-first":
             logger.info(f"Retraining representation-first...")
-            # self.retrain_utd_ratio = self.ae_utd_ratio
-            # Set large num encoder updates as will be stopped early using val loss
+            # self.retrain_utd_ratio = self.enc_utd_ratio
+            # Set large num enc updates as will be stopped early using val loss
             # num_new_transitions = replay_buffer.size() * self.retrain_utd_ratio
-            # num_new_transitions = replay_buffer.size() * self.ae_utd_ratio
+            # num_new_transitions = replay_buffer.size() * self.enc_utd_ratio
             max_new_data = self.max_retrain_updates / self.td3.utd_ratio
             num_new_transitions = np.min([replay_buffer.size(), max_new_data])
             info = self.update_2(
@@ -1442,16 +1430,16 @@ class iQRL(Agent):
             )
         elif self.reset_retrain_strategy == "representation-only":
             logger.info(f"Retraining representation-only...")
-            self.retrain_utd_ratio = self.ae_utd_ratio
-            # Set large num encoder updates as will be stopped early using val loss
-            num_ae_updates = replay_buffer.size() * self.retrain_utd_ratio
-            logger.info(f"Retraining encoder...")
-            info = self.update_encoder(
+            self.retrain_utd_ratio = self.enc_utd_ratio
+            # Set large num enc updates as will be stopped early using val loss
+            num_enc_updates = replay_buffer.size() * self.retrain_utd_ratio
+            logger.info(f"Retraining enc...")
+            info = self.update_enc(
                 replay_buffer,
-                num_updates=num_ae_updates,
+                num_updates=num_enc_updates,
                 use_early_stop=self.use_early_stop,
             )
-            logger.info(f"Finished retraining encoder")
+            logger.info(f"Finished retraining enc")
         else:
             logger.info("Not retraining after reset")
         self.reset_strategy = reset_strategy
@@ -1465,14 +1453,14 @@ class iQRL(Agent):
 
         # if self.retrain_after_reset:
         #     if replay_buffer is not None:
-        #         # Set large num encoder updates as will be stopped early using val loss
-        #         num_ae_updates = replay_buffer.size() * self.ae_utd_ratio
+        #         # Set large num enc updates as will be stopped early using val loss
+        #         num_enc_updates = replay_buffer.size() * self.enc_utd_ratio
 
         #         # Train the representation
-        #         logger.info(f"Finished resetting encoder/actor/critic")
-        #         logger.info(f"Retraining encoder...")
-        #         info = self.update_encoder(replay_buffer, num_updates=num_ae_updates)
-        #         logger.info(f"Finished retraining encoder")
+        #         logger.info(f"Finished resetting enc/actor/critic")
+        #         logger.info(f"Retraining enc...")
+        #         info = self.update_enc(replay_buffer, num_updates=num_enc_updates)
+        #         logger.info(f"Finished retraining enc")
 
         #         ###### Build memory for reset strategy ######
         #         if self.reset_strategy == "latent-dist":
@@ -1483,14 +1471,14 @@ class iQRL(Agent):
 
         #         # Train actor/critic
         #         logger.info(f"Retraining actor/critic...")
-        #         # TODO calculate number of actor/critic updates from num_ae_updates
-        #         num_td3_updates = int(info["num_ae_updates"] * self.eta_ratio)
+        #         # TODO calculate number of actor/critic updates from num_enc_updates
+        #         num_td3_updates = int(info["num_enc_updates"] * self.eta_ratio)
         #         info = self.update_actor_critic(
         #             replay_buffer, num_updates=num_td3_updates
         #         )
 
     def train(self):
-        self.encoder.train()
+        self.enc.train()
         self.td3.train()
         if self.reconstruction_loss:
             self.decoder.train()
@@ -1500,7 +1488,7 @@ class iQRL(Agent):
             self.reward.train()
 
     def eval(self):
-        self.encoder.eval()
+        self.enc.eval()
         self.td3.eval()
         if self.reconstruction_loss:
             self.decoder.eval()

@@ -22,29 +22,29 @@ reset_strategy: "every-x-param-updates"  #  "latent-dist" or "every-x-param-upda
 reset_params_freq: null # reset params after this many param updates
 reset_threshold: 0.01  # reset latent (z) when changed by more than this
 memory_size: 10000  # mem size for calculating ||z_{mem} - e_{\phi}(x_mem)||
-# AE config
+# ENC config
 train_strategy: "interleaved"  # "interleaved" or "representation-first"
-temporal_consistency: True # if True include dynamic model in encoder
+temporal_consistency: True # if True include dynamic model in enc
 reconstruction_loss: False # if True include decoder
 reward_loss: False # if True use reward prediction for representation learning
 use_cosine_similarity_dynamics: False
 use_cosine_similarity_reward: False
-use_target_encoder: True # if True use target encoder to get latents for TD3
-act_with_target_enc: False # if True act with the target encoder
-encoder_mlp_dims: [256]
-ae_learning_rate: 1e-4
-ae_batch_size: 256
-ae_utd_ratio: 1  # encoder parameter update-to-data ratio
-ae_patience: 100
-ae_min_delta: 0.0
+use_tar_enc: True # if True use tar enc to get latents for TD3
+act_with_tar_enc: False # if True act with the tar enc
+enc_mlp_dims: [256]
+enc_learning_rate: 1e-4
+enc_batch_size: 256
+enc_utd_ratio: 1  # enc parameter update-to-data ratio
+enc_patience: 100
+enc_min_delta: 0.0
 latent_dim: 512
 project_latent: False
-ae_tau: 0.005
-ae_normalize: False
+enc_tau: 0.005
+enc_normalize: False
 simplex_dim: 8
 use_fsq: True
 fsq_levels: [8, 8]
 fsq_idx: 0
 compile: False
-# encoder_reset_params_freq: int = 10000  # reset enc params after X param updates
-name: iQRL_n=${agent.nstep}_h=${agent.horizon}_td3-targ=${agent.use_target_encoder}_act-targ=${agent.act_with_target_enc}_cos=${agent.use_cosine_similarity_dynamics}_${agent.reset_strategy}-${agent.reset_type}_${agent.train_strategy}-${agent.reset_params_freq}_temp-${agent.temporal_consistency}_rec=${agent.reconstruction_loss}_utd=${agent.utd_ratio}_fsq=${agent.use_fsq}_${agent.fsq_levels}_idx=${agent.fsq_idx}_d=${agent.latent_dim}
+# enc_reset_params_freq: int = 10000  # reset enc params after X param updates
+name: iQRL_n=${agent.nstep}_h=${agent.horizon}_td3-targ=${agent.use_tar_enc}_act-targ=${agent.act_with_tar_enc}_cos=${agent.use_cosine_similarity_dynamics}_${agent.reset_strategy}-${agent.reset_type}_${agent.train_strategy}-${agent.reset_params_freq}_temp-${agent.temporal_consistency}_rec=${agent.reconstruction_loss}_utd=${agent.utd_ratio}_fsq=${agent.use_fsq}_${agent.fsq_levels}_idx=${agent.fsq_idx}_d=${agent.latent_dim}

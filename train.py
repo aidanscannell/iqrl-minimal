@@ -234,10 +234,10 @@ def train(cfg):
 
                     try:
                         batch = rb.sample(agent.td3.batch_size, val=False)
-                        z_batch = agent.encoder(batch.observations[0])
+                        z_batch = agent.enc(batch.observations[0])
                         rank_info = {}
                         if cfg.agent.use_fsq:
-                            pre_norm_z_batch = agent.encoder.mlp(batch.observations[0])
+                            pre_norm_z_batch = agent.enc.mlp(batch.observations[0])
                             rank_info.update(
                                 calc_rank(name="z-pre-normed", z=pre_norm_z_batch)
                             )
