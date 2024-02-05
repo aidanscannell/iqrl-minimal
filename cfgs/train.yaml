@@ -33,6 +33,10 @@ wandb_project_name: "iqrl"
 monitor_gym: True
 run_name: ${agent.name}__${seed}__${now:%Y-%m-%d_%H-%M-%S}
 
+wandb_tags:
+  - ${env_id}-${dmc_task}
+  - seed
+
 hydra:
   verbose: false
   run:

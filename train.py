@@ -75,7 +75,8 @@ def train(cfg):
         run = wandb.init(
             project=cfg.wandb_project_name,
             group=f"{cfg.env_id}-{cfg.dmc_task}",
-            tags=[f"{cfg.env_id}-{cfg.dmc_task}", f"seed={str(cfg.seed)}"],
+            # tags=[f"{cfg.env_id}-{cfg.dmc_task}", f"seed={str(cfg.seed)}"],
+            tags=[cfg.wandb_tags],
             # sync_tensorboard=True,
             config=cfg_dict,
             name=cfg.run_name,
