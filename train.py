@@ -220,8 +220,19 @@ def train(cfg):
                     z_batch = agent.enc(batch.observations[0])
                     rank_info = h.calc_rank(name="z", z=z_batch)
                     if cfg.agent.use_fsq:
+                        # Log  rank of NN output (before normalization)
                         mlp_z_batch = agent.enc.mlp(batch.observations[0])
                         rank_info.update(h.calc_rank(name="mlp-z", z=mlp_z_batch))
+
+                        # Log percent of codebook being used (i.e. the active percent)
+                        indices = agent.enc(batch.observations[0], quatized=True)
+                        eval_metrics.update(
+                            {
+                                "active_percent": indices.unique().numel()
+                                / agent.num_codes
+                                * 100
+                            }
+                        )
 
                     eval_metrics.update(rank_info)
 

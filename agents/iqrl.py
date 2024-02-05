@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import logging
+import math
 from typing import List, Optional, Tuple
 
 import agents
@@ -101,6 +102,7 @@ class iQRL(Agent):
 
         ##### Encoder config #####
         self.use_fsq = use_fsq
+        self.num_codes = math.prod(fsq_levels)
         self.quantized = quantized
         if quantized:
             self.fsq_idx = 1
