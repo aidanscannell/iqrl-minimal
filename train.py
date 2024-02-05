@@ -225,7 +225,7 @@ def train(cfg):
                         rank_info.update(h.calc_rank(name="mlp-z", z=mlp_z_batch))
 
                         # Log percent of codebook being used (i.e. the active percent)
-                        indices = agent.enc(batch.observations[0], quatized=True)
+                        indices = agent.enc(batch.observations[0], quantized=True)
                         eval_metrics.update(
                             {
                                 "active_percent": indices.unique().numel()
