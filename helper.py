@@ -226,3 +226,21 @@ def calc_rank(name, z):
         info.update({f"{name}-rank-{j}": rank.item()})
     info.update({f"{name}-cond-num": condition.item()})
     return info
+
+
+class MLPResettable(nn.Module):
+    def __init__(self, mlp):
+        super().__init__()
+        self.mlp = mlp
+
+    def forward(self, x):
+        return self.mlp(x)
+
+    def reset(self, reset_type: str = "last-layer"):
+        if reset_type in "full":
+            orthogonal_init(self.parameters())
+        elif reset_type in "last-layer":
+            params = list(self.parameters())
+            orthogonal_init(params[-2:])
+        else:
+            raise NotImplementedError

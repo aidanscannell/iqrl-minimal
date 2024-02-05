@@ -100,7 +100,7 @@ def train(cfg):
         torch.device(cfg.device),
         nstep=nstep,
         #        handle_timeout_termination=False,
-        discount=cfg.agent.discount,
+        gamma=cfg.agent.gamma,
         train_validation_split=cfg.train_validation_split,
     )
 

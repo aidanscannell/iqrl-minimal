@@ -122,7 +122,7 @@ class TD3(Agent):
         ] = None,  # reset params after this many param updates
         reset_type: str = "last_layer",  #  "full" or "last-layer"
         # nstep: int = 1,
-        discount: float = 0.99,
+        gamma: float = 0.99,
         tau: float = 0.005,
         act_with_target: bool = False,  # if True act with target network
         logging_freq: int = 499,
@@ -150,7 +150,7 @@ class TD3(Agent):
         self.reset_params_freq = reset_params_freq
         self.reset_type = reset_type
         self.nstep = nstep
-        self.discount = discount
+        self.gamma = gamma
         self.tau = tau
         self.act_with_target = act_with_target
         self.logging_freq = logging_freq
@@ -232,18 +232,18 @@ class TD3(Agent):
         dones = torch.zeros_like(batch.dones[0], dtype=torch.bool)
         rewards = torch.zeros_like(batch.rewards[0])
         timeout_or_dones = torch.zeros_like(batch.dones[0], dtype=torch.bool)
-        next_state_discounts = torch.ones_like(batch.dones[0])
+        next_state_gammas = torch.ones_like(batch.dones[0])
         next_obs = torch.zeros_like(batch.observations[0])
         for t in range(self.nstep):
             next_obs = torch.where(
                 timeout_or_dones[..., None], next_obs, batch.next_observations[t]
             )
-            next_state_discounts *= torch.where(timeout_or_dones, 1, self.discount)
+            next_state_gammas *= torch.where(timeout_or_dones, 1, self.gamma)
             dones = torch.where(timeout_or_dones, dones, batch.dones[t])
             rewards += torch.where(
                 timeout_or_dones[..., None],
                 0,
-                self.discount**t * batch.rewards[t],
+                self.gamma**t * batch.rewards[t],
             )
             timeout_or_dones = torch.logical_or(
                 timeout_or_dones, torch.logical_or(dones, batch.timeouts[t])
@@ -255,7 +255,7 @@ class TD3(Agent):
             dones=dones,
             timeouts=timeout_or_dones,
             rewards=rewards,
-            next_state_discounts=next_state_discounts,
+            next_state_gammas=next_state_gammas,
         )
 
         # Update critic
@@ -305,8 +305,8 @@ class TD3(Agent):
             min_q_next_target = torch.min(q1_next_target, q2_next_target)
             next_q_value = data.rewards.flatten() + (
                 1 - data.dones.flatten()
-            ) * data.next_state_discounts.flatten() * (min_q_next_target).view(-1)
-        #            ) * self.discount**self.nstep * (min_q_next_target).view(-1)
+            ) * data.next_state_gammas.flatten() * (min_q_next_target).view(-1)
+        #            ) * self.gamma**self.nstep * (min_q_next_target).view(-1)
 
         q1_values, q2_values = self.critic(data.observations, data.actions)
         q1_loss = F.mse_loss(q1_values.view(-1), next_q_value)

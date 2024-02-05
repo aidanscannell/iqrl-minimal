@@ -26,7 +26,7 @@ class ReplayBufferSamples(NamedTuple):
     dones: th.Tensor
     timeouts: th.Tensor
     rewards: th.Tensor
-    next_state_discounts: th.Tensor
+    next_state_gammas: th.Tensor
 
 
 class BaseBuffer(ABC):
@@ -229,7 +229,7 @@ class ReplayBuffer(BaseBuffer):
         nstep: int = 1,
         optimize_memory_usage: bool = False,
         handle_timeout_termination: bool = True,
-        discount: Optional[float] = 1.0,
+        gamma: Optional[float] = 1.0,
         train_validation_split: Optional[float] = None,
     ):
         super().__init__(
@@ -241,7 +241,7 @@ class ReplayBuffer(BaseBuffer):
 
         # Set n-step returns
         self.nstep = nstep
-        self.discount = discount
+        self.gamma = gamma
         self.train_validation_split = train_validation_split
 
         # Check that the replay buffer can fit into the memory
@@ -440,8 +440,8 @@ class ReplayBuffer(BaseBuffer):
                 self.next_observations[batch_inds, env_indices, :], env
             )
 
-        next_state_discounts = (
-            np.ones_like(self.dones[batch_inds, env_indices]) * self.discount
+        next_state_gammas = (
+            np.ones_like(self.dones[batch_inds, env_indices]) * self.gamma
         )
 
         data = (
@@ -459,7 +459,7 @@ class ReplayBuffer(BaseBuffer):
             self._normalize_reward(
                 self.rewards[batch_inds, env_indices].reshape(-1, 1), env
             ),
-            next_state_discounts.astype(np.float32),
+            next_state_gammas.astype(np.float32),
         )
         data_traj = ()
         for i in range(len(data)):
@@ -486,7 +486,7 @@ class ReplayBuffer(BaseBuffer):
         next_obs = np.zeros_like(obs)
         timeout_or_dones = np.zeros_like(dones)
         rewards = np.zeros_like(dones)
-        next_state_discounts = np.ones_like(dones)
+        next_state_gammas = np.ones_like(dones)
 
         for n in range(nstep):
             idxs = (batch_inds + n) % self.buffer_size
@@ -511,14 +511,14 @@ class ReplayBuffer(BaseBuffer):
                     ),
                 )
 
-            next_state_discounts *= np.where(timeout_or_dones, 1, self.discount)
+            next_state_gammas *= np.where(timeout_or_dones, 1, self.gamma)
             dones = np.where(
                 timeout_or_dones, dones, self.dones[idxs, env_indices].reshape(-1, 1)
             )
             rewards += np.where(
                 timeout_or_dones,
                 0,
-                self.discount**n
+                self.gamma**n
                 * self._normalize_reward(
                     self.rewards[idxs, env_indices].reshape(-1, 1), env
                 ),
@@ -534,7 +534,7 @@ class ReplayBuffer(BaseBuffer):
             next_obs,
             dones.astype(np.float32),
             rewards.astype(np.float32),
-            next_state_discounts.astype(np.float32),
+            next_state_gammas.astype(np.float32),
         )
 
         #        obs_new = obs

@@ -11,15 +11,8 @@ batch_size: 256
 utd_ratio: 1  # parameter update-to-data ratio
 actor_update_freq: 2  # update actor less frequently than critic
 nstep: 1
-discount: 0.99
+gamma: 0.99
 tau: 0.005 # momentum coefficient (for target actor/critics)
-
-# Reset stuff
-reset_type: "full" # "full" or "last-layer"
-reset_strategy: "every-x-param-updates"  #  "latent-dist" or "every-x-param-updates"
-reset_params_freq: null # reset params after this many param updates
-reset_threshold: 0.01  # reset latent (z) when changed by more than this
-memory_size: 10000  # mem size for calculating ||z_{mem} - e_{\phi}(x_mem)||
 
 ##### Encoder config #####
 latent_dim: 128
@@ -29,11 +22,7 @@ enc_learning_rate: 1e-4
 enc_batch_size: 256
 enc_utd_ratio: 1  # enc parameter update-to-data ratio
 enc_tau: 0.005 # momentum coefficient for (target encoder)
-train_strategy: "interleaved"  # "interleaved" or "representation-first"
-
-# Early stopping (not used with train_strategy=="interleaved")
-enc_patience: 100
-enc_min_delta: 0.0
+# train_strategy: "interleaved"  # "interleaved" or "representation-first"
 
 # Configure which loss terms to use
 use_tc_loss: True # if True include dynamic model in enc
@@ -55,9 +44,10 @@ projection_dim: null # if None use latent_dim/2
 # Configure FSQ normalization
 use_fsq: True
 fsq_levels: [8, 8]
-fsq_idx: 0  # 0 uses z and 1 uses indices for actor/critic
+quantized: False  # if True use quantized latent for TD3, else use normalized latent
 
 # Other stuff
+logging_freq: 499
 compile: False
 device: ${device}
-name: iQRL_n=${agent.nstep}_h=${agent.horizon}_td3-targ=${agent.use_tar_enc}_act-targ=${agent.act_with_tar_enc}_cos=${agent.use_cosine_similarity_dynamics}_${agent.reset_strategy}-${agent.reset_type}_${agent.train_strategy}-${agent.reset_params_freq}_temp-${agent.use_tc_loss}_rec=${agent.use_rec_loss}_utd=${agent.utd_ratio}_fsq=${agent.use_fsq}_${agent.fsq_levels}_idx=${agent.fsq_idx}_d=${agent.latent_dim}
+name: iQRL_n=${agent.nstep}_h=${agent.horizon}_td3-targ=${agent.use_tar_enc}_act-targ=${agent.act_with_tar_enc}_cos=${agent.use_cosine_similarity_dynamics}__tc-${agent.use_tc_loss}_rec=${agent.use_rec_loss}_utd=${agent.utd_ratio}_fsq=${agent.use_fsq}_${agent.fsq_levels}_q=${agent.quantized}_d=${agent.latent_dim}
