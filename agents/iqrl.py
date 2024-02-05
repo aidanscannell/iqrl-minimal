@@ -95,7 +95,7 @@ class MLPReward(MLPResettable):
 class iQRL(Agent):
     def __init__(
         self,
-        # TD3 config
+        ##### TD3 config #####
         observation_space: Space,
         action_space: Box,
         mlp_dims: List[int] = [512, 512],
@@ -110,7 +110,6 @@ class iQRL(Agent):
         utd_ratio: int = 1,  # TD3 parameter update-to-data ratio
         actor_update_freq: int = 1,  # update actor less frequently than critic
         nstep: int = 1,  # nstep used for TD returns
-        horizon: int = 5,  # horizon used for representation learning
         discount: float = 0.99,
         tau: float = 0.005,
         rho: float = 0.9,  # discount for dynamics
@@ -126,36 +125,37 @@ class iQRL(Agent):
         max_retrain_updates: int = 5000,
         eta_ratio: float = 1.0,  # enc-to-agent parameter update ratio (agent updates from early stopping)
         memory_size: int = 10000,
-        # AE config
-        train_strategy: str = "interleaved",  # "interleaved" or "representation-first"
-        temporal_consistency: bool = False,  # if True include dynamic model for representation learning
-        reward_loss: bool = False,  # if True include reward model for representation learning
-        reconstruction_loss: bool = True,  # if True use reconstruction loss with decoder
-        use_cosine_similarity_dynamics: bool = False,
-        use_cosine_similarity_reward: bool = False,
+        ##### Encoder config #####
+        latent_dim: int = 20,
+        horizon: int = 5,  # horizon used for representation learning
         enc_mlp_dims: List[int] = [256],
         enc_learning_rate: float = 3e-4,
+        enc_tau: float = 0.005,  # momentum coefficient for target encoder
         enc_batch_size: int = 128,
-        zp_weight: float = 10,
-        # enc_num_updates: int = 1000,
         enc_utd_ratio: int = 1,  # used for representation first training
         enc_update_freq: int = 1,  # update enc less frequently than actor/critic
         enc_patience: Optional[int] = None,
         enc_min_delta: Optional[float] = None,
         use_early_stop: bool = False,
-        project_latent: bool = False,
+        train_strategy: str = "interleaved",  # "interleaved" or "representation-first"
+        # Configure which loss terms to use
+        use_tc_loss: bool = False,  # if True include dynamic model for representation learning
+        use_rew_loss: bool = False,  # if True include reward model for representation learning
+        use_rec_loss: bool = True,  # if True use reconstruction loss with decoder
+        use_cosine_similarity_dynamics: bool = False,
+        use_cosine_similarity_reward: bool = False,
+        # Project loss into another space before calculating TC loss
+        use_project_latent: bool = False,
         projection_mlp_dims: List[int] = [256],
-        projection_dim: Optional[int] = None,
-        latent_dim: int = 20,
-        enc_tau: float = 0.005,
+        projection_dim: Optional[int] = None,  # if None use latent_dim/2
+        # Configure where we use the target encoder network
         use_tar_enc: bool = False,  # if True use target enc for actor/critic
         act_with_tar_enc: bool = False,  # if True act with target enc network
-        enc_normalize: bool = True,
-        simplex_dim: int = 10,
+        # Configure FSQ normalization
         use_fsq: bool = False,
         fsq_levels: List[int] = [8, 6, 5],
         fsq_idx: int = 0,  # 0 uses z and 1 uses indices for actor/critic
-        # enc_reset_params_freq: int = 10000,  # reset enc params after X param updates
+        # Other stuff
         compile: bool = False,
         device: str = "cuda",
         name: str = "iQRL",
@@ -165,9 +165,9 @@ class iQRL(Agent):
         )
         self.train_strategy = train_strategy
 
-        self.temporal_consistency = temporal_consistency
-        self.reward_loss = reward_loss
-        self.reconstruction_loss = reconstruction_loss
+        self.use_tc_loss = use_tc_loss
+        self.use_rew_loss = use_rew_loss
+        self.use_rec_loss = use_rec_loss
         self.use_cosine_similarity_dynamics = use_cosine_similarity_dynamics
         self.use_cosine_similarity_reward = use_cosine_similarity_reward
         self.enc_learning_rate = enc_learning_rate
@@ -183,8 +183,7 @@ class iQRL(Agent):
 
         self.logging_freq = logging_freq
 
-        self.project_latent = project_latent
-        self.projection_dim = projection_dim
+        self.use_project_latent = use_project_latent
 
         self.rho = rho
 
@@ -192,31 +191,19 @@ class iQRL(Agent):
         self.enc_tau = enc_tau
         self.use_tar_enc = use_tar_enc
         self.act_with_tar_enc = act_with_tar_enc
-        self.enc_normalize = enc_normalize
-        self.simplex_dim = simplex_dim
         self.use_fsq = use_fsq
         self.fsq_levels = fsq_levels
         self.fsq_idx = fsq_idx
-
-        self.zp_weight = zp_weight
 
         self.horizon = horizon
 
         self.device = device
 
-        # Use SimNorm activation if enc_normalize is True
-        act_fn = None
-        target_act_fn = None
-        if enc_normalize:
-            act_fn = SimNorm(dim=simplex_dim)
-            target_act_fn = SimNorm(dim=simplex_dim)
-
         obs_dim = np.array(observation_space.shape).prod()
-        # state_act_dim = np.array(observation_space.shape).prod()
         state_act_dim = (
             np.array(action_space.shape).prod() + np.array(self.latent_dim).prod()
         )
-        # Init representation learning (enc/decoder/dynamics/reward)
+        ##### Init encoder for representation learning  ####
         if use_fsq:
             self.enc = h.FSQMLP(
                 in_dim=obs_dim,
@@ -231,14 +218,11 @@ class iQRL(Agent):
                 out_dim=latent_dim,
             ).to(device)
         else:
-            self.enc = h.mlp(
-                in_dim=obs_dim, mlp_dims=mlp_dims, out_dim=latent_dim, act_fn=act_fn
-            ).to(device)
+            self.enc = h.mlp(in_dim=obs_dim, mlp_dims=mlp_dims, out_dim=latent_dim).to(
+                device
+            )
             self.enc_tar = h.mlp(
-                in_dim=obs_dim,
-                mlp_dims=mlp_dims,
-                out_dim=latent_dim,
-                act_fn=target_act_fn,
+                in_dim=obs_dim, mlp_dims=mlp_dims, out_dim=latent_dim
             ).to(device)
         self.enc_tar.load_state_dict(self.enc.state_dict())
         if compile:
@@ -246,14 +230,17 @@ class iQRL(Agent):
             self.enc_tar = torch.compile(self.enc_tar, mode="default")
         enc_params = list(self.enc.parameters())
 
-        # if reconstruction_loss:
-        #     self.decoder = h.mlp(
-        #         in_dim=latent_dim, mlp_dims=mlp_dims, out_dim=obs_dim
-        #     ).to(device)
-        #     if compile:
-        #         self.decoder = torch.compile(self.decoder, mode="default")
-        #     enc_params += list(self.decoder.parameters())
-        if temporal_consistency:
+        ##### (Optionally) Init decoder for representation learning  ####
+        if use_rec_loss:
+            self.decoder = h.mlp(
+                in_dim=latent_dim, mlp_dims=mlp_dims, out_dim=obs_dim
+            ).to(device)
+            if compile:
+                self.decoder = torch.compile(self.decoder, mode="default")
+            enc_params += list(self.decoder.parameters())
+
+        ##### (Optionally) Init dynamics for representation learning  ####
+        if use_tc_loss:
             if use_fsq:
                 self.dynamics = h.FSQMLP(
                     in_dim=state_act_dim,
@@ -304,7 +291,7 @@ class iQRL(Agent):
 
         # enc_params = list(self.enc.parameters())
 
-        # if reconstruction_loss:
+        # if use_rec_loss:
         #     if use_fsq:
         #         self.decoder = FSQDecoder(
         #             observation_space=observation_space,
@@ -321,7 +308,7 @@ class iQRL(Agent):
         #     if compile:
         #         self.decoder = torch.compile(self.decoder, mode="default")
         #     enc_params += list(self.decoder.parameters())
-        # if temporal_consistency or value_dynamics_loss:
+        # if use_tc_loss or value_dynamics_loss:
         #     if use_fsq:
         #         self.dynamics = FSQMLPDynamics(
         #             action_space=action_space,
@@ -340,45 +327,40 @@ class iQRL(Agent):
         #         self.dynamics = torch.compile(self.dynamics, mode="default")
         #     enc_params += list(self.dynamics.parameters())
 
-        if self.reward_loss:
-            if use_fsq:
-                self.reward = FSQMLPReward(
-                    action_space=action_space,
-                    mlp_dims=mlp_dims,
-                    levels=fsq_levels,
-                    latent_dim=latent_dim,
-                ).to(device)
-            else:
-                self.reward = MLPReward(
-                    action_space=action_space,
-                    mlp_dims=mlp_dims,
-                    latent_dim=latent_dim,
-                ).to(device)
+        if self.use_rew_loss:
+            self.reward = h.mlp(in_dim=state_act_dim, mlp_dims=mlp_dims, out_dim=1)
+            self.reward.to(device)
             if compile:
                 self.reward = torch.compile(self.reward, mode="default")
             enc_params += list(self.reward.parameters())
 
-        if self.project_latent:
-            if not use_fsq:
-                projection_levels = None
-            else:
-                projection_levels = fsq_levels
+        if self.use_project_latent:
+            # if not use_fsq:
+            #     projection_levels = None
+            # else:
+            #     projection_levels = fsq_levels
             if projection_dim is None:
                 projection_dim = int(latent_dim / 2)
-            self.projection = Projection(
-                # mlp_dims=[1024],
-                mlp_dims=projection_mlp_dims,
-                levels=projection_levels,
-                latent_dim=latent_dim,
-                out_dim=projection_dim,
+            self.projection = h.mlp(
+                in_dim=latent_dim, mlp_dims=projection_mlp_dims, out_dim=projection_dim
             ).to(device)
-            self.projection_tar = Projection(
-                # mlp_dims=[1024],
-                mlp_dims=projection_mlp_dims,
-                levels=projection_levels,
-                latent_dim=latent_dim,
-                out_dim=projection_dim,
+            self.projection_tar = h.mlp(
+                in_dim=latent_dim, mlp_dims=projection_mlp_dims, out_dim=projection_dim
             ).to(device)
+            # self.projection = Projection(
+            #     # mlp_dims=[1024],
+            #     mlp_dims=projection_mlp_dims,
+            #     levels=projection_levels,
+            #     latent_dim=latent_dim,
+            #     out_dim=projection_dim,
+            # ).to(device)
+            # self.projection_tar = Projection(
+            #     # mlp_dims=[1024],
+            #     mlp_dims=projection_mlp_dims,
+            #     levels=projection_levels,
+            #     latent_dim=latent_dim,
+            #     out_dim=projection_dim,
+            # ).to(device)
             self.projection_tar.load_state_dict(self.projection.state_dict())
             if compile:
                 self.projection = torch.compile(self.projection, mode="default")
@@ -398,38 +380,6 @@ class iQRL(Agent):
         else:
             self.enc_early_stopper = None
 
-        # TODO make a space for latent states
-        # latent_observation_space = observation_space
-        # high = np.array(levels).prod()
-        # TODO is this the right way to make observation space??
-        # TODO Should we bound z in -100,100 instead of -inf,inf??
-        # if enc_normalize:
-        #     self.latent_observation_space = gym.spaces.Box(
-        #         low=0, high=1, shape=(latent_dim,)
-        #     )
-        # else:
-        #     self.latent_observation_space = gym.spaces.Box(
-        #         low=-np.inf,
-        #         high=np.inf,
-        #         shape=(latent_dim,)
-        #         # low=0.0, high=high, shape=(latent_dim,)
-        #     )
-        # if use_fsq:
-        #     codebook_size = np.array(fsq_levels).prod()
-
-        #     if self.fsq_idx == 0:
-        #         num_levels = len(fsq_levels)
-        #         low = -num_levels / 2
-        #         high = num_levels / 2
-        #         shape = (latent_dim * len(fsq_levels),)
-        #         # shape = (latent_dim, len(fsq_levels))
-        #     else:
-        #         low = 1
-        #         high = codebook_size
-        #         shape = (latent_dim,)
-        #     self.latent_observation_space = gym.spaces.Box(
-        #         low=low, high=high, shape=shape
-        #     )
         # Make latent observation space
         num_levels = len(fsq_levels)
         obs_low = -np.inf
@@ -443,9 +393,6 @@ class iQRL(Agent):
                 obs_low = 1
                 obs_high = np.array(fsq_levels).prod()
                 obs_shape = (int(latent_dim / len(fsq_levels)),)
-        elif enc_normalize:
-            obs_low = 0
-            obs_high = 1
         self.latent_observation_space = gym.spaces.Box(
             low=obs_low, high=obs_high, shape=obs_shape
         )
@@ -597,7 +544,7 @@ class iQRL(Agent):
 
             if i % self.logging_freq == 0:
                 logger.info(
-                    f"Iteration {i} | loss {info['enc_loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']} | reward loss {info['reward_loss']} "
+                    f"Iteration {i} | loss {info['enc_loss']} | rec loss {info['rec_loss']} | tc loss {info['tc_loss']} | reward loss {info['reward_loss']} "
                 )
                 if wandb.run is not None:
                     # info.update({"exploration_noise": self.td3.exploration_noise})
@@ -811,7 +758,7 @@ class iQRL(Agent):
 
             if i % self.logging_freq == 0:
                 logger.info(
-                    f"Iteration {i} | loss {info['enc_loss']} | rec loss {info['rec_loss']} | tc loss {info['temporal_consitency_loss']} | reward loss {info['reward_loss']}"
+                    f"Iteration {i} | loss {info['enc_loss']} | rec loss {info['rec_loss']} | tc loss {info['tc_loss']} | reward loss {info['reward_loss']}"
                 )
                 if wandb.run is not None:
                     wandb.log(info)
@@ -840,13 +787,13 @@ class iQRL(Agent):
                             "enc_tar": self.enc_tar.state_dict(),
                             "enc_opt": self.enc_opt.state_dict(),
                         }
-                        if self.reward_loss:
+                        if self.use_rew_loss:
                             state.update({"reward": self.reward.state_dict()})
-                        if self.reconstruction_loss:
+                        if self.use_rec_loss:
                             state.update({"decoder": self.decoder.state_dict()})
-                        if self.temporal_consistency:
+                        if self.use_tc_loss:
                             state.update({"dynamics": self.dynamics.state_dict()})
-                        if self.project_latent:
+                        if self.use_project_latent:
                             state.update({"projection": self.projection.state_dict()})
                             state.update(
                                 {"projection_tar": self.projection_tar.state_dict()}
@@ -859,17 +806,17 @@ class iQRL(Agent):
             self.enc.load_state_dict(torch.load("./best_ckpt_dict.pt")["enc"])
             self.enc_tar.load_state_dict(torch.load("./best_ckpt_dict.pt")["enc_tar"])
             self.enc_opt.load_state_dict(torch.load("./best_ckpt_dict.pt")["enc_opt"])
-            if self.reward_loss:
+            if self.use_rew_loss:
                 self.reward.load_state_dict(torch.load("./best_ckpt_dict.pt")["reward"])
-            if self.reconstruction_loss:
+            if self.use_rec_loss:
                 self.decoder.load_state_dict(
                     torch.load("./best_ckpt_dict.pt")["decoder"]
                 )
-            if self.temporal_consistency:
+            if self.use_tc_loss:
                 self.dynamics.load_state_dict(
                     torch.load("./best_ckpt_dict.pt")["dynamics"]
                 )
-            if self.project_latent:
+            if self.use_project_latent:
                 self.projection.load_state_dict(
                     torch.load("./best_ckpt_dict.pt")["projection"]
                 )
@@ -951,7 +898,7 @@ class iQRL(Agent):
 
         # Update the target network
         soft_update_params(self.enc, self.enc_tar, tau=self.enc_tau)
-        if self.project_latent:
+        if self.use_project_latent:
             soft_update_params(self.projection, self.projection_tar, tau=self.enc_tau)
 
         return info
@@ -960,33 +907,21 @@ class iQRL(Agent):
         self, batch: ReplayBufferSamples
     ) -> Tuple[torch.Tensor, dict]:
         x_train = batch.observations
-        # if self.use_fsq:
-        #     # if x_train.ndim > 2:
-        #     #     z, indices = torch.func.vmap(self.enc)(x_train)
-        #     # else:
-        #     z, indices = self.enc(x_train)
-        # else:
-        #     # if x_train.ndim > 2:
-        #     #     z = torch.func.vmap(self.enc)(x_train)
-        #     # else:
-        #     z = self.enc(x_train)
-        z = self.enc(x_train)
 
-        if self.reconstruction_loss and not self.temporal_consistency:
+        tc_loss = torch.zeros(1).to(self.device)
+        reward_loss = torch.zeros(1).to(self.device)
+        rec_loss = torch.zeros(1).to(self.device)
+
+        if self.use_rec_loss and not self.use_tc_loss:
             raise NotImplementedError("Doesn't handle leading dim of N-step?")
-            x_rec = self.decoder(z)
-            # rec_loss = ((x_rec - x_train)**2).mean()
+            # TODO this can be vectorized
+            for x in x_train:
+                z = self.enc(x)
+                x_rec = self.decoder(z)
+                rec_loss += ((x_rec - x_train) ** 2).mean()
             # rec_loss = (x_rec - x_train).abs().mean()
-        else:
-            rec_loss = torch.zeros(1).to(self.device)
 
-        if self.temporal_consistency:
-            temporal_consitency_loss, reward_loss = 0.0, 0.0
-            rec_loss = torch.zeros(1).to(self.device)
-            # if self.use_fsq:
-            #     z, _ = self.enc(batch.observations[0])
-            # else:
-            #     z = self.enc(batch.observations[0])
+        if self.use_tc_loss:
             z = self.enc(batch.observations[0])
 
             dones = torch.zeros_like(batch.dones[0], dtype=torch.bool)
@@ -998,54 +933,43 @@ class iQRL(Agent):
                 )
 
                 # Calculate reconstruction loss for each time step
-                if self.reconstruction_loss:
+                if self.use_rec_loss:
                     x_rec = self.decoder(z)
                     # rec_loss += (x_rec - x_train[t]).abs().mean()
                     rec_loss = ((x_rec - x_train[t]) ** 2).mean()
 
                 # Predict next latent
-                delta_z_pred = self.dynamics(torch.concat([z, batch.actions[t]], -1))
-                # delta_z_pred = self.dynamics(z, a=batch.actions[t])
-                # if self.use_fsq:
-                #     delta_z_pred = delta_z_pred[0]
-                next_z_pred = z + delta_z_pred
+                next_z_pred = z + self.dynamics(torch.concat([z, batch.actions[t]], -1))
 
                 # Predict next reward
-                if self.reward_loss:
-                    r_pred = self.reward(z=z, a=batch.actions[t])
+                if self.use_rew_loss:
+                    r_pred = self.reward(torch.concat([z, batch.actions[t]], -1))
 
                 with torch.no_grad():
                     next_obs = batch.next_observations[t]
                     next_z_tar = self.enc_tar(next_obs)
-                    # if self.use_fsq:
-                    # next_z_tar = next_z_tar[0]
                     r_tar = batch.rewards[t]
                     assert next_obs.ndim == r_tar.ndim == 2
 
                 # Don't forget this
                 z = next_z_pred
 
-                if self.project_latent:
+                if self.use_project_latent:
                     next_z_tar = self.projection_tar(next_z_tar)
                     next_z_pred = self.projection(next_z_pred)
 
                 # Losses
                 rho = self.rho**t
-                # if self.use_fsq and not self.project_latent:
-                #     next_z_pred = next_z_pred.flatten(-2)
-                #     next_z_tar = next_z_tar.flatten(-2)
                 if self.use_cosine_similarity_dynamics:
-                    _temporal_consitency_loss = nn.CosineSimilarity(dim=-1, eps=1e-6)(
+                    _tc_loss = nn.CosineSimilarity(dim=-1, eps=1e-6)(
                         next_z_pred, next_z_tar
                     )
                 else:
-                    _temporal_consitency_loss = torch.mean(
-                        (next_z_pred - next_z_tar) ** 2, dim=-1
-                    )
-                temporal_consitency_loss += rho * torch.mean(
-                    (1 - timeout_or_dones.to(torch.int)) * _temporal_consitency_loss
+                    _tc_loss = torch.mean((next_z_pred - next_z_tar) ** 2, dim=-1)
+                tc_loss += rho * torch.mean(
+                    (1 - timeout_or_dones.to(torch.int)) * _tc_loss
                 )
-                if self.reward_loss:
+                if self.use_rew_loss:
                     assert r_pred.ndim == 2
                     assert r_tar.ndim == 2
                     if self.use_cosine_similarity_reward:
@@ -1057,15 +981,11 @@ class iQRL(Agent):
                     reward_loss += rho * torch.mean(
                         (1 - timeout_or_dones.to(torch.int)) * _reward_loss
                     )
-                else:
-                    reward_loss += torch.zeros(1).to(self.device)
-        else:
-            temporal_consitency_loss = torch.zeros(1).to(self.device)
 
-        loss = rec_loss + reward_loss + temporal_consitency_loss
+        loss = rec_loss + reward_loss + tc_loss
         info = {
             "reward_loss": reward_loss.item(),
-            "temporal_consitency_loss": temporal_consitency_loss.item(),
+            "tc_loss": tc_loss.item(),
             "rec_loss": rec_loss.item(),
             "enc_loss": loss.item(),
             "z_min": torch.min(z).item(),
@@ -1159,15 +1079,15 @@ class iQRL(Agent):
         logger.info("Resetting enc params")
         self.enc.reset(reset_type=reset_type)
         enc_params = list(self.enc.parameters())
-        if self.reconstruction_loss:
+        if self.use_rec_loss:
             logger.info("Resetting decoder")
             self.decoder.reset(reset_type=reset_type)
             enc_params += list(self.decoder.parameters())
-        if self.temporal_consistency:
+        if self.use_tc_loss:
             logger.info("Resetting dynamics")
             self.dynamics.reset(reset_type=reset_type)
             enc_params += list(self.dynamics.parameters())
-        if self.reward_loss:
+        if self.use_rew_loss:
             logger.info("Resetting reward")
             self.reward.reset(reset_type=reset_type)
             enc_params += list(self.reward.parameters())
@@ -1256,19 +1176,19 @@ class iQRL(Agent):
     def train(self):
         self.enc.train()
         self.td3.train()
-        if self.reconstruction_loss:
+        if self.use_rec_loss:
             self.decoder.train()
-        if self.temporal_consistency:
+        if self.use_tc_loss:
             self.dynamics.train()
-        if self.reward_loss:
+        if self.use_rew_loss:
             self.reward.train()
 
     def eval(self):
         self.enc.eval()
         self.td3.eval()
-        if self.reconstruction_loss:
+        if self.use_rec_loss:
             self.decoder.eval()
-        if self.temporal_consistency:
+        if self.use_tc_loss:
             self.dynamics.eval()
-        if self.reward_loss:
+        if self.use_rew_loss:
             self.reward.eval()
