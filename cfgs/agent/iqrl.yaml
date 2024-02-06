@@ -21,6 +21,7 @@ enc_mlp_dims: [256]
 enc_learning_rate: 1e-4
 enc_batch_size: 256
 enc_utd_ratio: 1  # enc parameter update-to-data ratio
+enc_update_freq: 1  # (Optionally) update enc less frequently than actor/critic
 enc_tau: 0.005 # momentum coefficient for (target encoder)
 # train_strategy: "interleaved"  # "interleaved" or "representation-first"
 
