@@ -63,10 +63,10 @@ rename = {a: b for a, b in zip(keys, titles)}
 def plot(df, key="episode_reward"):
     # breakpoint()
     envs = np.sort(df.env.unique())
-    ncol = 6
+    ncol = 3
     # assert envs.shape[0] % ncol == 0
     # nrow = len(main_envs) // ncol
-    nrow = 1
+    nrow = 2
     # nrow = envs.shape[0] // ncol
 
     fig, axs = plt.subplots(nrow, ncol, figsize=(4 * ncol, 3.5 * nrow))
