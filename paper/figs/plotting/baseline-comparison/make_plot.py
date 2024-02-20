@@ -11,15 +11,16 @@ plt.style.use("seaborn-v0_8-whitegrid")
 import seaborn as sns
 
 plt.rcParams["figure.dpi"] = 400
-plt.rcParams["font.size"] = 13
-plt.rcParams["legend.fontsize"] = 12
+plt.rcParams["font.size"] = 15
+plt.rcParams["legend.fontsize"] = 14
 plt.rcParams["legend.loc"] = "lower right"
+plt.rcParams["text.usetex"] = True
 COLORS = {
     "TCRL": "#4daf4a",
     "SAC": "#377eb8",
     "REDQ": "#984ea3",
     "TD-MPC": "#ff7f00",
-    "iFSQ-RL": "#e41a1c",
+    "iQRL": "#e41a1c",
     # "iFSQ-RL d=1024": "magenta",
     # "iFSQ-RL d=512": "grey",
     # "iFSQ-RL d=128": "#e41a1c",
@@ -34,7 +35,7 @@ main_envs = [
     "walker-walk",
     "humanoid-walk",
     "dog-walk",
-    "dog-run",
+    # "dog-run",
 ]
 
 
@@ -42,28 +43,26 @@ def plot(df, key="episode_reward"):
     envs = np.sort(df.env.unique())
     ncol = 4
     # assert envs.shape[0] % ncol == 0
-    nrow = len(main_envs) // ncol
+    # nrow = len(main_envs) // ncol
+    nrow = 2
     # nrow = envs.shape[0] // ncol
 
     fig, axs = plt.subplots(nrow, ncol, figsize=(4 * ncol, 3.5 * nrow))
 
-    # breakpoint()
-    # df["env_step"] = df["env_step"] / 1000
+    df["episode"] = df.apply(lambda row: int(row["env_step"] / 1000), axis=1)
+
     for idx, env in enumerate(main_envs):
+        idx += 1
         data = df[df["env"] == env]
-        # breakpoint()
-        # data[data["agent"] == "iFSQ-RL"] = data[data["agent"] == "iFSQ-RL"].iloc[::2]
         row = idx // ncol
         col = idx % ncol
         ax = axs[row, col]
         hue_order = data.agent.unique()
 
-        if idx == 3:
-            sns.lineplot(
-                # x=int("env_step" / 1000),
-                x="env_step",
+        if idx == 2:
+            g = sns.lineplot(
                 # x="env_step",
-                # x="episode",
+                x="episode",
                 y=key,
                 data=data,
                 errorbar=("ci", 95),
@@ -75,9 +74,9 @@ def plot(df, key="episode_reward"):
             )
             ax.legend().set_title(None)
         else:
-            sns.lineplot(
-                # x="episode",
-                x="env_step",
+            g = sns.lineplot(
+                # x="env_step",
+                x="episode",
                 y=key,
                 data=data,
                 errorbar=("ci", 95),
@@ -87,12 +86,45 @@ def plot(df, key="episode_reward"):
                 legend=False,
                 ax=ax,
             )
+        if env == "quadruped-walk":
+            g.set(xlim=(0, 500))
+        if env == "walker-walk":
+            g.set(xlim=(0, 250))
+        if env == "dog-walk":
+            g.set(xlim=(0, 750))
+        if env == "humanoid-walk":
+            g.set(xlim=(0, 3000))
 
         ax.set_title(" ".join([ele.capitalize() for ele in env.split("-")]))
         ax.set_xlabel("Environment Steps (1e3)")
         ax.set_ylabel("Episode Return")
+
+    # df["episode_reward"] = df.apply(
+    #     lambda row: int(row["episode_reward"] / len(main_envs)), axis=1
+    # )
+
+    # Only plot for first 1M steps
+    df = df[df["episode"] < 1000]
+    # df = df[df["env"] != "walker-walk"]
+    g = sns.lineplot(
+        # x="env_step",
+        x="episode",
+        y=key,
+        data=df,
+        errorbar=("ci", 95),
+        hue="agent",
+        # hue_order=hue_order,
+        palette=COLORS,
+        legend=False,
+        ax=axs[0, 0],
+    )
+    axs[0, 0].set_title("Avg. Over 7 DMC Tasks")
+    axs[0, 0].set_xlabel("Environment Steps (1e3)")
+    axs[0, 0].set_ylabel("Episode Return")
+
     plt.tight_layout()
-    plt.savefig(f"../../baselines_comparison.pdf")
+    plt.savefig(f"../../baselines_comparison_debug.pdf")
+    # plt.savefig(f"../../baselines_comparison.pdf")
     # plt.show()
 
 
@@ -123,7 +155,7 @@ df = [
     pd.read_csv(f"{data_path}/tdmpc_main.csv"),
     df_redq,
     pd.read_csv(f"{data_path}/sac_main.csv"),
-    pd.read_csv(f"{data_path}/ifsq-rl.csv"),
+    pd.read_csv(f"{data_path}/iqrl.csv"),
 ]
 plot(pd.concat(df))
 

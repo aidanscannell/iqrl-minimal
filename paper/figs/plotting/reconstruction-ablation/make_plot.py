@@ -11,28 +11,30 @@ plt.style.use("seaborn-v0_8-whitegrid")
 import seaborn as sns
 
 plt.rcParams["figure.dpi"] = 400
-plt.rcParams["font.size"] = 13
-plt.rcParams["legend.fontsize"] = 12
+plt.rcParams["font.size"] = 15
+plt.rcParams["legend.fontsize"] = 14
 plt.rcParams["legend.loc"] = "lower right"
+plt.rcParams["text.usetex"] = True
 COLORS = {
     # "TCRL": "#e41a1c",
     # "SAC": ,
     # "REDQ": "#984ea3",
     # "TD-MPC": "#ff7f00",
     # "VQ-TD3": "magenta",
-    "iFSQ-RL+rec": "#377eb8",
-    "iFSQ-RL": "#e41a1c",
+    "iQRL+rec": "#377eb8",
+    "iQRL": "#e41a1c",
 }
 # %%
 main_envs = [
     "acrobot-swingup",
     "cheetah-run",
+    "cartpole-swingup",
     # "walker-walk",
     "walker-run",
     "hopper-stand",
     "fish-swim",
     "quadruped-run",
-    "humanoid-run",
+    # "humanoid-run",
     # "humanoid-walk",
     "dog-walk",
     # "dog-run",
@@ -60,13 +62,18 @@ def plot(df, key="episode_reward"):
     envs = np.sort(df.env.unique())
     ncol = 4
     # assert envs.shape[0] % ncol == 0
-    nrow = len(main_envs) // ncol
+    # nrow = len(main_envs) // ncol
     # nrow = 1
+    nrow = 2
     # nrow = envs.shape[0] // ncol
 
     fig, axs = plt.subplots(nrow, ncol, figsize=(4 * ncol, 3.5 * nrow))
 
+    df["episode"] = df.apply(lambda row: int(row["env_step"] / 1000), axis=1)
+
     df = df.rename(columns=rename)
+
+    # axs[-1, -1].axis("off")
 
     for idx, env in enumerate(main_envs):
         data = df[df["env"] == env]
@@ -77,12 +84,11 @@ def plot(df, key="episode_reward"):
         # hue_order = data.agent.unique()
         hue_order = data.name.unique()
         # hue_order = data.utd_ratio.unique()
-        # breakpoint()
 
-        if idx == 0:
-            sns.lineplot(
-                x="env_step",
-                # x="episode",
+        if idx == 3:
+            g = sns.lineplot(
+                # x="env_step",
+                x="episode",
                 y=key,
                 data=data,
                 errorbar=("ci", 95),
@@ -95,10 +101,9 @@ def plot(df, key="episode_reward"):
             )
             ax.legend().set_title(None)
         else:
-            # breakpoint()
-            sns.lineplot(
-                x="env_step",
-                # x="episode",
+            g = sns.lineplot(
+                # x="env_step",
+                x="episode",
                 y=key,
                 data=data,
                 errorbar=("ci", 95),
@@ -109,6 +114,10 @@ def plot(df, key="episode_reward"):
                 legend=False,
                 ax=ax,
             )
+        if env == "cartpole-swingup":
+            g.set(xlim=(20, 100))
+        if env == "dog-walk":
+            g.set(xlim=(0, 780))
 
         ax.set_title(" ".join([ele.capitalize() for ele in env.split("-")]))
         ax.set_xlabel("Environment Steps (1e3)")
@@ -135,7 +144,7 @@ df = [
     # pd.read_csv(f"{data_path}/tdmpc_main.csv"),
     # df_redq,
     # pd.read_csv(f"{data_path}/sac_main.csv"),
-    pd.read_csv(f"{data_path}/ifsq-rl.csv"),
+    pd.read_csv(f"{data_path}/iqrl.csv"),
 ]
 plot(pd.concat(df))
 

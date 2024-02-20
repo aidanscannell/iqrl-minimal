@@ -9,3 +9,4 @@ dmc_task: "swim"
 agent:
   nstep: 3
   project_latent: True
+  latent_dim: 512

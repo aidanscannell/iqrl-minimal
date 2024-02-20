@@ -83,9 +83,8 @@ def train(cfg):
             save_code=True,
             dir=os.path.join(get_original_cwd(), "output"),
         )
-        wandb.run.summary["timeout_min"] = HydraConfig.get().launcher.timeout_min
-    pprint.pprint(cfg_dict)
-    pprint.pprint(HydraConfig.get().launcher)
+    # pprint.pprint(cfg_dict)
+    # pprint.pprint(HydraConfig.get().launcher)
 
     ###### Prepare replay buffer ######
     try:

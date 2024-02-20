@@ -1,5 +1,5 @@
 # %%
-ddpg_path = "aalto-ml/lifelong-td3-tc/"
+ddpg_path = "aalto-ml/iqrl-icml/"
 ddpg_data = {
     "path": ddpg_path,
     "data": {
@@ -13,7 +13,14 @@ ddpg_data = {
         # GOOD performance d=128
         "quadruped-walk": ["8zgkcuhs", "egk6qxco", "oh1xhyqt", "hm3ihqzo", "p4slb4q9"],
         "cheetah-run": ["8x29ibzc", "9k7936z8", "e7afvv6h", "81pbgf97", "qfqv9wz3"],
-        "walker-walk": ["8z9o8vp6", "roz89u0n", "h1by1w6s", "zfu00w22", "jvw4myex"],
+        # "walker-walk": ["8z9o8vp6", "roz89u0n", "h1by1w6s", "zfu00w22", "jvw4myex"], # only ran for 500k
+        "walker-walk": [
+            "zgtw2w02",
+            "hix7b6di",
+            "o17mz4v1",
+            "lqvypdgw",
+            "ilb76d20",
+        ],  # 1M steps
         # "cheetah-run": ["l4c3phty", "96xm0zx5", "6tul0lmk", "y7c9k82p", "zx6ykgj9"],
         # POOR performance d=512 project=False
         "acrobot-swingup": ["c6qmc8yx", "spwng8k4", "wgurvdan", "4xfe6bez", "95l445ci"],
@@ -51,15 +58,15 @@ ddpg_data = {
         #     "b5ffm8rt",
         # ],  # project=True
         # "dog-walk": ["sjqd8i9u"],
-        "dog-run": [
-            "ohxmhffe",
-            "aikn5eix",
-            "kprj5q9u",
-            "r232jms2",
-            # "aox6spn2", # crashed
-            "5ubkon5e",
-            "65wmol3k",
-        ],  # project=False
+        # "dog-run": [
+        #     "ohxmhffe",
+        #     "aikn5eix",
+        #     "kprj5q9u",
+        #     "r232jms2",
+        #     # "aox6spn2", # crashed
+        #     "5ubkon5e",
+        #     "65wmol3k",
+        # ],  # project=False
         # "dog-run": [
         #     "7hty9mrz",
         #     "0no65695",
@@ -157,7 +164,7 @@ data = pd.concat(
             run_path=ddpg_data["path"],
             run_name_list=ddpg_data["data"][env],
             keys=keys,
-            agent_name="iFSQ-RL",
+            agent_name="iQRL",
         )
         for env in ddpg_data["data"].keys()
     ]
@@ -165,7 +172,7 @@ data = pd.concat(
 
 # %%
 
-data.to_csv("./ifsq-rl.csv")
+data.to_csv("./iqrl.csv")
 
 
 # %%

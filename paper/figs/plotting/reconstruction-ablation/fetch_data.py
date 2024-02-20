@@ -1,5 +1,5 @@
 # %%
-ddpg_path = "aalto-ml/lifelong-td3-tc/"
+ddpg_path = "aalto-ml/iqrl-icml/"
 ddpg_data = {
     "path": ddpg_path,
     "data": {
@@ -68,6 +68,20 @@ ddpg_data = {
             "rkdmf32p",
             "ucvgujrp",
             "zqv19l3p",
+        ],
+        "cartpole-swingup-d=64-rec": [
+            "ibu5qn0t",
+            "bb079aef",
+            "ilhv49du",
+            "e15gra4x",
+            "u1rmgrtb",
+        ],
+        "cartpole-swingup-d=64": [
+            "dul9ksc7",
+            "aygtwe76",
+            "chmq024k",
+            "mwhja16u",
+            "lmkngxtl",
         ],
         # "hopper-stand": [
         #     ##### Project=True
@@ -180,6 +194,8 @@ ddpg_data = {
         #     # "lh1kdlht",  # seed=4
         #     # "8gymqblt",  # seed=5
         # ],
+        "fish-swim-rec": ["6vss1lh5", "ugzcaey2", "b8q0nc3f", "geecyirj", "79waw193"],
+        "fish-swim": ["3duujm1p", "kl6xd92o", "s4t5viko", "flcmnkt7", "1zjl534e"],
         "acrobot-swingup": [
             # reconstruction
             "6sfcsm49",
@@ -209,10 +225,10 @@ ddpg_data = {
             "wrggk81m",  # seed=5
             # no reconstruction
             # project=False
-            "stawiad8",
+            # "stawiad8",
             "iv8p110s",
-            "k454j543",
-            "nihkvll9",
+            # "k454j543",
+            # "nihkvll9",
             "jpkbw5h7",
             # project=True
             # "9k5cqnuq",
@@ -287,9 +303,9 @@ def fetch_results(run_path, run_name_list, keys):
         history["seed"] = wandb_run.config["seed"]
         # history["agent"] = agent_name
         if wandb_run.config["agent"]["reconstruction_loss"]:
-            history["name"] = "iFSQ-RL+rec"
+            history["name"] = "iQRL+rec"
         else:
-            history["name"] = "iFSQ-RL"
+            history["name"] = "iQRL"
 
         data.append(history)
         # breakpoint()
@@ -311,7 +327,7 @@ data = pd.concat(
 
 # %%
 
-data.to_csv("./ifsq-rl.csv")
+data.to_csv("./iqrl.csv")
 
 
 # %%

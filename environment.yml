@@ -1,4 +1,4 @@
-name: world-models
+name: iqrl
 channels:
   - nvidia
   - pytorch

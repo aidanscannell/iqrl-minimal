@@ -1,5 +1,5 @@
 # @package _global_
-num_episodes: 500
+num_episodes: 1000
 
 agent:
   # latent_dim: 512

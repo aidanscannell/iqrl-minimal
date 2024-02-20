@@ -1,4 +1,4 @@
-_target_: "agents.VQ_TC_TD3"
+_target_: "agents.iQRL"
 # Actor/critic stuff
 mlp_dims: [512, 512]
 # exploration_noise: 1.0
@@ -47,4 +47,4 @@ fsq_levels: [8, 8]
 fsq_idx: 0
 compile: False
 # encoder_reset_params_freq: int = 10000  # reset enc params after X param updates
-name: iFSQ-TD3_n=${agent.nstep}_h=${agent.horizon}_td3-targ=${agent.use_target_encoder}_act-targ=${agent.act_with_target_enc}_cos=${agent.use_cosine_similarity_dynamics}_${agent.reset_strategy}-${agent.reset_type}_${agent.train_strategy}-${agent.reset_params_freq}_temp-${agent.temporal_consistency}_rec=${agent.reconstruction_loss}_utd=${agent.utd_ratio}_fsq=${agent.use_fsq}_${agent.fsq_levels}_idx=${agent.fsq_idx}_d=${agent.latent_dim}
+name: iQRL_n=${agent.nstep}_h=${agent.horizon}_td3-targ=${agent.use_target_encoder}_act-targ=${agent.act_with_target_enc}_cos=${agent.use_cosine_similarity_dynamics}_${agent.reset_strategy}-${agent.reset_type}_${agent.train_strategy}-${agent.reset_params_freq}_temp-${agent.temporal_consistency}_rec=${agent.reconstruction_loss}_utd=${agent.utd_ratio}_fsq=${agent.use_fsq}_${agent.fsq_levels}_idx=${agent.fsq_idx}_d=${agent.latent_dim}

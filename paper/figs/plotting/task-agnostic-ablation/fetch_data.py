@@ -29,7 +29,7 @@ ddpg_data = {
             "f5d66x17",
             "jp26qyvm",
             "n3cb46el",
-            "z4dideh5"
+            "z4dideh5",
         ],
         "quadruped-run": [
             # Pre-training"
@@ -45,11 +45,11 @@ ddpg_data = {
             "my89a2ui",
             "0bdbllyg",
             # Task-specific pre-training
-#            "uykvengt",
-#            "e6u4u0et",
-#            "phlr610t",
-#            "32c5rcc6",
-#            "2hyd7evc",
+            #            "uykvengt",
+            #            "e6u4u0et",
+            #            "phlr610t",
+            #            "32c5rcc6",
+            #            "2hyd7evc",
             "lc8kap78",
             "fs0fug53",
             "rypu71yu",
@@ -70,11 +70,11 @@ ddpg_data = {
             "cbp72vz9",
             "oi0gnnd1",
             # Task-specific pre-training
-#            "oxisl0xv",
-#            "wv0a1i6l",
-#            "2mstpcgd",
-#            "olnugqts",
-#            "1iegxig2",
+            #            "oxisl0xv",
+            #            "wv0a1i6l",
+            #            "2mstpcgd",
+            #            "olnugqts",
+            #            "1iegxig2",
             "g029b1dc",
             "2dy32443",
             "1ogr1lye",
@@ -153,9 +153,9 @@ def fetch_results(run_path, run_name_list, keys):
         if not wandb_run.config["load_pretrained_agent"]:
             history["name"] = "iQRL"
         elif wandb_run.config["agent"]["reward_loss"]:
-            history["name"] = "iQRL-pretrained"
-        else:
             history["name"] = "iQRL+rew-pretrained"
+        else:
+            history["name"] = "iQRL-pretrained"
             # history["name"] = f"no-norm $d={wandb_run.config['agent']['latent_dim']}$"
         history["utd_ratio"] = wandb_run.config["agent"]["utd_ratio"]
 
@@ -179,7 +179,7 @@ data = pd.concat(
 
 # %%
 
-data.to_csv("./ifsq-rl.csv")
+data.to_csv("./iqrl.csv")
 
 
 # %%
