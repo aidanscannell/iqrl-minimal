@@ -16,6 +16,12 @@ ddpg_data = {
             "i2926y8u",
             "jntea203",
             "kjw08gye",
+            # Task-specific pre-training
+            "60zeu82a",
+            "v13x7n9u",
+            "9ksh7i61",
+            "i3kk5az3",
+            "3i1fny59",
         ],
         "hopper-hop": [
             # Pre-training
