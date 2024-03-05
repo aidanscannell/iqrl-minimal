@@ -122,7 +122,7 @@ class TD3(Agent):
         ] = None,  # reset params after this many param updates
         reset_type: str = "last_layer",  #  "full" or "last-layer"
         # nstep: int = 1,
-        discount: float = 0.99,
+        gamma: float = 0.99,
         tau: float = 0.005,
         act_with_target: bool = False,  # if True act with target network
         logging_freq: int = 499,
@@ -150,7 +150,7 @@ class TD3(Agent):
         self.reset_params_freq = reset_params_freq
         self.reset_type = reset_type
         self.nstep = nstep
-        self.discount = discount
+        self.gamma = gamma
         self.tau = tau
         self.act_with_target = act_with_target
         self.logging_freq = logging_freq
@@ -162,27 +162,27 @@ class TD3(Agent):
             action_space=action_space,
             mlp_dims=mlp_dims,
         ).to(device)
-        self.target_actor = Actor(
+        self.actor_tar = Actor(
             observation_space=observation_space,
             action_space=action_space,
             mlp_dims=mlp_dims,
         ).to(device)
-        self.target_actor.load_state_dict(self.actor.state_dict())
+        self.actor_tar.load_state_dict(self.actor.state_dict())
 
         # Init critic and it's targets
         self.critic = Critic(observation_space, action_space, mlp_dims=mlp_dims).to(
             device
         )
-        self.target_critic = Critic(
-            observation_space, action_space, mlp_dims=mlp_dims
-        ).to(device)
-        self.target_critic.load_state_dict(self.critic.state_dict())
+        self.critic_tar = Critic(observation_space, action_space, mlp_dims=mlp_dims).to(
+            device
+        )
+        self.critic_tar.load_state_dict(self.critic.state_dict())
 
         if compile:
             self.actor = torch.compile(self.actor, mode="default")
-            self.target_actor = torch.compile(self.target_actor, mode="default")
+            self.actor_tar = torch.compile(self.actor_tar, mode="default")
             self.critic = torch.compile(self.critic, mode="default")
-            self.target_critic = torch.compile(self.target_critic, mode="default")
+            self.critic_tar = torch.compile(self.critic_tar, mode="default")
 
         # Optimizers
         self.q_optimizer = torch.optim.Adam(
@@ -232,18 +232,18 @@ class TD3(Agent):
         dones = torch.zeros_like(batch.dones[0], dtype=torch.bool)
         rewards = torch.zeros_like(batch.rewards[0])
         timeout_or_dones = torch.zeros_like(batch.dones[0], dtype=torch.bool)
-        next_state_discounts = torch.ones_like(batch.dones[0])
+        next_state_gammas = torch.ones_like(batch.dones[0])
         next_obs = torch.zeros_like(batch.observations[0])
         for t in range(self.nstep):
             next_obs = torch.where(
                 timeout_or_dones[..., None], next_obs, batch.next_observations[t]
             )
-            next_state_discounts *= torch.where(timeout_or_dones, 1, self.discount)
+            next_state_gammas *= torch.where(timeout_or_dones, 1, self.gamma)
             dones = torch.where(timeout_or_dones, dones, batch.dones[t])
             rewards += torch.where(
                 timeout_or_dones[..., None],
                 0,
-                self.discount**t * batch.rewards[t],
+                self.gamma**t * batch.rewards[t],
             )
             timeout_or_dones = torch.logical_or(
                 timeout_or_dones, torch.logical_or(dones, batch.timeouts[t])
@@ -255,7 +255,7 @@ class TD3(Agent):
             dones=dones,
             timeouts=timeout_or_dones,
             rewards=rewards,
-            next_state_discounts=next_state_discounts,
+            next_state_gammas=next_state_gammas,
         )
 
         # Update critic
@@ -278,7 +278,7 @@ class TD3(Agent):
         self.q_optimizer.step()
 
         # Update the target network
-        soft_update_params(self.critic, self.target_critic, tau=self.tau)
+        soft_update_params(self.critic, self.critic_tar, tau=self.tau)
 
         info = {
             # "q1_values": q1_values.mean().item(),
@@ -294,19 +294,19 @@ class TD3(Agent):
         with torch.no_grad():
             clipped_noise = (
                 torch.randn_like(data.actions, device=self.device) * self.policy_noise
-            ).clamp(-self.noise_clip, self.noise_clip) * self.target_actor.action_scale
+            ).clamp(-self.noise_clip, self.noise_clip) * self.actor_tar.action_scale
 
             next_state_actions = (
-                self.target_actor(data.next_observations) + clipped_noise
+                self.actor_tar(data.next_observations) + clipped_noise
             ).clamp(self.action_space.low[0], self.action_space.high[0])
-            q1_next_target, q2_next_target = self.target_critic(
+            q1_next_target, q2_next_target = self.critic_tar(
                 data.next_observations, next_state_actions
             )
             min_q_next_target = torch.min(q1_next_target, q2_next_target)
             next_q_value = data.rewards.flatten() + (
                 1 - data.dones.flatten()
-            ) * data.next_state_discounts.flatten() * (min_q_next_target).view(-1)
-        #            ) * self.discount**self.nstep * (min_q_next_target).view(-1)
+            ) * data.next_state_gammas.flatten() * (min_q_next_target).view(-1)
+        #            ) * self.gamma**self.nstep * (min_q_next_target).view(-1)
 
         q1_values, q2_values = self.critic(data.observations, data.actions)
         q1_loss = F.mse_loss(q1_values.view(-1), next_q_value)
@@ -324,7 +324,7 @@ class TD3(Agent):
         self.actor_optimizer.step()
 
         # Update the target network
-        soft_update_params(self.actor, self.target_actor, tau=self.tau)
+        soft_update_params(self.actor, self.actor_tar, tau=self.tau)
 
         info = {
             "actor_loss": actor_loss.item(),
@@ -352,7 +352,7 @@ class TD3(Agent):
     @torch.no_grad()
     def select_action(self, observation, eval_mode: EvalMode = False, t0: T0 = None):
         if self.act_with_target:
-            actions = self.target_actor(torch.Tensor(observation).to(self.device))
+            actions = self.actor_tar(torch.Tensor(observation).to(self.device))
         else:
             actions = self.actor(torch.Tensor(observation).to(self.device))
         if not eval_mode:
@@ -369,8 +369,8 @@ class TD3(Agent):
         logger.info("Resetting actor/critic params")
         self.actor.reset(reset_type=reset_type)
         self.critic.reset(reset_type=reset_type)
-        self.target_actor.load_state_dict(self.actor.state_dict())
-        self.target_critic.load_state_dict(self.critic.state_dict())
+        self.actor_tar.load_state_dict(self.actor.state_dict())
+        self.critic_tar.load_state_dict(self.critic.state_dict())
         self.critic_opt = torch.optim.AdamW(
             self.critic.parameters(), lr=self.learning_rate
         )

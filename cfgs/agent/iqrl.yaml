@@ -1,7 +1,6 @@
 _target_: "agents.iQRL"
-# Actor/critic stuff
+##### TD3 config #####
 mlp_dims: [512, 512]
-# exploration_noise: 1.0
 exploration_noise_start: 1.0
 exploration_noise_end: 0.1
 exploration_noise_num_steps: 50
@@ -12,39 +11,44 @@ batch_size: 256
 utd_ratio: 1  # parameter update-to-data ratio
 actor_update_freq: 2  # update actor less frequently than critic
 nstep: 1
+gamma: 0.99
+tau: 0.005 # momentum coefficient (for target actor/critics)
+
+##### Encoder config #####
+latent_dim: 128
 horizon: 5
-discount: 0.99
-tau: 0.005
-device: ${device}
-# Reset stuff
-reset_type: "full" # "full" or "last-layer"
-reset_strategy: "every-x-param-updates"  #  "latent-dist" or "every-x-param-updates"
-reset_params_freq: null # reset params after this many param updates
-reset_threshold: 0.01  # reset latent (z) when changed by more than this
-memory_size: 10000  # mem size for calculating ||z_{mem} - e_{\phi}(x_mem)||
-# AE config
-train_strategy: "interleaved"  # "interleaved" or "representation-first"
-temporal_consistency: True # if True include dynamic model in encoder
-reconstruction_loss: False # if True include decoder
-reward_loss: False # if True use reward prediction for representation learning
+enc_mlp_dims: [256]
+enc_learning_rate: 1e-4
+enc_batch_size: 256
+enc_utd_ratio: 1  # enc parameter update-to-data ratio
+enc_update_freq: 1  # (Optionally) update enc less frequently than actor/critic
+enc_tau: 0.005 # momentum coefficient for (target encoder)
+# train_strategy: "interleaved"  # "interleaved" or "representation-first"
+
+# Configure which loss terms to use
+use_tc_loss: True # if True include dynamic model in enc
+use_rec_loss: False # if True include decoder
+use_rew_loss: False # if True use reward prediction for representation learning
+
+# Configure which loss functions to use (MSE or Cosine)
 use_cosine_similarity_dynamics: False
 use_cosine_similarity_reward: False
-use_target_encoder: True # if True use target encoder to get latents for TD3
-act_with_target_enc: False # if True act with the target encoder
-encoder_mlp_dims: [256]
-ae_learning_rate: 1e-4
-ae_batch_size: 256
-ae_utd_ratio: 1  # encoder parameter update-to-data ratio
-ae_patience: 100
-ae_min_delta: 0.0
-latent_dim: 512
-project_latent: False
-ae_tau: 0.005
-ae_normalize: False
-simplex_dim: 8
+
+use_tar_enc: True # if True use tar enc to get latents for TD3
+act_with_tar_enc: False # if True act with the tar enc
+
+# Project loss into another space before calculating TC loss (off by default)
+use_project_latent: False
+projection_mlp_dims: [256]
+projection_dim: null # if None use latent_dim/2
+
+# Configure FSQ normalization
 use_fsq: True
 fsq_levels: [8, 8]
-fsq_idx: 0
+quantized: False  # if True use quantized latent for TD3, else use normalized latent
+
+# Other stuff
+logging_freq: 499
 compile: False
-# encoder_reset_params_freq: int = 10000  # reset enc params after X param updates
-name: iQRL_n=${agent.nstep}_h=${agent.horizon}_td3-targ=${agent.use_target_encoder}_act-targ=${agent.act_with_target_enc}_cos=${agent.use_cosine_similarity_dynamics}_${agent.reset_strategy}-${agent.reset_type}_${agent.train_strategy}-${agent.reset_params_freq}_temp-${agent.temporal_consistency}_rec=${agent.reconstruction_loss}_utd=${agent.utd_ratio}_fsq=${agent.use_fsq}_${agent.fsq_levels}_idx=${agent.fsq_idx}_d=${agent.latent_dim}
+device: ${device}
+name: iQRL_n=${agent.nstep}_h=${agent.horizon}_td3-targ=${agent.use_tar_enc}_act-targ=${agent.act_with_tar_enc}_cos=${agent.use_cosine_similarity_dynamics}__tc-${agent.use_tc_loss}_rec=${agent.use_rec_loss}_utd=${agent.utd_ratio}_fsq=${agent.use_fsq}_${agent.fsq_levels}_q=${agent.quantized}_d=${agent.latent_dim}
